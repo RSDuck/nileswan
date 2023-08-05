@@ -52,7 +52,7 @@ The reason, this can be important, is, that some FPGAs or microcontrollers need 
 
 Shortly after `/RESET` goes high again a handshake between the SoC (CPU) and the Bandai chip is performed. If it is not sucessful, the bootrom will refuse to load the game and not even show the Bandai logo.
 
-![Logic analyzer trace of the unlock sequence](openingdance.png).
+![Logic analyzer trace of the unlock sequence](openingdance.png)
 
 The opening sequence is synchronous to the serial clock signal. It begins after the the rising edge of the clock when `A0`-`A3` become 0x5 and and `A16`-`A19` become 0xA. On each subsequent rising edge a bit will be output via `MBC`. The sequence is (lowest bit output first) 0b1000101000101000000111. Afterwards `MBC` stays high indefinitely and is not used anymore until the system is reset.
 
