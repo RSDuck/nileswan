@@ -28,7 +28,7 @@ Both the ROM and the SRAM chip use a standard asynchronous memory interface.
 
 In this trace the CPU access memory repeated. It sets up the address while `/OE` is high (marked in green) and then sets it low, which (marked in pink) is when the Bandai chip will select the right chip, which will then provide the data.
 
-For every memory access the Bandai chip will use the upper address bits (`A16`-`A19``) to select either the ROM or SRAM and provide the upper address bits (beyond the low 16-bits) based on its internal registers which can be set using I/O accesses.
+For every memory access the Bandai chip will use the upper address bits (`A16`-`A19`) to select either the ROM or SRAM and provide the upper address bits (beyond the low 16-bits) based on its internal registers which can be set using I/O accesses.
 
 It is presumed that the CPU latches the data to be read on the rising edge of `/OE`.
 
@@ -38,7 +38,7 @@ It is presumed that the CPU latches the data to be read on the rising edge of `/
 
 Cartridge I/O registers are handled by the Bandai chip. They are made like regular memory accesses, except that the `/IO` signal is low during the regular `/OE` or `/WE` is. See again http://perfectkiosk.net/stsws.html#cart for more information.
 
-I/O accesses are 8-bit wide (using `D0`-`D7`) with an 8-bit address. Since the Bandai chip is not connected to the full address bus, the upper four address bits are output on `A16`-`A19``.
+I/O accesses are 8-bit wide (using `D0`-`D7`) with an 8-bit address. Since the Bandai chip is not connected to the full address bus, the upper four address bits are output on `A16`-`A19`.
 
 ## Reset signal
 
