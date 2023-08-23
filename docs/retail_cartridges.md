@@ -63,3 +63,15 @@ Generally speaking the `/OE` or `/WE` signal seem to go low and high again with 
 ## Power consumption
 
 See [current consumption](current_consumption.md) for my experiments regarding this.
+
+## Mechanical details
+
+|Distance|Length (in mm)|
+|------|-----------------|
+|Distance pad to pad|1.25|
+|Left edge to first pad|0.7|
+|Last pad to right edge|0.95|
+|Bottom edge to longer pads (GND, Vcc)|0.5|
+|Bottom edge to shorter pads|1|
+
+TODO: make a proper mechanical drawing
