@@ -1,0 +1,5 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "nileswan")(type "KiCad")(uri "${KIPRJMOD}/symbols/nileswan.kicad_sym")(options "")(descr ""))
+  (lib (name "AMPMAFB-25.0000T")(type "KiCad")(uri "${KIPRJMOD}/snapeda/symbols/AMPMAFB-25.0000T.kicad_sym")(options "")(descr ""))
+)

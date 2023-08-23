@@ -1,0 +1,5 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "nileswan")(type "KiCad")(uri "${KIPRJMOD}/footprints")(options "")(descr ""))
+  (lib (name "snapeda")(type "KiCad")(uri "${KIPRJMOD}/snapeda/footprints")(options "")(descr ""))
+)

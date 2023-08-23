@@ -1,0 +1,3 @@
+The symbols and footprints in this folder stem from SnapEDA are licensed under CC-BY-SA with design exception.
+
+They have been partly modified.
