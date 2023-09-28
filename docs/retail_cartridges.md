@@ -20,7 +20,7 @@ Both the ROM and SRAM are connected to the lower 16 address lines and all 16 dat
 
 The Bandai chip is connected to `A0`-`A3`, `A16`-`A19`, `D0`-`D7`, as well as all the control signals. It also serves as a connection serial peripherals like EEPROM or an RTC.
 
-For a schematic of such a cartridge see up-n-atom's [WonderWitch clone](https://github.com/up-n-atom/WonderWitch). Note that the WonderWitch uses a parallel flash memory in place of the rom chip as it needs to be rewritable.
+For a schematic of such a cartridge see up-n-atom's [WonderWitch clone](https://github.com/up-n-atom/WonderWitch). Note that the WonderWitch uses a parallel flash memory in place of the ROM chip as it needs to be rewritable.
 
 ## Memory access
 
@@ -55,6 +55,8 @@ Shortly after `/RESET` goes high again a handshake between the SoC (CPU) and the
 ![Logic analyzer trace of the unlock sequence](openingdance.png)
 
 The opening sequence is synchronous to the serial clock signal. It begins after the the rising edge of the clock when `A0`-`A3` become 0x5 and and `A16`-`A19` become 0xA. On each subsequent rising edge a bit will be output via `MBC`. The sequence is (lowest bit output first) 0b1000101000101000000111. Afterwards `MBC` stays high indefinitely and is not used anymore until the system is reset.
+
+It seems like there is some allowed variance in the number of cycles before the first low MBC value. Though how it is depicted in the trace (where it is output during the fourth rising edge after the rising edge with the address change) is how official Bandai chips seem to behave.
 
 ## Speed requirements
 
