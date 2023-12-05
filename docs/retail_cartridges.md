@@ -32,7 +32,15 @@ For every memory access the Bandai chip will use the upper address bits (`A16`-`
 
 It is presumed that the CPU latches the data to be read on the rising edge of `/OE`.
 
+The byte at the lower address (even) is deliverd on `D0`-`D7` while byte at the upper address (odd) is delivered on `D8`-`D15`.
+
 ![Logic analyzer trace of a memory access](dataaccess.png)
+
+While the address seems to be applied already before `/WE` or `/OE` are pulled low, the data lines are only set during the falling edge (only confirmed for I/O writes).
+
+So when not using a second clock (which would allow an arbitrary delay), it is probably the best to latch the write value on the rising edge of `/WE`.
+
+![Logic analyzer trace of an I/O write](datawrite.png)
 
 ## I/O
 
