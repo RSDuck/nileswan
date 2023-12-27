@@ -1,0 +1,3 @@
+To enable/disable SD card voltage use a p mosfet
+
+IS62WV5128EALL is actual low power SRAM

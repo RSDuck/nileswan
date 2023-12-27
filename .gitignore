@@ -1,0 +1,9 @@
+build
+.vscode
+
+*.vcd
+
+*.bin
+
+*.ram
+*.ws
