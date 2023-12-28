@@ -1,7 +1,6 @@
 `include "dance.sv"
 `include "blockram.sv"
 `include "spi_io.sv"
-`include "mapper.sv"
 
 module nileswan(
     input nSel, input nOE, input nWE,

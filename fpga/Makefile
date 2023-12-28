@@ -60,7 +60,7 @@ bench_fst_files := $(bench_out_files:.sv=.fst)
 
 
 // https://github.com/no2fpga/no2build/blob/master/core-rules.mk
-$(build_folder)/%.tb: rtl/benches/%.sv $(ICE40_LIBS) $(rtl_source_paths)
+$(build_folder)/%.tb: rtl/benches/%.sv $(ICE40_LIBS) $(rtl_source_paths) $(build_folder)/ipl0.asc
 	iverilog -g 2012 -o $@ -I rtl/benches -I rtl -l $(ICE40_LIBS) $<
 
 %.fst: $(build_folder)/%.tb
@@ -79,8 +79,7 @@ clean:
 	rm -f nileswan.bin
 	rm -f ipl0.ws
 
-	rm -f spi_io.vcd
-	rm -f spi.vcd
+	rm -f *.vcd
 
 ###############################################
 # Utility
