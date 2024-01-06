@@ -1,23 +1,11 @@
-ROMSeg          equ 0xF000
-IRAMSeg         equ 0x0000
-SRAMSeg         equ 0x1000
+%include "../common/swan.inc"
 
 IPL1FlashAddr   equ 0x20000
 
 IPL1Target      equ 0x0400
 IPL1Size        equ 0x0400
 
-LCD_SEG_DATA    equ 0x15
-
-DEBUG_LEDS      equ 0xDF
-
-SPI_DATA        equ 0xE0
-SPI_CNT         equ 0xE1
-
-SPI_CNT_BUSY    equ 0x01
-SPI_CNT_KEEP_CS equ 0x02
-
-org 0xFFF00
+org (ROMSeg0|0xFF00)
 section .text
 text_start:
 
@@ -88,16 +76,4 @@ start:
 
     jmp IRAMSeg:IPL1Target
 
-times	(256-16)-$+text_start db 0xFF
-
-jmp ROMSeg:start
-
-db	0x00
-db	0x42	; Developer ID
-db	0x01    ; Color
-db	0x01	; Cart number
-db	0x00    ; Version
-db	0x00    ; ROM size
-db	0x03    ; Save type
-dw	0x0004  ; Flags
-dw	0x0000	; Checksum
+wsheader text_start, ROMSeg0, start, 0x100

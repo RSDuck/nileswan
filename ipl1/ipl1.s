@@ -1,17 +1,10 @@
-ROMSeg          equ 0xF000
-IRAMSeg         equ 0x0000
-SRAMSeg         equ 0x1000
-
-LCD_SEG_DATA    equ 0x15
-MEMORY_CTRL     equ 0xCE
-
-RAM_BANK        equ 0xC1
+%include "../common/swan.inc"
 
 %ifdef EMU
 
 NUM_PAGES       equ 8
 
-org 0xF0000
+org 0x000
 section .text
 
 times	(64*1024)*7 db 0xFF
@@ -52,8 +45,8 @@ start:
     mov ds, ax
 
     ; enable self flashing (aka PSRAM as SRAM address)
-    mov al, 1
-    out MEMORY_CTRL, al
+    ;mov al, 1
+    ;out MEMORY_CTRL, al
 
     mov al, 0x6
     out LCD_SEG_DATA, al
@@ -110,27 +103,14 @@ start:
     jmp .forever
 
 .fail:
-    ;mov al, 0x30
-    shr bl, 4
-    mov al, bl
+    mov al, 0x30
     out LCD_SEG_DATA, al
 
     jmp .forever
 
 %ifdef EMU
-times	(64*1024-16)-$+text_start db 0xFF
 
-jmp ROMSeg:start
-
-db	0x00
-db	0x42	; Developer ID
-db	0x01    ; Color
-db	0x01	; Cart number
-db	0x00    ; Version
-db	0x00    ; ROM size
-db	0x05    ; Save type
-dw	0x0004  ; Flags
-dw	0x0000	; Checksum
+wsheader text_start, ROMSeg0, start, 0x10000, SAVETYPE_SRAM_512KB
 
 %else
 
