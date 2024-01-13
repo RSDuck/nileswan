@@ -6,5 +6,5 @@ ipl1.bin : ipl1.s
 ipl1.ws: ipl1.s
 	nasm $< -dEMU -o $@
 
-program: ipl1.bin
+program: ipl1.ws
 	iceprog -o 128k $<
