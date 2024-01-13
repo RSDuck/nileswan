@@ -36,7 +36,7 @@ bram_seed := 123456
 $(build_folder)/bram_init.asc:
 	icebram -g -s $(bram_seed) 16 256 >$@
 
-$(build_folder)/$(project).json: $(rtl_source_paths)
+$(build_folder)/$(project).json: $(rtl_source_paths) $(build_folder)/bram_init.asc
 	yosys -p "synth_ice40 -top $(project) -json $@" rtl/$(project).sv
 
 $(build_folder)/$(project).asc: $(build_folder)/$(project).json $(pcf_path)
@@ -52,7 +52,7 @@ $(project).bin: $(build_folder)/$(project).inserted.asc
 #  Simulation
 ###############################################
 
-ICE40_LIBS := $(shell yosys-config --datdir/ice40/cells_sim.v)
+ICE40_LIBS := $(shell yosys-config --datdir/ice40/cells_sim.v --datdir/ice40/brams_map.v)
 
 bench_sources := $(wildcard rtl/benches/*.sv)
 bench_out_files := $(foreach source,$(notdir $(bench_sources)),$(source))
