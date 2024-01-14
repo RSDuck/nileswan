@@ -48,6 +48,18 @@ Cartridge I/O registers are handled by the Bandai chip. They are made like regul
 
 I/O accesses are 8-bit wide (using `D0`-`D7`) with an 8-bit address. Since the Bandai chip is not connected to the full address bus, the upper four address bits are output on `A16`-`A19`.
 
+## ROM width and self flashing
+
+While SRAM accesses are always 8-bit wide, ROM can be configured to be either [8 or 16-bit wide](http://perfectkiosk.net/stsws.html#hardware_architecture). The 8-bit mode was reportedly never used by any commercial software.
+
+For 16-bit ROMs the address line (`A0`) is not connected to the ROM chip. The SoC seems to rely on this force aligning memory accesses, because it sometimes issues reads with it set, while expecting the word with it ignored.
+
+For rewritable cartridges whether using parallel flash memory like Wonderwitch or PSRAM like the nileswan it is desirable to write to the ROM with software running on the Wonderswan. When doing this two hurdles are encountered:
+
+The first is that the SoC blocks writes to ROM from even going to the bus. This problem is solved by Bandai 2003 which gains the ability to set which memory (SRAM or ROM) is selected when accessing the SRAM area (0x10000-0x1FFFF) via the self flash register.
+
+The second is the aforementioned limitation of the SRAM area which only allows 8-bit access size, while ROMs are usually 16-bit wide (which is advantagous due to bigger transfer size). Bandai 2003 again solves this in combination with special NOR flash memory which has a pin to decide whether a memory access is done width 8 or 16-bit width. When the Bandai 2003 is in self flash mode and SRAM is accessed it asserts the `/BYTE` signal of the flash memory. The least significant address bit `A0` is transfered from Bandai 2003 to `D15` of the flash memory which serves its secondary function as `A0` here. As only `D0`-`D7` carry data there is no conflict.
+
 ## Reset signal
 
 After power up a monochrome Wonderswan `/RESET` stays low for about 18 ms.
