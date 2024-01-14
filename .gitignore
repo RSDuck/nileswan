@@ -8,3 +8,6 @@ build
 
 *.ram
 *.ws
+*.wsc
+
+compile_commands.json

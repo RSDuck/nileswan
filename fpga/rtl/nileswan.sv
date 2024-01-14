@@ -88,7 +88,8 @@ module nileswan(
 
     //reg[3:0] debug_LEDs = 0;
     //assign DebugLEDs = debug_LEDs;
-    assign DebugLEDs = sram_addr_ext[3:0];
+    assign DebugLEDs[0] = sram_addr_ext[0];
+    assign DebugLEDs[3] = enable_bootrom;
 
     // Bandai chip
     localparam LINEAR_ADDR_OFF = 8'hC0;
@@ -101,6 +102,12 @@ module nileswan(
     localparam SPI_DATA = 8'hE0;
     localparam SPI_CNT = 8'hE1;
     localparam BLKMEM_CTRL = 8'hE2;
+    localparam PSRAM_UPPER_BITS = 8'hE3;
+    localparam PSRAM_BANK_MASK = 8'hE4;
+
+    reg[7:0] psram_upper_bits = 8'h0;
+
+    reg[7:0] psram_bank_mask = 8'hFF;
 
     always_comb begin
         reg_ack = 1;
@@ -115,7 +122,6 @@ module nileswan(
         ROM_BANK0: reg_out = rom0_addr_ext;
         ROM_BANK1: reg_out = rom1_addr_ext;
         MEMORY_CTRL: reg_out = {7'h0, self_flash};
-        //8'hDF: reg_out = debug_LEDs;
 
         SPI_DATA: begin
             sel_reg_spi_data = 1;
@@ -127,6 +133,7 @@ module nileswan(
         end
 
         BLKMEM_CTRL: reg_out = {7'h0, enable_bootrom};
+        PSRAM_UPPER_BITS: reg_out = psram_upper_bits;
 
         default: reg_ack = 0;
         endcase
@@ -140,9 +147,10 @@ module nileswan(
             ROM_BANK0: rom0_addr_ext <= Data;
             ROM_BANK1: rom1_addr_ext <= Data;
             MEMORY_CTRL: self_flash <= Data[0];
-            //8'hDF: debug_LEDs <= Data[3:0];
 
             BLKMEM_CTRL: enable_bootrom <= Data[0];
+            PSRAM_UPPER_BITS: psram_upper_bits <= Data;
+            PSRAM_BANK_MASK: psram_bank_mask <= Data;
             default: begin end
             endcase
         end
@@ -163,10 +171,10 @@ module nileswan(
         endcase
     end
 
-    assign AddrExt = sram_addr ? sram_addr_ext[5:0] :
+    assign AddrExt = (sram_addr ? sram_addr_ext[5:0] :
                     rom0_addr ? rom0_addr_ext[5:0] :
                     rom1_addr ? rom1_addr_ext[5:0] :
-                    rom_linear_addr ? {rom_linear_addr_ext[1:0], AddrHi} : 0;
+                    rom_linear_addr ? {rom_linear_addr_ext[1:0], AddrHi} : 0) & psram_bank_mask[5:0];
 
     wire any_rom_addr = rom0_addr | rom1_addr | rom_linear_addr | (sram_addr & self_flash);
 
@@ -176,11 +184,8 @@ module nileswan(
 
     wire nPSRAMSel = ~(~nSel & nIO & any_rom_addr & ~bootrom_addr);
 
-    /*reg[7:0] sram_upper_bits_write;
-    always @(posedge nWE) begin
-        if (nPSRAMSel && AddrLo[0] == 1)
-            sram_upper_bits_write <= Data[7:0];
-    end*/
+    assign DebugLEDs[1] = 0;
+    assign DebugLEDs[2] = nPSRAMSel;
 
     wire sel_oe = ~nSel & ~nOE;
 
@@ -189,10 +194,10 @@ module nileswan(
     wire enable_blockram = nIO & bootrom_addr;
 
     wire enable_output_lo = sel_oe & (enable_io_out | enable_blockram);
-    wire enable_output_hi = sel_oe & enable_blockram;
+    wire enable_output_hi = (sel_oe & enable_blockram) | (~nPSRAMSel & ~nWE);
 
     wire[7:0] output_data_lo = enable_io_out ? reg_out : blockram_read[7:0];
-    wire[7:0] output_data_hi = blockram_read[15:8];
+    wire[7:0] output_data_hi = ~nPSRAMSel ? psram_upper_bits : blockram_read[15:8];
 
     assign Data[7:0] = enable_output_lo ? output_data_lo : 8'hZZ;
     assign Data[15:8] = enable_output_hi ? output_data_hi : 8'hZZ;

@@ -14,7 +14,10 @@ LCD_SEG_DATA    equ 0x15
 ; regular Bandai chip registers
 RAM_BANK        equ 0xC1
 ROM_BANK_0      equ 0xC2
+ROM_BANK_1      equ 0xC3
 MEMORY_CTRL     equ 0xCE
+
+MEMORY_ENABLE_SELF_FLASH equ 0x01
 
 ; nileswan extension registers
 SPI_DATA        equ 0xE0
@@ -23,8 +26,13 @@ SPI_CNT         equ 0xE1
 SPI_CNT_BUSY    equ 0x01
 SPI_CNT_KEEP_CS equ 0x02
 
+BLKMEM_CTRL     equ 0xE2
 PSRAM_UPPER_BITS equ 0xE3
+PSRAM_BANK_MASK equ 0xE4
 
+BLKMEM_ENABLE_BOOTROM equ 0x01
+
+; Savetypes
 SAVETYPE_NONE   equ 0x0
 
 SAVETYPE_SRAM_8KB equ 0x1
