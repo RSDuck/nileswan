@@ -30,7 +30,7 @@
 | 8 | SPI TX buffer (write only, 512 bytes mirrored) |
 | 9-15 | Unused (open bus) |
 
-SPI RX and TX buffer are double buffered.
+SPI RX and TX buffer are double buffered with only one currently visible. This is contrable via `SPI_CNT`.
 
 ## Registers
 
