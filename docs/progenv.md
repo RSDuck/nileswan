@@ -50,7 +50,7 @@ SPI RX and TX buffer are double buffered with only one currently visible. This i
 
 Rationale for separating device select from chip select: The TF is hooked up on a separate SPI bus so that it does not interfere while the FPGA initialise. Additionally it is necessary to be eable to send data while the TF card is deselected. Having both on a separate bus also allows safely cutting power to the TF card.
 
-During transfer the data in the TX buffer currently not mapped
+During transfer the data in the TX buffer currently not mapped into the address space is sent out. The received data is stored in the RX buffer currently not memory mapped.
 
 **`0xE1` - `SPI_CNT` (8 bit)**
 | Bit(s) | Description |
