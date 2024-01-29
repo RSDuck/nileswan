@@ -39,7 +39,7 @@ SPI RX and TX buffer are double buffered with only one currently visible. This i
 **`0xE0` - `SPI_CNT` (8 bit)**
 | Bit(s) | Description |
 |------|------|
-|0|MSB of SPI transfer length|
+|0|Bit 8 of SPI transfer length|
 |1|Unusued/0|
 |2|Transfer speed (0 = 25 MHz/1 = 390.625 kHz)|
 |3|Controls chip select line of the current device (0 = /CS is high, 1 = /CS is low)|
@@ -55,7 +55,7 @@ During transfer the data in the TX buffer currently not mapped
 **`0xE1` - `SPI_CNT` (8 bit)**
 | Bit(s) | Description |
 |------|------|
-|0-7|Length of SPI transfer in bytes|
+|0-7|Bits 0-7 of SPI transfer length in bytes|
 
 All values are locked while transfer is in progress.
 
