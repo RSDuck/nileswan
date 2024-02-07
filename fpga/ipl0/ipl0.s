@@ -21,8 +21,8 @@
 IPL0Size	 equ 512
 
 IPL1FlashAddr    equ 0x20000
-IPL1AltFlashAddr equ 0x20000
-IPL1IRAMAddr	 equ 0x0040
+IPL1AltFlashAddr equ 0x24000
+IPL1IRAMAddr	 equ 0x0060
 
 ; assumption: at minimum 0x0600
 IPL1IRAMSize	 equ 0x3E00
@@ -37,8 +37,42 @@ start:
 ; Initialize hardware
 	cli
 
-	xor ax, ax
-	mov si, ax
+; Do some tricks to store the full register state on boot
+; in memory area 0x0040 - 0x0058
+
+; Store correct state of AX and DS in a screen LUT
+; We need to initialize DS to access RAM, but we want to preserve it
+        out     0x20, ax
+        mov     ax, ds
+        out     0x22, ax
+
+        ; Initialize DS to 0x0000
+        mov     ax, 0x0000
+        mov     ds, ax
+
+        ; Preserve registers in RAM
+        in      ax, 0x20
+        mov     [0x40], ax ; AX
+        mov     [0x42], bx
+        mov     [0x44], cx
+        mov     [0x46], dx
+        mov     [0x48], sp
+        mov     [0x4A], bp
+        mov     [0x4C], si
+        mov     [0x4E], di
+        in      ax, 0x22
+        mov     [0x50], ax ; DS
+        mov     [0x52], es
+        mov     [0x54], ss
+
+        ; Init SS/SP here so we can PUSHF
+        mov     ax, ds ; assumption: DS == 0
+        mov     ss, ax
+	mov	si, ax ; also, zero SI for a later assumption
+
+        pushf
+        pop	di
+        mov     [0x56], di
 
 ; Prepare flash command write: read from address 0x03 onwards
 	mov di, ax ; assumption: AX == 0
@@ -49,8 +83,16 @@ start:
 	mov ax, NILE_BANK_ROM_RX
 	out ROM_BANK_0_2003, ax
 
-; TODO: Set BX to different address depending on keybinds
+; Vary IPL1 load location depending on a special keybind.
+	call keypadScan
+	and ax, (KEY_Y1 | KEY_A)
+	cmp ax, (KEY_Y1 | KEY_A)
+	je altFlashAddr
 	mov bx, IPL1FlashAddr >> 8
+	jmp postFlashAddr
+altFlashAddr:
+	mov bx, IPL1AltFlashAddr >> 8
+postFlashAddr:
 
 ; Write 0x03, BH, BL, 0x00 to SPI TX buffer
 	mov ax, bx
@@ -115,6 +157,40 @@ spiSpinwait:
 	in al, NILE_SPI_CNT+1
 	test al, 0x80
 	jnz spiSpinwait
+	ret
+
+; Scan keypad. Return result in AX
+keypadScan:
+	push	cx
+	push	dx
+
+        mov     dx, 0x00B5
+
+        mov     al, 0x10
+        out     dx, al
+        daa
+        in      al, dx
+        and     al, 0x0F
+        mov     ch, al
+
+        mov     al, 0x20
+        out     dx, al
+        daa
+        in      al, dx
+        shl     al, 4
+        mov     cl, al
+
+        mov     al, 0x40
+        out     dx, al
+        daa
+        in      al, dx
+        and     al, 0x0F
+        or      cl, al
+
+        mov     ax, cx
+
+	pop	dx
+	pop	cx
 	ret
 
 	times (IPL0Size-16)-($-$$) db 0xFF

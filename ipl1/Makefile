@@ -108,7 +108,7 @@ $(EXECUTABLE): $(ELF)
 	@echo "  OBJCOPY $@"
 	$(_V)$(OBJCOPY) -O binary $< $@
 
-$(ELF): $(OBJS)
+$(ELF): $(OBJS) link.ld
 	@echo "  LD      $@"
 	$(_V)$(CC) -o $(ELF) $(OBJS) $(LDFLAGS)
 

@@ -12,6 +12,20 @@ ROMSegLinear    equ 0x4000
 DISPLAY_CTRL    equ 0x00
 LCD_SEG         equ 0x15
 
+; WonderSwan key mapping for keypadScan
+
+KEY_Y4          equ 0x0800
+KEY_Y3          equ 0x0400
+KEY_Y2          equ 0x0200
+KEY_Y1          equ 0x0100
+KEY_X4          equ 0x0080
+KEY_X3          equ 0x0040
+KEY_X2          equ 0x0020
+KEY_X1          equ 0x0010
+KEY_B           equ 0x0008
+KEY_A           equ 0x0004
+KEY_START       equ 0x0002
+
 ; Bandai mapper registers
 
 RAM_BANK        equ 0xC1
