@@ -2,4 +2,7 @@
   (version 7)
   (lib (name "nileswan")(type "KiCad")(uri "${KIPRJMOD}/symbols/nileswan.kicad_sym")(options "")(descr ""))
   (lib (name "AMPMAFB-25.0000T")(type "KiCad")(uri "${KIPRJMOD}/snapeda/symbols/AMPMAFB-25.0000T.kicad_sym")(options "")(descr ""))
+  (lib (name "AP22966DC8-7")(type "KiCad")(uri "${KIPRJMOD}/snapeda/symbols/AP22966DC8-7.kicad_sym")(options "")(descr ""))
+  (lib (name "TPS3619")(type "KiCad")(uri "${KIPRJMOD}/snapeda/symbols/TPS3619-50DGK.kicad_sym")(options "")(descr ""))
+  (lib (name "SM02B-SRSS-TB")(type "KiCad")(uri "${KIPRJMOD}/snapeda/symbols/SM02B-SRSS-TB_LF__SN_.kicad_sym")(options "")(descr ""))
 )
