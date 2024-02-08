@@ -16,8 +16,8 @@ NAME		:= ipl1
 
 INCLUDEDIRS	:=
 SOURCEDIRS	:= src
-ASSETDIRS	:=
-CBINDIRS	:= data
+ASSETDIRS	:= assets
+CBINDIRS	:=
 
 # Defines passed to all files
 # ---------------------------
