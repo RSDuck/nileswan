@@ -57,12 +57,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static inline void nile_spi_wait_busy(void) {
-	while(inportb(IO_NILE_SPI_CNT + 1) & (NILE_SPI_BUSY >> 8));
-}
-
-void nile_spi_tx(const void __far* buf, uint16_t size);
-void nile_spi_rx(void __far* buf, uint16_t size, uint16_t mode);
+bool nile_spi_wait_busy(void);
+bool nile_spi_tx(const void __far* buf, uint16_t size);
+bool nile_spi_rx(void __far* buf, uint16_t size, uint16_t mode);
 
 #endif
 

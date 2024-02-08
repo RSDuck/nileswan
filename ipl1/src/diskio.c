@@ -98,7 +98,7 @@ DRESULT disk_ioctl (BYTE pdrv, BYTE cmd, void *buff) {
 static uint8_t card_status = STA_NOINIT;
 static bool card_hc = false;
 
-static void tfc_send_cmd(uint8_t cmd, uint8_t crc, uint32_t arg) {
+static bool tfc_send_cmd(uint8_t cmd, uint8_t crc, uint32_t arg) {
 	uint8_t buffer[6];
 	buffer[0] = cmd;
 	buffer[1] = arg >> 24;
@@ -106,10 +106,11 @@ static void tfc_send_cmd(uint8_t cmd, uint8_t crc, uint32_t arg) {
 	buffer[3] = arg >> 8;
 	buffer[4] = arg;
 	buffer[5] = crc;
-	nile_spi_tx(buffer, 6);
+	return nile_spi_tx(buffer, 6);
 }
 
 static uint8_t tfc_read_response(uint8_t *buffer, uint16_t size) {
+	buffer[0] = 0xFF;
 	nile_spi_rx(buffer, size + 2, NILE_SPI_MODE_WAIT_READ);
 	return buffer[0];
 }
@@ -208,39 +209,50 @@ DRESULT disk_read (BYTE pdrv, BYTE __far* buff, LBA_t sector, UINT count) {
 
 #ifdef USE_MULTI_TRANSFER_READS
 	bool multi_transfer = count > 1;
-	tfc_send_cmd(multi_transfer ? TFC_READ_MULTIPLE_BLOCK : TFC_READ_SINGLE_BLOCK, 0x95, sector);
-	nile_spi_rx(resp, 1, NILE_SPI_MODE_WAIT_READ);
+	if (!tfc_send_cmd(multi_transfer ? TFC_READ_MULTIPLE_BLOCK : TFC_READ_SINGLE_BLOCK, 0x95, sector))
+		goto disk_read_end;
+	if (!nile_spi_rx(resp, 1, NILE_SPI_MODE_WAIT_READ))
+		goto disk_read_end;
 	if (resp[0])
 		goto disk_read_end;
 
-
 	while (count) {
-		nile_spi_rx(resp, 1, NILE_SPI_MODE_WAIT_READ);
+		if (!nile_spi_rx(resp, 1, NILE_SPI_MODE_WAIT_READ))
+			goto disk_read_end;
 		if (resp[0] != 0xFE)
 			goto disk_read_end;
-		nile_spi_rx(buff, 512, NILE_SPI_MODE_READ);
-		nile_spi_rx(resp, 2, NILE_SPI_MODE_READ);
+		if (!nile_spi_rx(buff, 512, NILE_SPI_MODE_READ))
+			goto disk_read_end;
+		if (!nile_spi_rx(resp, 2, NILE_SPI_MODE_READ))
+			goto disk_read_end;
 		buff += 512;
 		count--;
 	}
 
 	if (multi_transfer) {
-		tfc_send_cmd(TFC_STOP_TRANSMISSION, 0x95, sector);
-		nile_spi_rx(resp, 1, NILE_SPI_MODE_READ);
+		if (!tfc_send_cmd(TFC_STOP_TRANSMISSION, 0x95, sector))
+			goto disk_read_end;
+		if (!nile_spi_rx(resp, 1, NILE_SPI_MODE_READ))
+			goto disk_read_end;
 		tfc_read_response(resp, 1);
 	}
 #else
 	while (count) {
-		tfc_send_cmd(TFC_READ_SINGLE_BLOCK, 0x95, sector);
-		nile_spi_rx(resp, 1, NILE_SPI_MODE_WAIT_READ);
+		if (!tfc_send_cmd(TFC_READ_SINGLE_BLOCK, 0x95, sector))
+			goto disk_read_end;
+		if (!nile_spi_rx(resp, 1, NILE_SPI_MODE_WAIT_READ))
+			goto disk_read_end;
 		if (resp[0])
 			goto disk_read_end;
 
-		nile_spi_rx(resp, 1, NILE_SPI_MODE_WAIT_READ);
+		if (!nile_spi_rx(resp, 1, NILE_SPI_MODE_WAIT_READ))
+			goto disk_read_end;
 		if (resp[0] != 0xFE)
 			goto disk_read_end;
-		nile_spi_rx(buff, 512, NILE_SPI_MODE_READ);
-		nile_spi_rx(resp, 2, NILE_SPI_MODE_READ);
+		if (!nile_spi_rx(buff, 512, NILE_SPI_MODE_READ))
+			goto disk_read_end;
+		if (!nile_spi_rx(resp, 2, NILE_SPI_MODE_READ))
+			goto disk_read_end;
 		buff += 512;
 		sector += card_hc ? 1 : 512;
 		count--;
@@ -266,18 +278,24 @@ DRESULT disk_write (BYTE pdrv, const BYTE __far* buff, LBA_t sector, UINT count)
 
 #ifdef USE_MULTI_TRANSFER_WRITES
 	bool multi_transfer = count > 1;
-	tfc_send_cmd(multi_transfer ? TFC_WRITE_MULTIPLE_BLOCK : TFC_WRITE_BLOCK, 0x95, sector);
-	nile_spi_rx(resp, 1, NILE_SPI_MODE_WAIT_READ);
+	if (!tfc_send_cmd(multi_transfer ? TFC_WRITE_MULTIPLE_BLOCK : TFC_WRITE_BLOCK, 0x95, sector))
+		goto disk_read_end;
+	if (!nile_spi_rx(resp, 1, NILE_SPI_MODE_WAIT_READ))
+		goto disk_read_end;
 	if (resp[0])
 		goto disk_read_end;
 
 	while (count) {
 		resp[0] = 0xFF;
 		resp[1] = multi_transfer ? 0xFC : 0xFE;
-		nile_spi_tx(resp, 2);
-		nile_spi_tx(buff, 512);
-		nile_spi_tx(resp, 2);
-		nile_spi_rx(resp, 1, NILE_SPI_MODE_WAIT_READ);
+		if (!nile_spi_tx(resp, 2))
+			goto disk_read_end;
+		if (!nile_spi_tx(buff, 512))
+			goto disk_read_end;
+		if (!nile_spi_tx(resp, 2))
+			goto disk_read_end;
+		if (!nile_spi_rx(resp, 1, NILE_SPI_MODE_WAIT_READ))
+			goto disk_read_end;
 		// TODO: error handling?
 		buff += 512;
 		count--;
@@ -291,17 +309,23 @@ DRESULT disk_write (BYTE pdrv, const BYTE __far* buff, LBA_t sector, UINT count)
 	}
 #else
 	while (count) {
-		tfc_send_cmd(TFC_WRITE_BLOCK, 0x95, sector);
-		nile_spi_rx(resp, 1, NILE_SPI_MODE_WAIT_READ);
+		if (!tfc_send_cmd(TFC_WRITE_BLOCK, 0x95, sector))
+			goto disk_read_end;
+		if (!nile_spi_rx(resp, 1, NILE_SPI_MODE_WAIT_READ))
+			goto disk_read_end;
 		if (resp[0])
 			goto disk_read_end;
 
 		resp[0] = 0xFF;
 		resp[1] = 0xFE;
-		nile_spi_tx(resp, 2);
-		nile_spi_tx(buff, 512);
-		nile_spi_tx(resp, 2);
-		nile_spi_rx(resp, 1, NILE_SPI_MODE_WAIT_READ);
+		if (!nile_spi_tx(resp, 2))
+			goto disk_read_end;
+		if (!nile_spi_tx(buff, 512))
+			goto disk_read_end;
+		if (!nile_spi_tx(resp, 2))
+			goto disk_read_end;
+		if (!nile_spi_rx(resp, 1, NILE_SPI_MODE_WAIT_READ))
+			goto disk_read_end;
 		// TODO: error handling?
 		buff += 512;
 		sector += 512;

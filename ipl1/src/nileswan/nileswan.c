@@ -20,8 +20,14 @@
 #include <ws/hardware.h>
 #include "nileswan.h"
 
-void nile_spi_tx(const void __far* buf, uint16_t size) {
-	nile_spi_wait_busy();
+bool nile_spi_wait_busy(void) {
+	uint16_t timeout = 0;
+	while(--timeout && inportb(IO_NILE_SPI_CNT + 1) & (NILE_SPI_BUSY >> 8));
+	return timeout != 0;
+}
+
+bool nile_spi_tx(const void __far* buf, uint16_t size) {
+	if (!nile_spi_wait_busy()) return false;
 	uint16_t cnt = inportw(IO_NILE_SPI_CNT);
 	uint16_t new_cnt = (size - 1) | NILE_SPI_MODE_WRITE | (cnt & 0x7800);
 
@@ -38,10 +44,11 @@ void nile_spi_tx(const void __far* buf, uint16_t size) {
 
 		outportw(IO_NILE_SPI_CNT, (new_cnt ^ (NILE_SPI_BUFFER_IDX | NILE_SPI_START)));
 	}
+	return true;
 }
 
-void nile_spi_rx(void __far* buf, uint16_t size, uint16_t mode) {
-	nile_spi_wait_busy();
+bool nile_spi_rx(void __far* buf, uint16_t size, uint16_t mode) {
+	if (!nile_spi_wait_busy()) return false;
 	uint16_t cnt = inportw(IO_NILE_SPI_CNT);
 	uint16_t new_cnt = (size - 1) | mode | (cnt & 0x7800);
 
@@ -49,7 +56,7 @@ void nile_spi_rx(void __far* buf, uint16_t size, uint16_t mode) {
 
 	if (size) {
 		outportw(IO_NILE_SPI_CNT, new_cnt | NILE_SPI_START);
-		nile_spi_wait_busy();
+		if (!nile_spi_wait_busy()) return false;
 
 		volatile uint16_t prev_bank = inportw(IO_BANK_2003_ROM1);
 		outportw(IO_NILE_SPI_CNT, new_cnt ^ NILE_SPI_BUFFER_IDX);
@@ -57,4 +64,5 @@ void nile_spi_rx(void __far* buf, uint16_t size, uint16_t mode) {
 		memcpy(buf, MK_FP(0x3000, 0x0000), size);
 		outportw(IO_BANK_2003_ROM1, prev_bank);
 	}
+	return true;
 }
