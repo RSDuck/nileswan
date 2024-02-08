@@ -18,7 +18,7 @@
 #include <wonderful.h>
 #include <ws.h>
 
-#define INDICATOR_ADDR 0x3C76
+#define INDICATOR_ADDR 0x3FB6
 
 	.arch	i186
 	.code16
@@ -147,8 +147,8 @@ ram_fault_test_read_found:
     // write "error" location
     pusha
     // dx = bank
-    mov word ptr ss:[0x3C50], 0x013F
-    mov ax, 0x3C40
+    mov word ptr ss:[0x3F90], 0x013F
+    mov ax, 0x3F80
     call print_hex_number
     // di = offset + 2
     mov dx, di
@@ -167,7 +167,7 @@ ram_fault_test_read_found_keypress2:
     and ax, 0x0DDD
     jnz ram_fault_test_read_found_keypress2
     pop ax
-    mov word ptr ss:[0x3C50], 0x0120
+    mov word ptr ss:[0x3F90], 0x0120
     test ah, 0x0F
     jnz ram_fault_test_read_clear_bank_only
     popa

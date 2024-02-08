@@ -22,21 +22,52 @@
 #include "nileswan/nileswan.h"
 #include "../build/assets/tiles.h"
 
-#define SCREEN ((uint16_t*) (0x3800 + (14 * 32 * 2)))
+#define SCREEN ((uint16_t*) (0x3800 + (13 * 32 * 2)))
 const uint8_t hexchars[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
 #define PSRAM_MAX_BANK 127
 #define SRAM_MAX_BANK 7
+
+// lzsa_decompress_small_v2.s
+uint16_t lzsa2_decompress_small(void __far* dest, const void __far* src);
+// tests_asm.s
+void ram_fault_test(void *results, uint16_t bank_count);
+// util.s
+void memcpy8to16(void *dst, const void *src, uint16_t count, uint16_t fill_value);
+void print_hex_number(void *dst, uint16_t value);
 
 static FATFS fs;
 static uint16_t bank_count;
 static uint16_t bank_count_max;
 static uint16_t progress_pos;
 
+static const char fatfs_error_header[] = "TF card read failed (    )";
+
+__attribute__((noreturn))
+static void report_fatfs_error(uint8_t result) {
+    outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(7, 0, 2, 5));
+    outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(7, 7, 7, 7));
+	memcpy8to16(SCREEN + (3 * 32) + 1, fatfs_error_header, sizeof(fatfs_error_header) - 1, 0x0100);
+	print_hex_number(SCREEN + (3 * 32) + 22, result);
+
+	const char *error_detail = NULL;
+	switch (result) {
+		case FR_DISK_ERR: error_detail = "Disk I/O error"; break;
+		case FR_INT_ERR: case FR_INVALID_PARAMETER: error_detail = "Internal error"; break;
+		case FR_NO_FILE: case FR_NO_PATH: error_detail = "File not found"; break;
+		case FR_NO_FILESYSTEM: error_detail = "FAT filesystem not found"; break;
+	}
+	if (error_detail != NULL) {
+		memcpy8to16(SCREEN + ((17 - 2) * 32) + 1, error_detail, strlen(error_detail), 0x0100);
+	}
+
+	while(1);
+}
+
 static void update_progress(void) {
 	uint16_t progress_end = ((++bank_count) << 4) / bank_count_max;
 	for (; progress_pos < progress_end; progress_pos++) {
-		SCREEN[11 * 32 + 6 + progress_pos] = ((uint8_t) '-') | 0x100;
+		SCREEN[13 * 32 + 6 + progress_pos] = ((uint8_t) '-') | 0x100;
 	}
 }
 
@@ -89,14 +120,6 @@ static uint8_t load_menu(void) {
 static const char header_string[] = "PSRAM  Self Test  SRAM";
 static const char footer_string[] = "(c) nileswan 2024 @";
 
-// lzsa_decompress_small_v2.s
-uint16_t lzsa2_decompress_small(void __far* dest, const void __far* src);
-// tests_asm.s
-void ram_fault_test(void *results, uint16_t bank_count);
-// util.s
-void memcpy8to16(void *dst, const void *src, uint16_t count, uint16_t fill_value);
-void print_hex_number(void *dst, uint16_t value);
-
 void run_selftest(void) {
 	memcpy8to16(SCREEN + 3, header_string, sizeof(header_string) - 1, 0x0100);
 	memcpy8to16(SCREEN + (17 * 32) + 9, footer_string, sizeof(footer_string) - 1, 0x0100);
@@ -118,18 +141,25 @@ void main(void) {
     outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(0, 7, 2, 5));
     outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(0, 0, 0, 0));
     outportb(IO_SCR_BASE, SCR1_BASE(SCREEN));
-    outportw(IO_SCR1_SCRL_X, (14 * 8 - 4) << 8);
 	lzsa2_decompress_small((uint16_t*) 0x3200, gfx_tiles);
-	memset(SCREEN - 32, 0x6, (32 * 19 - 4) * sizeof(uint16_t));
+	memset(SCREEN, 0x6, (32 * 19 - 4) * sizeof(uint16_t));
+
+	uint16_t keys_pressed = ws_keypad_scan() & 0xDDD;
+	bool do_run_selftest = (keys_pressed & KEYBIND_SELF_TEST) == KEYBIND_SELF_TEST;
+
 	// draw swan
-	memcpy8to16(SCREEN + (6 * 32) + 12, swan_logo_map, 4, 0x100);
-	memcpy8to16(SCREEN + (7 * 32) + 12, swan_logo_map + 4, 4, 0x100);
-	memcpy8to16(SCREEN + (8 * 32) + 12, swan_logo_map + 8, 4, 0x100);
+	if (!do_run_selftest) {
+		memcpy8to16(SCREEN + (8 * 32) + 12, swan_logo_map, 4, 0x100);
+		memcpy8to16(SCREEN + (9 * 32) + 12, swan_logo_map + 4, 4, 0x100);
+		memcpy8to16(SCREEN + (10 * 32) + 12, swan_logo_map + 8, 4, 0x100);
+	    outportw(IO_SCR1_SCRL_X, (14 * 8 - 4) << 8);
+	} else {
+	    outportw(IO_SCR1_SCRL_X, (13 * 8) << 8);
+	}
 
     outportb(IO_DISPLAY_CTRL, DISPLAY_SCR1_ENABLE);
 
-	uint16_t keys_pressed = ws_keypad_scan() & 0xDDD;
-	if ((keys_pressed & KEYBIND_SELF_TEST) == KEYBIND_SELF_TEST) {
+	if (do_run_selftest) {
 		while(1) run_selftest();
 	}
 
@@ -144,7 +174,6 @@ void main(void) {
 		outportw(IO_BANK_ROM_LINEAR, PSRAM_MAX_BANK >> 4);
 		asm volatile("ljmp $0xFFFF, $0x0000");
 	} else {
-		// TODO: Add error handling
-		while(1);
+		report_fatfs_error(result);
 	}
 }
