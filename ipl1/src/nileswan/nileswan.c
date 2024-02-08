@@ -27,19 +27,17 @@ bool nile_spi_tx(const void __far* buf, uint16_t size) {
 	uint16_t cnt = inportw(IO_NILE_SPI_CNT);
 	uint16_t new_cnt = (size - 1) | NILE_SPI_MODE_WRITE | (cnt & 0x7800);
 
-	outportw(IO_NILE_SPI_CNT, new_cnt);
+	volatile uint8_t prev_flash = inportb(IO_CART_FLASH);
+	volatile uint16_t prev_bank = inportw(IO_BANK_2003_RAM);
+	outportw(IO_BANK_2003_RAM, NILE_SEG_RAM_TX);
+	outportb(IO_CART_FLASH, 0);
+	memcpy(MK_FP(0x1000, 0x0000), buf, size);
 
-	if (size) {
-		volatile uint8_t prev_flash = inportb(IO_CART_FLASH);
-		volatile uint16_t prev_bank = inportw(IO_BANK_2003_RAM);
-		outportw(IO_BANK_2003_RAM, NILE_SEG_RAM_TX);
-		outportb(IO_CART_FLASH, 0);
-		memcpy(MK_FP(0x1000, 0x0000), buf, size);
-		outportw(IO_CART_FLASH, prev_flash);
-		outportw(IO_BANK_2003_RAM, prev_bank);
+	outportw(IO_NILE_SPI_CNT, (new_cnt ^ (NILE_SPI_BUFFER_IDX | NILE_SPI_START)));
 
-		outportw(IO_NILE_SPI_CNT, (new_cnt ^ (NILE_SPI_BUFFER_IDX | NILE_SPI_START)));
-	}
+	outportb(IO_CART_FLASH, prev_flash);
+	outportw(IO_BANK_2003_RAM, prev_bank);
+	
 	return true;
 }
 
@@ -48,17 +46,14 @@ bool nile_spi_rx(void __far* buf, uint16_t size, uint16_t mode) {
 	uint16_t cnt = inportw(IO_NILE_SPI_CNT);
 	uint16_t new_cnt = (size - 1) | mode | (cnt & 0x7800);
 
-	outportw(IO_NILE_SPI_CNT, new_cnt);
+	outportw(IO_NILE_SPI_CNT, new_cnt | NILE_SPI_START);
+	if (!nile_spi_wait_busy()) return false;
 
-	if (size) {
-		outportw(IO_NILE_SPI_CNT, new_cnt | NILE_SPI_START);
-		if (!nile_spi_wait_busy()) return false;
-
-		volatile uint16_t prev_bank = inportw(IO_BANK_2003_ROM1);
-		outportw(IO_NILE_SPI_CNT, new_cnt ^ NILE_SPI_BUFFER_IDX);
-		outportw(IO_BANK_2003_ROM1, NILE_SEG_ROM_RX);
-		memcpy(buf, MK_FP(0x3000, 0x0000), size);
-		outportw(IO_BANK_2003_ROM1, prev_bank);
-	}
+	volatile uint16_t prev_bank = inportw(IO_BANK_2003_ROM1);
+	outportw(IO_NILE_SPI_CNT, new_cnt ^ NILE_SPI_BUFFER_IDX);
+	outportw(IO_BANK_2003_ROM1, NILE_SEG_ROM_RX);
+	memcpy(buf, MK_FP(0x3000, 0x0000), size);
+	outportw(IO_BANK_2003_ROM1, prev_bank);
+	
 	return true;
 }
