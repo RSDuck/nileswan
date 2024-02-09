@@ -43,22 +43,25 @@ static uint16_t progress_pos;
 
 static const char fatfs_error_header[] = "TF card read failed (    )";
 
+extern uint8_t diskio_detail_code;
+
 __attribute__((noreturn))
 static void report_fatfs_error(uint8_t result) {
     outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(7, 0, 2, 5));
     outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(7, 7, 7, 7));
 	memcpy8to16(SCREEN + (3 * 32) + 1, fatfs_error_header, sizeof(fatfs_error_header) - 1, 0x0100);
-	print_hex_number(SCREEN + (3 * 32) + 22, result);
+	print_hex_number(SCREEN + (3 * 32) + 22, (diskio_detail_code << 8) | result);
 
 	const char *error_detail = NULL;
 	switch (result) {
 		case FR_DISK_ERR: error_detail = "Disk I/O error"; break;
 		case FR_INT_ERR: case FR_INVALID_PARAMETER: error_detail = "Internal error"; break;
+		case FR_NOT_READY: error_detail = "Drive not ready"; break;
 		case FR_NO_FILE: case FR_NO_PATH: error_detail = "File not found"; break;
 		case FR_NO_FILESYSTEM: error_detail = "FAT filesystem not found"; break;
 	}
 	if (error_detail != NULL) {
-		memcpy8to16(SCREEN + ((17 - 2) * 32) + 1, error_detail, strlen(error_detail), 0x0100);
+		memcpy8to16(SCREEN + ((17 - 2) * 32) + ((28 - strlen(error_detail)) >> 1), error_detail, strlen(error_detail), 0x0100);
 	}
 
 	while(1);

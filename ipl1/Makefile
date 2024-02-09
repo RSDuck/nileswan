@@ -22,7 +22,7 @@ CBINDIRS	:=
 # Defines passed to all files
 # ---------------------------
 
-DEFINES		:=
+DEFINES		:= -DNILESWAN_IPL1
 
 # Libraries
 # ---------

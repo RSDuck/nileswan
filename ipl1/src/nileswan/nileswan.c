@@ -49,11 +49,15 @@ bool nile_spi_rx(void __far* buf, uint16_t size, uint16_t mode) {
 	outportw(IO_NILE_SPI_CNT, new_cnt | NILE_SPI_START);
 	if (!nile_spi_wait_busy()) return false;
 
+#ifndef NILESWAN_IPL1
 	volatile uint16_t prev_bank = inportw(IO_BANK_2003_ROM1);
+#endif
 	outportw(IO_NILE_SPI_CNT, new_cnt ^ NILE_SPI_BUFFER_IDX);
 	outportw(IO_BANK_2003_ROM1, NILE_SEG_ROM_RX);
 	memcpy(buf, MK_FP(0x3000, 0x0000), size);
+#ifndef NILESWAN_IPL1
 	outportw(IO_BANK_2003_ROM1, prev_bank);
-	
+#endif
+
 	return true;
 }

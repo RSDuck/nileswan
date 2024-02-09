@@ -18,6 +18,7 @@
 #include <string.h>
 #include <ws.h>
 #include <ws/display.h>
+#include <ws/util.h>
 #include "nileswan/nileswan.h"
 #include "fatfs/ff.h"
 #include "fatfs/diskio.h"
@@ -95,18 +96,26 @@ DRESULT disk_ioctl (BYTE pdrv, BYTE cmd, void *buff) {
 
 // FatFS API implementation
 
+#ifdef NILESWAN_IPL1
+uint8_t diskio_detail_code;
+#define set_detail_code(v) diskio_detail_code = v
+#else
+#define set_detail_code(v)
+#endif
+
 static uint8_t card_status = STA_NOINIT;
 static bool card_hc = false;
 
 static bool tfc_send_cmd(uint8_t cmd, uint8_t crc, uint32_t arg) {
-	uint8_t buffer[6];
-	buffer[0] = cmd;
-	buffer[1] = arg >> 24;
-	buffer[2] = arg >> 16;
-	buffer[3] = arg >> 8;
-	buffer[4] = arg;
-	buffer[5] = crc;
-	return nile_spi_tx(buffer, 6);
+	uint8_t buffer[7];
+	buffer[0] = 0xFF;
+	buffer[1] = cmd;
+	buffer[2] = arg >> 24;
+	buffer[3] = arg >> 16;
+	buffer[4] = arg >> 8;
+	buffer[5] = arg;
+	buffer[6] = crc;
+	return nile_spi_tx(buffer, 7);
 }
 
 static uint8_t tfc_read_response(uint8_t *buffer, uint16_t size) {
@@ -125,13 +134,23 @@ DSTATUS disk_initialize(BYTE pdrv) {
 	uint8_t retries;
 	uint8_t buffer[10];
 
+	set_detail_code(0);
 	nile_spi_wait_busy();
 	outportw(IO_NILE_SPI_CNT, NILE_SPI_DEV_TF | NILE_SPI_390KHZ | NILE_SPI_CS_HIGH);
+
+	uint8_t powcnt = inportb(IO_NILE_POW_CNT);
+	if (!(powcnt & NILE_POW_TF)) {
+		powcnt |= NILE_POW_TF;
+		outportb(IO_NILE_POW_CNT, powcnt);
+		ws_busywait(5000); // wait a few milliseconds
+	}
+
 	nile_spi_rx(buffer, 10, NILE_SPI_MODE_READ);
 	outportw(IO_NILE_SPI_CNT, NILE_SPI_DEV_TF | NILE_SPI_390KHZ | NILE_SPI_CS_LOW);
 
 	tfc_send_cmd(TFC_GO_IDLE_STATE, 0x95, 0); // Reset card
 	if (tfc_read_response(buffer, 1) & ~TFC_R1_IDLE) {
+		set_detail_code(1);
 		return card_status;
 	}
 
@@ -159,6 +178,10 @@ DSTATUS disk_initialize(BYTE pdrv) {
 				}
 				goto card_init_complete;
 			}
+		} else {
+			// invalid voltage or pattern, reject card
+			set_detail_code(2);
+			return card_status;
 		}
 	}
 
@@ -184,15 +207,18 @@ DSTATUS disk_initialize(BYTE pdrv) {
 	}
 
 	// no more init modes
+	set_detail_code(3);
 	return card_status;
 
 card_init_complete:
 	// set block size to 512
 	tfc_send_cmd(TFC_SET_BLOCKLEN, 0x95, 512);
 	if (tfc_read_response(buffer, 1)) {
+		set_detail_code(4);
 		return card_status;
 	}
 
+	outportb(IO_NILE_POW_CNT, powcnt | NILE_POW_CLOCK);
 	outportw(IO_NILE_SPI_CNT, NILE_SPI_DEV_TF | NILE_SPI_25MHZ | NILE_SPI_CS_HIGH);
 	card_status = 0;
 	return card_status;
@@ -218,17 +244,18 @@ DRESULT disk_read (BYTE pdrv, BYTE __far* buff, LBA_t sector, UINT count) {
 
 	while (count) {
 		if (!nile_spi_rx(resp, 1, NILE_SPI_MODE_WAIT_READ))
-			goto disk_read_end;
+			goto disk_read_stop;
 		if (resp[0] != 0xFE)
-			goto disk_read_end;
+			goto disk_read_stop;
 		if (!nile_spi_rx(buff, 512, NILE_SPI_MODE_READ))
-			goto disk_read_end;
+			goto disk_read_stop;
 		if (!nile_spi_rx(resp, 2, NILE_SPI_MODE_READ))
-			goto disk_read_end;
+			goto disk_read_stop;
 		buff += 512;
 		count--;
 	}
 
+disk_read_stop:
 	if (multi_transfer) {
 		if (!tfc_send_cmd(TFC_STOP_TRANSMISSION, 0x95, sector))
 			goto disk_read_end;
@@ -261,6 +288,7 @@ DRESULT disk_read (BYTE pdrv, BYTE __far* buff, LBA_t sector, UINT count) {
 
 	result = RES_OK;
 disk_read_end:
+	nile_spi_wait_busy();
 	outportw(IO_NILE_SPI_CNT, NILE_SPI_DEV_TF | NILE_SPI_25MHZ | NILE_SPI_CS_HIGH);
 	return result;
 }
@@ -289,17 +317,18 @@ DRESULT disk_write (BYTE pdrv, const BYTE __far* buff, LBA_t sector, UINT count)
 		resp[0] = 0xFF;
 		resp[1] = multi_transfer ? 0xFC : 0xFE;
 		if (!nile_spi_tx(resp, 2))
-			goto disk_read_end;
+			goto disk_read_stop;
 		if (!nile_spi_tx(buff, 512))
-			goto disk_read_end;
+			goto disk_read_stop;
 		if (!nile_spi_tx(resp, 2))
-			goto disk_read_end;
+			goto disk_read_stop;
 		if (!nile_spi_rx(resp, 1, NILE_SPI_MODE_WAIT_READ))
-			goto disk_read_end;
+			goto disk_read_stop;
 		// TODO: error handling?
 		buff += 512;
 		count--;
 	}
+disk_read_stop:
 
 	if (multi_transfer) {
 		resp[0] = 0xFF;
@@ -335,6 +364,7 @@ DRESULT disk_write (BYTE pdrv, const BYTE __far* buff, LBA_t sector, UINT count)
 
 	result = RES_OK;
 disk_read_end:
+	nile_spi_wait_busy();
 	outportw(IO_NILE_SPI_CNT, NILE_SPI_DEV_TF | NILE_SPI_25MHZ | NILE_SPI_CS_HIGH);
 	return result;
 }
