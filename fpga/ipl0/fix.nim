@@ -1,6 +1,6 @@
 import os, strutils
 const
-    PayloadSize = 256
+    PayloadSize = 512
 
 if paramCount() != 3 and paramStr(1) notin ["fullrom", "fpga"]:
     echo "usage: fix [fullrom|fpga] output input"
@@ -15,7 +15,7 @@ else:
 
         data = readFile(inputFile)
     if data.len != PayloadSize:
-        echo "payload needs to be 256 bytes"
+        echo "payload needs to be", PayloadSize, " bytes"
         quit(1)
     var output = newSeq[byte](if fullrom: 512*1024-PayloadSize else: 0)
     output.add(toOpenArrayByte(data, 0, high(data)))

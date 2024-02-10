@@ -52,7 +52,7 @@ $(project).bin: $(build_folder)/$(project).inserted.asc
 #  Simulation
 ###############################################
 
-ICE40_LIBS := $(shell yosys-config --datdir/ice40/cells_sim.v --datdir/ice40/brams_map.v)
+ICE40_LIBS := $(shell yosys-config --datdir/ice40/cells_sim.v)
 
 bench_sources := $(wildcard rtl/benches/*.sv)
 bench_out_files := $(foreach source,$(notdir $(bench_sources)),$(source))

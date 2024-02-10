@@ -1,66 +1,173 @@
+`include "clockmux.sv"
+`include "blockram_16rn_8w.sv"
+`include "blockram_8r_8w.sv"
+
 module SPI (
-    input Clk,
-    input[7:0] DataOut,
-    output[7:0] DataIn,
-    output Busy,
-    input Start,
-    input KeepCS,
+    input FastClk,
+    input SClk,
+    input nWE, input nOE,
+
+    input[8:0] BufAddr,
+
+    input[7:0] WriteData,
+
+    output[15:0] RXBufData,
+    output[15:0] SPICnt,
+
+    input WriteTXBuffer,
+    input WriteSPICntLo,
+    input WriteSPICntHi,
 
     output SPI_Do,
     input SPI_Di,
     output SPI_Clk,
     output SPI_Cs
 );
+    reg[2:0] start_transfer_clk = 3'h0;
+    reg start_async = 1'h0;
+    wire Start = start_transfer_clk[2] ^ start_transfer_clk[1];
 
-    // State machine
-    typedef enum reg[3:0] {
-        state_Idle = 4'h1,
-        state_Shift0 = 4'h8,
-        state_Shift1 = 4'h9,
-        state_Shift2 = 4'hA,
-        state_Shift3 = 4'hB,
-        state_Shift4 = 4'hC,
-        state_Shift5 = 4'hD,
-        state_Shift6 = 4'hE,
-        state_Shift7 = 4'hF,
-        // since CS is phase shifted by
-        // -180 degrees (see below), directly lifting CS
-        // on the positive edge would mean that
-        // would result in CS being high already
-        // during the second half of the last cycle
-        state_Coda = 4'h0
-    } State;
+    reg feedback_transfer_clk = 1'h0;
+    reg[1:0] feedback_async = 2'h0;
+    wire Busy = feedback_async[1] ^ start_async;
 
-    State state = state_Idle;
-    wire StateIdle = ~state[3] & state[0];
-    wire StateCoda = ~state[3] & ~state[0];
-    wire StateShiftOut = state[3];
+    reg[8:0] byte_position;
+    reg[2:0] bit_position = 0;
+    wire[8:0] NextBytePosition = byte_position + 1;
+    reg[8:0] transfer_len;
 
-    reg[7:0] shiftreg = 0;
+    reg[7:0] shiftreg;
 
-    reg cs_keep = 0;
-    wire cs = ~(~StateIdle | cs_keep);
+    reg running = 0;
 
-    assign DataIn = shiftreg;
-    assign Busy = ~StateIdle;
+    reg cs = 1;
+    assign SPI_Cs = cs;
 
-    always @(posedge Clk) begin
-        if (StateIdle && Start)
-            state <= state_Shift0;
+    // the first will be the last and the last will be the first
+    wire[7:0] ShiftRegNext = {shiftreg[6:0], SPI_Di};
 
-        if (~StateIdle)
-            state <= state + 1;
+    reg use_slow_clk = 0;
+
+    wire transfer_clk = FastClk;
+    /*ClockMux clk_mux (
+        .ClkA(FastClk),
+        .ClkB(SClk),
+        .ClkSel(use_slow_clk),
+        .OutClk(transfer_clk)
+    );*/
+
+    typedef enum reg[1:0] { 
+        mode_Write,
+        mode_Read,
+        mode_Exchange,
+        mode_WaitAndRead
+    } TransferMode;
+
+    TransferMode mode = mode_Write;
+
+    reg bus_mapped_buffer = 0;
+
+    wire ShiftRegHasZeroBit = ShiftRegNext != 8'hFF;
+
+    reg filler_over = 0;
+
+    wire StoreShiftReg = bit_position == 7 && mode != mode_Write;
+
+    wire[15:0] rx_read_0, rx_read_1;
+    BlockRAM16RN_8W rx_buffer0 (
+        .ReadClk(nOE),
+        .ReadEnable(1'b1),
+        .ReadAddr(BufAddr[8:1]),
+        .ReadData(rx_read_0),
+
+        .WriteClk(transfer_clk),
+        .WriteEnable(StoreShiftReg & bus_mapped_buffer),
+        .WriteAddr(byte_position),
+        .WriteData(ShiftRegNext)
+    );
+    BlockRAM16RN_8W rx_buffer1 (
+        .ReadClk(nOE),
+        .ReadEnable(1'b1),
+        .ReadAddr(BufAddr[8:1]),
+        .ReadData(rx_read_1),
+
+        .WriteClk(transfer_clk),
+        .WriteEnable(StoreShiftReg & ~bus_mapped_buffer),
+        .WriteAddr(byte_position),
+        .WriteData(ShiftRegNext)
+    );
+    assign RXBufData = bus_mapped_buffer ? rx_read_1 : rx_read_0;
+
+    wire[7:0] tx_read_0, tx_read_1;
+    BlockRAM8R_8W tx_buffer0 (
+        .ReadClk(transfer_clk),
+        .ReadEnable(1'b1),
+        .ReadAddr(NextBytePosition),
+        .ReadData(tx_read_0),
+
+        .WriteClk(nWE),
+        .WriteEnable(WriteTXBuffer & ~bus_mapped_buffer),
+        .WriteAddr(BufAddr),
+        .WriteData(WriteData)
+    );
+    BlockRAM8R_8W tx_buffer1 (
+        .ReadClk(transfer_clk),
+        .ReadEnable(1'b1),
+        .ReadAddr(NextBytePosition),
+        .ReadData(tx_read_1),
+
+        .WriteClk(nWE),
+        .WriteEnable(WriteTXBuffer & bus_mapped_buffer),
+        .WriteAddr(BufAddr),
+        .WriteData(WriteData)
+    );
+    wire[7:0] tx_read = bus_mapped_buffer ? tx_read_0 : tx_read_1;
+
+    always @(posedge transfer_clk)
+        start_transfer_clk <= {start_transfer_clk[1:0], start_async};
+
+    wire LastPeriod = (byte_position == transfer_len) && bit_position == 7;
+
+    always @(posedge transfer_clk) begin
+        if (Start)
+            running <= 1;
+        else if (LastPeriod)
+            running <= 0;            
     end
 
-    always @(posedge Clk)
-        if (StateIdle && Start)
-            cs_keep <= KeepCS;
+    reg last_period_delay;
 
-    always @(posedge Clk) begin
-        if (StateIdle && Start)
-            shiftreg <= DataOut;
-        if (StateShiftOut)
-            shiftreg <= {shiftreg[6:0], SPI_Di};
+    always @(posedge transfer_clk) begin
+        if (LastPeriod)
+            last_period_delay <= 1;
+        if (last_period_delay) begin
+            feedback_transfer_clk <= start_transfer_clk[2];
+            last_period_delay <= 0;
+        end
+    end
+
+    always @(posedge transfer_clk) begin
+        if (Start)
+            filler_over <= mode != mode_WaitAndRead;
+        else if (bit_position == 7 && ShiftRegHasZeroBit)
+            filler_over <= 1;
+    end
+
+    always @(posedge transfer_clk) begin
+        if (Start || (bit_position == 7 && (filler_over || ShiftRegHasZeroBit)))
+            byte_position <= NextBytePosition;
+        else if (~running) // reset position so that the TX buffer will read
+            byte_position <= 9'h1FF;
+    end
+
+    always @(posedge transfer_clk) begin
+        if (Start || running)
+            shiftreg <= (bit_position == 7 || Start) ? tx_read : ShiftRegNext;
+    end
+
+    always @(posedge transfer_clk) begin
+        if (running)
+            bit_position <= bit_position + 1;
     end
 
     SB_IO #(
@@ -68,9 +175,9 @@ module SPI (
         .IO_STANDARD("SB_LVCMOS")
     ) spi_clk_iob (
         .PACKAGE_PIN(SPI_Clk),
-        .D_OUT_0(StateShiftOut),
+        .D_OUT_0(running),
         .D_OUT_1(1'b0),
-        .OUTPUT_CLK(Clk),
+        .OUTPUT_CLK(transfer_clk),
         .OUTPUT_ENABLE(1'b1),
         .CLOCK_ENABLE(1'b1)
     );
@@ -93,27 +200,54 @@ module SPI (
         before D_OUT_0 assuming the values going to both flip flops
         are both latched on the rising edge.
     */
+
+    wire outbit = (mode == mode_Write || mode == mode_Exchange) ? shiftreg[7] : 1;
+
     SB_IO #(
         .PIN_TYPE(6'b010001), // PIN_OUTPUT_DDR
         .IO_STANDARD("SB_LVCMOS")
     ) spi_do_iob (
         .PACKAGE_PIN(SPI_Do),
-        .D_OUT_0(shiftreg[7]),
-        .D_OUT_1(shiftreg[7]),
-        .OUTPUT_CLK(Clk),
+        .D_OUT_0(outbit),
+        .D_OUT_1(outbit),
+        .OUTPUT_CLK(transfer_clk),
         .OUTPUT_ENABLE(1'b1),
         .CLOCK_ENABLE(1'b1)
     );
 
-    SB_IO #(
-        .PIN_TYPE(6'b010001), // PIN_OUTPUT_DDR
-        .IO_STANDARD("SB_LVCMOS")
-    ) spi_cs_iob (
-        .PACKAGE_PIN(SPI_Cs),
-        .D_OUT_0(cs),
-        .D_OUT_1(cs),
-        .OUTPUT_CLK(Clk),
-        .OUTPUT_ENABLE(1'b1),
-        .CLOCK_ENABLE(1'b1)
-    );
+    assign SPICnt = {Busy, bus_mapped_buffer, 1'h0, cs, use_slow_clk, mode, transfer_len};
+
+    // technically this means that just waiting until the transfer *should* be done
+    // is not possible, because the busy state will block writes to SPI_CNT
+    always @(negedge nOE)
+        feedback_async <= {feedback_async[0], feedback_transfer_clk};
+
+    always @(posedge nWE) begin
+        if (WriteSPICntLo & ~Busy)
+            transfer_len[7:0] <= WriteData;
+    end
+
+    always @(posedge nWE) begin
+        if (WriteSPICntHi) begin
+            if (~Busy) begin
+                transfer_len[8] <= WriteData[0];
+
+                mode <= WriteData[2:1];
+                // since the switchover takes three cycles
+                // when starting a transfer and switching the clock at the same time
+                // the cycle where Start=1 will be completed will be the "weird"
+                // switch over cycle
+                // though it doesn't affect the outgoing SPI transfer
+                use_slow_clk <= WriteData[3];
+                cs <= ~WriteData[4];
+
+                bus_mapped_buffer <= WriteData[6];
+
+                if (WriteData[7])
+                    start_async <= start_async ^ 1;
+            end else if (~WriteData[7]) begin
+                // abort transfer
+            end
+        end
+    end
 endmodule

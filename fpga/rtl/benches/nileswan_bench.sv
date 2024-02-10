@@ -2,18 +2,9 @@
 
 `include "../nileswan.sv"
 
-module nileswan_bench (
-);
-    // 25 MHz clock
-    localparam fastclk_half_period = 1000 / 25 / 2;
-    reg clk = 0;
-    always #(fastclk_half_period) clk = ~clk;
-
-    // serial clock
-    localparam sclk_half_period = 1000000 / 384 / 2;
-    reg sclk;
-    always #(sclk_half_period) sclk = ~sclk;
-
+module nileswan_bench ();
+    `include "helper/common_signals.sv"
+        
     localparam swan_clock_period = 1000 / 6;
 
     initial begin
@@ -23,16 +14,16 @@ module nileswan_bench (
 
     reg nOE = 1, nWE = 1, nSel = 1, nIO = 1;
 
-    reg[7:0] addrLo = 0;
+    reg[8:0] addrLo = 0;
     reg[3:0] addrHi = 0;
 
     reg[15:0] write_data = 16'hZZZZ;
     wire[15:0] read_data;
     assign read_data = write_data;
 
-    wire[5:0] addrExt;
+    wire[6:0] addrExt;
 
-    wire nPSRAMSel, PSRAM_nLB_nUB;
+    wire nPSRAMSel, PSRAM_nLB, PSRAM_nUB;
 
     wire MBC;
 
@@ -56,7 +47,8 @@ module nileswan_bench (
         .AddrExt(addrExt),
         
         .nPSRAMSel(nPSRAMSel),
-        .PSRAM_nLB_nUB(PSRAM_nLB_nUB),
+        .PSRAM_nLB(PSRAM_nLB),
+        .PSRAM_nUB(PSRAM_nUB),
 
         .MBC(MBC),
         .SClk(sclk),
