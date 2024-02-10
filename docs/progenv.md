@@ -31,6 +31,8 @@
 
 SPI RX and TX buffer are double buffered with only one currently visible. This is contrable via `SPI_CNT`.
 
+The PSRAM is writeable by using the self flash mode, which maps ROM at the point in the address space at which RAM usually sits (`0x10000`-`0x1FFFF`). While it is technically possible to read the SPI RX buffer and bootrom in this state, the read values will be wrong. These memories only support 16-bit wide accesses.
+
 ## Registers
 
 ### SPI
@@ -40,7 +42,7 @@ SPI RX and TX buffer are double buffered with only one currently visible. This i
 |------|------|
 |0-8|SPI transfer length in bytes minus one|
 |9-10|Mode (0 = write, 1 = read, 2 = exchange, 3 = wait and read) |
-|11|Transfer speed (0 = 25 MHz, 1 = 390.625 kHz)|
+|11|Transfer speed (0 = 25 MHz "high frequency clock", 1 = 384 kHz from cartbus)|
 |12|Controls chip select line of the current device (0 = /CS is high, 1 = /CS is low)|
 |13|SPI device (0 = SPI flash, 1 = TF)|
 |14|Memory mapped RX and TX buffer index (0-1)|
