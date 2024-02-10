@@ -10,6 +10,15 @@ Currently a prototype PCB is done which houses an FPGA, 8 MB of PSRAM and an SD 
 
 The PCB is still far from done and features like saving are still missing completely from the hardware side. The entire board layout will be mostly redone.
 
+## icepack
+
+For the FPGA to be ready in time the bitstream needs to be loaded at the highest speed possible. To achieve this icepack currently needs to be patched in this spot: https://github.com/YosysHQ/icestorm/blob/1a40ae75d4eebee9cce73a2c4d634fd42ed0110f/icepack/icepack.cc#L623 to
+```c++
+this->freqrange = "high";
+```
+
+Eventually I'll create a PR for this but I've been too lazy.
+
 ## Errata/Notes for third PCB iteration
 - TF card power needs a pull down resistor otherwise it will be enabled during the configuration of the FPGA.
 - DI and DO are swapped for the SPI flash!!!!!
