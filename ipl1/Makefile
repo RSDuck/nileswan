@@ -3,7 +3,7 @@
 # SPDX-FileContributor: Adrian "asie" Siekierka, 2023
 
 WONDERFUL_TOOLCHAIN ?= /opt/wonderful
-TARGET = wswan/medium
+TARGET = wswan/bootfriend
 include $(WONDERFUL_TOOLCHAIN)/target/$(TARGET)/makedefs.mk
 
 # Metadata
@@ -14,15 +14,15 @@ NAME		:= ipl1
 # Source code paths
 # -----------------
 
-INCLUDEDIRS	:= include
+INCLUDEDIRS	:=
 SOURCEDIRS	:= src
 ASSETDIRS	:= assets
-CBINDIRS	:= cbin
+CBINDIRS	:=
 
 # Defines passed to all files
 # ---------------------------
 
-DEFINES		:=
+DEFINES		:= -DNILESWAN_IPL1
 
 # Libraries
 # ---------
@@ -35,8 +35,8 @@ LIBDIRS		:= $(WF_TARGET_DIR)
 
 BUILDDIR	:= build
 ELF		:= build/$(NAME).elf
-ELF_STAGE1	:= build/$(NAME)_stage1.elf
-ROM		:= $(NAME).ws
+MAP		:= build/$(NAME).map
+EXECUTABLE	:= $(NAME).bin
 
 # Verbose flag
 # ------------
@@ -72,15 +72,13 @@ INCLUDEFLAGS	:= $(foreach path,$(INCLUDEDIRS),-I$(path)) \
 LIBDIRSFLAGS	:= $(foreach path,$(LIBDIRS),-L$(path)/lib)
 
 ASFLAGS		+= -x assembler-with-cpp $(DEFINES) $(WF_ARCH_CFLAGS) \
-		   $(INCLUDEFLAGS) -ffunction-sections -fdata-sections -fno-common
+		   $(INCLUDEFLAGS) -ffunction-sections -fdata-sections
 
 CFLAGS		+= -std=gnu11 $(WARNFLAGS) $(DEFINES) $(WF_ARCH_CFLAGS) \
-		   $(INCLUDEFLAGS) -ffunction-sections -fdata-sections -fno-common -O2
+		   $(INCLUDEFLAGS) -ffunction-sections -fdata-sections -Os
 
-LDFLAGS		:= -T$(WF_LDSCRIPT) $(LIBDIRSFLAGS) \
+LDFLAGS		:= -Tlink.ld -Wl,-Map,$(MAP) -Wl,--gc-sections $(LIBDIRSFLAGS) \
 		   $(WF_ARCH_LDFLAGS) $(LIBS)
-
-BUILDROMFLAGS	:=
 
 # Intermediate build files
 # ------------------------
@@ -100,15 +98,19 @@ DEPS		:= $(OBJS:.o=.d)
 
 .PHONY: all clean
 
-all: $(ROM) compile_commands.json
+all: $(EXECUTABLE) ipl1test.ws compile_commands.json
 
-$(ROM) $(ELF): $(ELF_STAGE1)
-	@echo "  ROM     $@"
-	$(_V)$(BUILDROM) -o $(ROM) --output-elf $(ELF) $(BUILDROMFLAGS) $<
+ipl1test.ws: $(EXECUTABLE) ipl1test.asm
+	@echo "  NASM    $@"
+	$(_V)nasm -o $@ ipl1test.asm
 
-$(ELF_STAGE1): $(OBJS)
+$(EXECUTABLE): $(ELF)
+	@echo "  OBJCOPY $@"
+	$(_V)$(OBJCOPY) -O binary $< $@
+
+$(ELF): $(OBJS) link.ld
 	@echo "  LD      $@"
-	$(_V)$(CC) -r -o $(ELF_STAGE1) $(OBJS) $(WF_CRT0) $(LDFLAGS)
+	$(_V)$(CC) -o $(ELF) $(OBJS) $(LDFLAGS)
 
 clean:
 	@echo "  CLEAN"
@@ -137,7 +139,7 @@ $(BUILDDIR)/%.c.o : %.c | $(OBJS_ASSETS)
 $(BUILDDIR)/%.bin.o $(BUILDDIR)/%_bin.h : %.bin
 	@echo "  BIN2C   $<"
 	@$(MKDIR) -p $(@D)
-	$(_V)$(WF)/bin/wf-bin2c -a 2 --address-space __far $(@D) $<
+	$(_V)$(WF)/bin/wf-bin2c $(@D) $<
 	$(_V)$(CC) $(CFLAGS) -MMD -MP -c -o $(BUILDDIR)/$*.bin.o $(BUILDDIR)/$*_bin.c
 
 $(BUILDDIR)/%.lua.o : %.lua
