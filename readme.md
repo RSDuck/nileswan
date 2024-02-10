@@ -10,13 +10,8 @@ Currently a prototype PCB is done which houses an FPGA, 8 MB of PSRAM and an SD 
 
 The PCB is still far from done and features like saving are still missing completely from the hardware side. The entire board layout will be mostly redone.
 
-## Errata/Notes for next PCB iteration
-
-- When assembling the PCB completely and connecting power to it is not possible to write to the SPI flash. The reason for this is that the FPGA blocks the SPI bus the whole time, trying to read its bitstream. CRESET_B needs to be exposed via the programming header (by pulling it low the FPGA stops trying to configure itself).
-- Label the LEDs!
-- The clk and standby pins of the 25 MHz oscillator are swapped on the FPGA (not that bad, but preferably clk would go directly into a global buffer)
-- Better programming connector (probably TAG connect which could also be put on the backside, saving precious space on the front side)
-- A0-A15 of the bus (bytewise addressing) is wired to the PSRAM A0-A15 (word wise)
-- PSRAM /LB and /UB need to be wired individually to the FPGA, so that it's possible to write to it in 8-bit quantities with it mapped as SRAM (with a little help from the FPGA). For the time being software support is necessary.
-- Most likely because of inrush current monochrome Wonderswans will only warm start with the nileswan (i.e. by turning it on and then off and then on again). A load switch with slew rate control could probably fix this
-- Contact alignment seems to be still an issue
+## Errata/Notes for third PCB iteration
+- TF card power needs a pull down resistor otherwise it will be enabled during the configuration of the FPGA.
+- DI and DO are swapped for the SPI flash!!!!!
+- Inrush current is still a problem. Removing both 1 μF capacitors of the load switch seems to be necessary? Maybe replace them with 0.2 nF or a similar value. The problem is that if the voltage curve is too sharp the power supply gives up, while the FPGA doesn't initialise fast enough if the voltage rises too slowly. Technically it also violates spec (rise time needs to be between 0.1 and 10 V/ms). Partial solution: the load switch enable is currently directly tied to the input power via a pull up resistor. The load switch already sees 1.2 V as logic high. By using a voltage divider the load switch is only enabled once the power supply has reached a more stable value.
+ 
