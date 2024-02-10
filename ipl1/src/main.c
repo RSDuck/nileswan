@@ -47,6 +47,10 @@ extern uint8_t diskio_detail_code;
 
 __attribute__((noreturn))
 static void report_fatfs_error(uint8_t result) {
+	// deinitialize hardware
+	outportw(IO_NILE_SPI_CNT, NILE_SPI_390KHZ);
+	outportb(IO_NILE_POW_CNT, 0);
+	
     outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(7, 0, 2, 5));
     outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(7, 7, 7, 7));
 	memcpy8to16(SCREEN + (3 * 32) + 1, fatfs_error_header, sizeof(fatfs_error_header) - 1, 0x0100);
@@ -124,6 +128,10 @@ static const char header_string[] = "PSRAM  Self Test  SRAM";
 static const char footer_string[] = "(c) nileswan 2024 @";
 
 void run_selftest(void) {
+	// deinitialize hardware
+	outportw(IO_NILE_SPI_CNT, NILE_SPI_390KHZ);
+	outportb(IO_NILE_POW_CNT, 0);
+
 	memcpy8to16(SCREEN + 3, header_string, sizeof(header_string) - 1, 0x0100);
 	memcpy8to16(SCREEN + (17 * 32) + 9, footer_string, sizeof(footer_string) - 1, 0x0100);
 
