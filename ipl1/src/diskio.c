@@ -107,20 +107,20 @@ static uint8_t card_status = STA_NOINIT;
 static bool card_hc = false;
 
 static bool tfc_send_cmd(uint8_t cmd, uint8_t crc, uint32_t arg) {
-	uint8_t buffer[7];
-	buffer[0] = 0xFF;
-	buffer[1] = cmd;
-	buffer[2] = arg >> 24;
-	buffer[3] = arg >> 16;
-	buffer[4] = arg >> 8;
-	buffer[5] = arg;
-	buffer[6] = crc;
-	return nile_spi_tx(buffer, 7);
+	uint8_t buffer[14];
+	_nmemset(buffer, 0xFF, 8);
+	buffer[8] = cmd;
+	buffer[9] = arg >> 24;
+	buffer[10] = arg >> 16;
+	buffer[11] = arg >> 8;
+	buffer[12] = arg;
+	buffer[13] = crc;
+	return nile_spi_tx(buffer, sizeof(buffer));
 }
 
 static uint8_t tfc_read_response(uint8_t *buffer, uint16_t size) {
 	buffer[0] = 0xFF;
-	nile_spi_rx(buffer, size + 2, NILE_SPI_MODE_WAIT_READ);
+	nile_spi_rx(buffer, size + 8, NILE_SPI_MODE_WAIT_READ);
 	return buffer[0];
 }
 
@@ -132,7 +132,7 @@ DSTATUS disk_status(BYTE pdrv) {
 
 DSTATUS disk_initialize(BYTE pdrv) {
 	uint8_t retries;
-	uint8_t buffer[10];
+	uint8_t buffer[16];
 
 	card_hc = false;
 	card_status = STA_NOINIT;
@@ -318,7 +318,7 @@ static uint8_t disk_wait_r1b(void) {
 
 DRESULT disk_read (BYTE pdrv, BYTE __far* buff, LBA_t sector, UINT count) {
 	uint8_t result = RES_ERROR;
-	uint8_t resp[7];
+	uint8_t resp[16];
 
 	if (!card_hc)
 		sector <<= 9;
@@ -391,7 +391,7 @@ disk_read_end:
 
 DRESULT disk_write (BYTE pdrv, const BYTE __far* buff, LBA_t sector, UINT count) {
 	uint8_t result = RES_ERROR;
-	uint8_t resp[4];
+	uint8_t resp[16];
 
 	if (!card_hc)
 		sector <<= 9;
