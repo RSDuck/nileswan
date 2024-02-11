@@ -153,7 +153,7 @@ void main(void) {
     outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(0, 0, 0, 0));
     outportb(IO_SCR_BASE, SCR1_BASE(SCREEN));
 	lzsa2_decompress_small((uint16_t*) 0x3200, gfx_tiles);
-	memset(SCREEN, 0x6, (32 * 19 - 4) * sizeof(uint16_t));
+	_nmemset(SCREEN, 0x6, (32 * 19 - 4) * sizeof(uint16_t));
 
 	uint16_t keys_pressed = ws_keypad_scan() & 0xDDD;
 	bool do_run_selftest = (keys_pressed & KEYBIND_SELF_TEST) == KEYBIND_SELF_TEST;

@@ -23,7 +23,7 @@
 	.code16
 	.intel_syntax noprefix
 
-	.section .fartext.s.nile_spi_wait_busy, "ax"
+    .section .fartext.s.nile_spi_wait_busy, "ax"
     .align 2
     .global nile_spi_wait_busy
 nile_spi_wait_busy:
@@ -49,3 +49,74 @@ nile_spi_wait_busy_done:
     // success, AL = 0x00
     inc ax
     ASM_PLATFORM_RET
+
+
+    .section .fartext.s.nile_spi_tx, "ax"
+    .align 2
+    .global nile_spi_tx
+    // DX:AX buffer, CX length
+nile_spi_tx:
+    // memcpy() preparation
+    push si
+    push di
+    mov si, ax
+    xor di, di
+
+    // uint8_t prev_flash = inportb(IO_CART_FLASH);
+    in al, IO_CART_FLASH
+    push ax
+    // uint8_t prev_bank = inportw(IO_BANK_2003_RAM);
+    in ax, IO_BANK_2003_RAM
+    push ax
+
+    // outportb(IO_CART_FLASH, 0);
+    xor ax, ax
+    out IO_CART_FLASH, al
+    // outportw(IO_BANK_2003_RAM, NILE_SEG_RAM_TX);
+    mov al, NILE_SEG_RAM_TX
+    out IO_BANK_2003_RAM, ax
+
+    // memcpy(MK_FP(0x1000, 0x0000), buf, size);
+    dec cx
+    push cx
+    push es
+    push ds
+    mov ds, dx
+    push 0x1000
+    pop es
+    cld
+    shr cx, 1
+    inc cx
+    rep movsw
+    pop ds
+    pop es
+
+    // if (!nile_spi_wait_busy()) return false;
+    ASM_PLATFORM_CALL nile_spi_wait_busy
+    pop cx // cx = size - 1
+    test al, al
+    jz nile_spi_tx_done
+
+    // uint16_t cnt = inportw(IO_NILE_SPI_CNT);
+    in ax, IO_NILE_SPI_CNT
+    // uint16_t new_cnt = (size - 1) | NILE_SPI_MODE_WRITE | (cnt & 0x7800);
+    // outportw(IO_NILE_SPI_CNT, (new_cnt ^ (NILE_SPI_BUFFER_IDX | NILE_SPI_START)));
+    and ax, 0x7800
+    xor ah, ((NILE_SPI_MODE_WRITE | NILE_SPI_BUFFER_IDX | NILE_SPI_START) >> 8)
+    or ax, cx
+    out IO_NILE_SPI_CNT, ax
+    
+    mov ax, 1
+nile_spi_tx_done:
+    xchg ax, dx
+    // outportw(IO_BANK_2003_RAM, prev_bank);
+    pop ax
+    out IO_BANK_2003_RAM, ax
+    // outportb(IO_CART_FLASH, prev_flash);
+    pop ax
+    out IO_CART_FLASH, al
+    xchg ax, dx
+    pop di
+    pop si
+    ASM_PLATFORM_RET
+    
