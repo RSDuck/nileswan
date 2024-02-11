@@ -134,80 +134,113 @@ DSTATUS disk_initialize(BYTE pdrv) {
 	uint8_t retries;
 	uint8_t buffer[10];
 
+	card_hc = false;
+	card_status = STA_NOINIT;
+
 	set_detail_code(0);
 	nile_spi_wait_busy();
 	outportw(IO_NILE_SPI_CNT, NILE_SPI_DEV_TF | NILE_SPI_390KHZ | NILE_SPI_CS_HIGH);
 
 	uint8_t powcnt = inportb(IO_NILE_POW_CNT);
 	if (!(powcnt & NILE_POW_TF)) {
+		// Power card on
 		powcnt |= NILE_POW_TF;
 		outportb(IO_NILE_POW_CNT, powcnt);
-		ws_busywait(5000); // wait a few milliseconds
+		// Wait a few milliseconds
+		ws_busywait(5000);
 	}
 
+	// Initialize: emit clocks with CS high
 	nile_spi_rx(buffer, 10, NILE_SPI_MODE_READ);
 	outportw(IO_NILE_SPI_CNT, NILE_SPI_DEV_TF | NILE_SPI_390KHZ | NILE_SPI_CS_LOW);
 
-	tfc_send_cmd(TFC_GO_IDLE_STATE, 0x95, 0); // Reset card
+	// Reset card
+	tfc_send_cmd(TFC_GO_IDLE_STATE, 0x95, 0);
 	if (tfc_read_response(buffer, 1) & ~TFC_R1_IDLE) {
+		// Error/No response
 		set_detail_code(1);
-		return card_status;
+		goto card_init_failed;
 	}
 
+	// Query interface configuration
 	tfc_send_cmd(TFC_SEND_IF_COND, 0x87, 0x000001AA);
 	if (!(tfc_read_response(buffer, 5) & ~TFC_R1_IDLE)) {
+		// Check voltage/pattern value match
 		if ((buffer[3] & 0xF) == 0x1 && buffer[4] == 0xAA) {
-			// attempt ACMD41 HC init
+			// Attempt high-capacity card init
 			retries = MAX_RETRIES ^ 0xFF;
 			while (++retries) {
 				tfc_send_cmd(TFC_APP_PREFIX, 0x95, 0);
 				if (!(tfc_read_response(buffer, 1) & ~TFC_R1_IDLE)) {
 					tfc_send_cmd(TFC_APP_SEND_OP_COND, 0x95, 1UL << 30);
-					if (!tfc_read_response(buffer, 1)) {
+					uint8_t init_response = tfc_read_response(buffer, 1);
+					if (init_response & ~TFC_R1_IDLE) {
+						// Initialization error
+						retries = 0;
+						break;
+					} else if (!init_response) {
+						// Initialization success
 						break;
 					}
+					// Card still idle, try again
 				}
 			}
+
+			// Card init successful?
 			if (retries) {
-				// read OCR to check for HC card
+				// Read OCR to check for HC card
 				tfc_send_cmd(TFC_READ_OCR, 0x95, 0);
 				if (!tfc_read_response(buffer, 5)) {
 					if (buffer[1] & 0x40) {
 						card_hc = true;
 					}
 				}
-				goto card_init_complete;
+				goto card_init_complete_hc;
 			}
 		} else {
-			// invalid voltage or pattern, reject card
+			// Voltage/pattern value mismatch
 			set_detail_code(2);
 			return card_status;
 		}
 	}
 
-	// attempt ACMD41 init
+	// Attempt card init
 	retries = MAX_RETRIES ^ 0xFF;
 	while (++retries) {
 		tfc_send_cmd(TFC_APP_PREFIX, 0x95, 0);
 		if (!(tfc_read_response(buffer, 1) & ~TFC_R1_IDLE)) {
-			tfc_send_cmd(TFC_APP_SEND_OP_COND, 0x95, 1UL << 30);
-			if (!tfc_read_response(buffer, 1)) {
+			tfc_send_cmd(TFC_APP_SEND_OP_COND, 0x95, 0);
+			uint8_t init_response = tfc_read_response(buffer, 1);
+			if (init_response & ~TFC_R1_IDLE) {
+				// Initialization error
+				retries = 0;
+				break;
+			} else if (!init_response) {
+				// Initialization success
 				goto card_init_complete;
 			}
 		}
 	}
 
-	// attempt CMD1 init
+	// Attempt legacy card init
 	retries = MAX_RETRIES ^ 0xFF;
 	while (++retries) {
 		tfc_send_cmd(TFC_SEND_OP_COND, 0x95, 0);
-		if (!tfc_read_response(buffer, 1)) {
+		uint8_t init_response = tfc_read_response(buffer, 1);
+		if (init_response & ~TFC_R1_IDLE) {
+			// Initialization error
+			retries = 0;
+			break;
+		} else if (!init_response) {
+			// Initialization success
 			goto card_init_complete;
 		}
 	}
 
-	// no more init modes
 	set_detail_code(3);
+card_init_failed:
+	// Power off card
+	outportb(IO_NILE_POW_CNT, 0);
 	return card_status;
 
 card_init_complete:
@@ -218,6 +251,7 @@ card_init_complete:
 		return card_status;
 	}
 
+card_init_complete_hc:
 	outportb(IO_NILE_POW_CNT, powcnt | NILE_POW_CLOCK);
 	outportw(IO_NILE_SPI_CNT, NILE_SPI_DEV_TF | NILE_SPI_25MHZ | NILE_SPI_CS_HIGH);
 	card_status = 0;
