@@ -224,9 +224,67 @@ card_init_complete:
 	return card_status;
 }
 
+/* Wait until the TF card is finished (responds 0xFF...) */
+static uint8_t disk_wait_busy(uint8_t resp) {
+	uint16_t timeout = 0;
+#ifdef __OPTIMIZE_SIZE__
+	// smaller but slower code variant
+	uint16_t resp_busy[24];
+	while (--timeout) {
+		// wait for 0xFFFF to signify end of busy time
+		if (!nile_spi_rx(&resp_busy, 48, NILE_SPI_MODE_READ))
+			return 0xFF;
+		if (resp_busy[23] == 0xFFFF)
+			break;
+	}
+
+	if (!timeout)
+		return 0xFF;
+	return resp;
+#else
+	if (!nile_spi_wait_busy())
+		return 0xFF;
+
+	uint16_t cnt = inportw(IO_NILE_SPI_CNT);
+	uint16_t new_cnt = (48 - 1) | NILE_SPI_MODE_READ | (cnt & 0x7800);
+	volatile uint16_t prev_bank = inportw(IO_BANK_2003_ROM1);
+	outportw(IO_BANK_2003_ROM1, NILE_SEG_ROM_RX);
+
+	// send first read request
+	outportw(IO_NILE_SPI_CNT, new_cnt | NILE_SPI_START);
+
+	while (--timeout) {
+		if (!nile_spi_wait_busy()) {
+			resp = 0xFF;
+			break;
+		}
+
+		// send second read request
+		new_cnt ^= NILE_SPI_BUFFER_IDX;
+		outportw(IO_NILE_SPI_CNT, new_cnt | NILE_SPI_START);
+
+		// read first read request
+		if (*((uint16_t __far*) MK_FP(0x3000, 46)) == 0xFFFF)
+			break;
+	}
+
+	outportw(IO_BANK_2003_ROM1, prev_bank);
+	return resp;
+#endif
+}
+
+static uint8_t disk_wait_r1b(void) {
+	uint8_t resp = 0xFF;
+
+	if (!nile_spi_rx(&resp, 1, NILE_SPI_MODE_WAIT_READ) || resp)
+		return resp;
+
+	return disk_wait_busy(resp);
+}
+
 DRESULT disk_read (BYTE pdrv, BYTE __far* buff, LBA_t sector, UINT count) {
 	uint8_t result = RES_ERROR;
-	uint8_t resp[4];
+	uint8_t resp[7];
 
 	if (!card_hc)
 		sector <<= 9;
@@ -257,11 +315,13 @@ DRESULT disk_read (BYTE pdrv, BYTE __far* buff, LBA_t sector, UINT count) {
 
 disk_read_stop:
 	if (multi_transfer) {
-		if (!tfc_send_cmd(TFC_STOP_TRANSMISSION, 0x95, sector))
+		resp[0] = TFC_STOP_TRANSMISSION;
+		resp[5] = 0x95;
+		resp[6] = 0xFF; // skip one byte
+		if (!nile_spi_tx(resp, 7))
 			goto disk_read_end;
-		if (!nile_spi_rx(resp, 1, NILE_SPI_MODE_READ))
+		if (disk_wait_r1b())
 			goto disk_read_end;
-		tfc_read_response(resp, 1);
 	}
 #else
 	while (count) {
@@ -335,6 +395,8 @@ disk_read_stop:
 		resp[1] = 0xFD;
 		resp[2] = 0xFF;
 		nile_spi_tx(resp, 3);
+		if (disk_wait_busy(0x00))
+			goto disk_read_end;
 	}
 #else
 	while (count) {
