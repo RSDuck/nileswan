@@ -22,6 +22,7 @@
 
 bool nile_spi_wait_busy(void);
 
+#if 0
 bool nile_spi_tx(const void __far* buf, uint16_t size) {
 	if (!nile_spi_wait_busy()) return false;
 	uint16_t cnt = inportw(IO_NILE_SPI_CNT);
@@ -40,6 +41,7 @@ bool nile_spi_tx(const void __far* buf, uint16_t size) {
 	
 	return true;
 }
+#endif
 
 bool nile_spi_rx(void __far* buf, uint16_t size, uint16_t mode) {
 	if (!nile_spi_wait_busy()) return false;
