@@ -6,9 +6,9 @@ Expect exciting things here.
 
 ## Status
 
-Currently a prototype PCB is done which houses an FPGA, 8 MB of PSRAM and an SD card reader. I had the PCB manufactured and put together one board, which I'm using for development of the HDL and firmware and fault finding.
+A second iteration of the PCB is done which contains 8 MB of PSRAM and 512 KB of SRAM. After with some botch wires (see errata below) it is eable to load both boot stages included in this project and a menu off an TF card.
 
-The PCB is still far from done and features like saving are still missing completely from the hardware side. The entire board layout will be mostly redone.
+The save feature is still untested.
 
 ## icepack
 
