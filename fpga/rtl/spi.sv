@@ -21,8 +21,15 @@ module SPI (
     output SPI_Do,
     input SPI_Di,
     output SPI_Clk,
-    output SPI_Cs
-);
+    output SPI_Cs,
+
+    input TF_Pow,
+
+    output TF_Cs,
+    output TF_Clk,
+    output TF_Do,
+    input TF_Di);
+
     reg[2:0] start_transfer_clk = 3'h0;
     reg start_async = 1'h0;
     wire Start = start_transfer_clk[2] ^ start_transfer_clk[1];
@@ -40,21 +47,28 @@ module SPI (
 
     reg running = 0;
 
-    reg cs = 1;
-    assign SPI_Cs = cs;
+    typedef enum reg {
+        device_Flash,
+        device_TF
+    } Device;
+    Device device = device_Flash;
+
+    reg cs = 0;
+    assign SPI_Cs = ~(cs && device == device_Flash);
+    assign TF_Cs = TF_Pow ? ~(cs && device == device_TF) : 1'bZ;
 
     // the first will be the last and the last will be the first
-    wire[7:0] ShiftRegNext = {shiftreg[6:0], SPI_Di};
+    wire[7:0] ShiftRegNext = {shiftreg[6:0], device == device_Flash ? SPI_Di : TF_Di};
 
     reg use_slow_clk = 0;
 
-    wire transfer_clk = FastClk;
-    /*ClockMux clk_mux (
+    wire transfer_clk;
+    ClockMux clk_mux (
         .ClkA(FastClk),
         .ClkB(SClk),
         .ClkSel(use_slow_clk),
         .OutClk(transfer_clk)
-    );*/
+    );
 
     typedef enum reg[1:0] { 
         mode_Write,
@@ -62,14 +76,13 @@ module SPI (
         mode_Exchange,
         mode_WaitAndRead
     } TransferMode;
-
     TransferMode mode = mode_Write;
 
     reg bus_mapped_buffer = 0;
 
     wire ShiftRegHasZeroBit = ShiftRegNext != 8'hFF;
 
-    reg filler_over = 0;
+    reg seen_non_filler = 0;
 
     wire StoreShiftReg = bit_position == 7 && mode != mode_Write;
 
@@ -126,7 +139,8 @@ module SPI (
     always @(posedge transfer_clk)
         start_transfer_clk <= {start_transfer_clk[1:0], start_async};
 
-    wire LastPeriod = (byte_position == transfer_len) && bit_position == 7;
+    wire FillerOver = (seen_non_filler || ShiftRegHasZeroBit);
+    wire LastPeriod = (byte_position == transfer_len) && bit_position == 7 && FillerOver;
 
     always @(posedge transfer_clk) begin
         if (Start)
@@ -148,13 +162,13 @@ module SPI (
 
     always @(posedge transfer_clk) begin
         if (Start)
-            filler_over <= mode != mode_WaitAndRead;
+            seen_non_filler <= mode != mode_WaitAndRead;
         else if (bit_position == 7 && ShiftRegHasZeroBit)
-            filler_over <= 1;
+            seen_non_filler <= 1;
     end
 
     always @(posedge transfer_clk) begin
-        if (Start || (bit_position == 7 && (filler_over || ShiftRegHasZeroBit)))
+        if (Start || (bit_position == 7 && FillerOver))
             byte_position <= NextBytePosition;
         else if (~running) // reset position so that the TX buffer will read
             byte_position <= 9'h1FF;
@@ -179,6 +193,17 @@ module SPI (
         .D_OUT_1(1'b0),
         .OUTPUT_CLK(transfer_clk),
         .OUTPUT_ENABLE(1'b1),
+        .CLOCK_ENABLE(1'b1)
+    );
+    SB_IO #(
+        .PIN_TYPE(6'b100000), // PIN_OUTPUT_DDR_ENABLE
+        .IO_STANDARD("SB_LVCMOS")
+    ) tf_clk_iob (
+        .PACKAGE_PIN(TF_Clk),
+        .D_OUT_0(running),
+        .D_OUT_1(1'b0),
+        .OUTPUT_CLK(transfer_clk),
+        .OUTPUT_ENABLE(TF_Pow),
         .CLOCK_ENABLE(1'b1)
     );
 
@@ -214,11 +239,22 @@ module SPI (
         .OUTPUT_ENABLE(1'b1),
         .CLOCK_ENABLE(1'b1)
     );
+    SB_IO #(
+        .PIN_TYPE(6'b100000), // PIN_OUTPUT_DDR_ENABLE
+        .IO_STANDARD("SB_LVCMOS")
+    ) tf_do_iob (
+        .PACKAGE_PIN(TF_Do),
+        .D_OUT_0(outbit),
+        .D_OUT_1(outbit),
+        .OUTPUT_CLK(transfer_clk),
+        .OUTPUT_ENABLE(TF_Pow),
+        .CLOCK_ENABLE(1'b1)
+    );
 
-    assign SPICnt = {Busy, bus_mapped_buffer, 1'h0, cs, use_slow_clk, mode, transfer_len};
+    assign SPICnt = {Busy, bus_mapped_buffer, device, cs, use_slow_clk, mode, transfer_len};
 
-    // technically this means that just waiting until the transfer *should* be done
-    // is not possible, because the busy state will block writes to SPI_CNT
+    // technically this means that just waiting until the transfer is done
+    // without polling is not possible, because the busy state will block writes to SPI_CNT
     always @(negedge nOE)
         feedback_async <= {feedback_async[0], feedback_transfer_clk};
 
@@ -236,10 +272,12 @@ module SPI (
                 // since the switchover takes three cycles
                 // when starting a transfer and switching the clock at the same time
                 // the cycle where Start=1 will be completed will be the "weird"
-                // switch over cycle
+                // switch over cycle with a lengthened period
                 // though it doesn't affect the outgoing SPI transfer
                 use_slow_clk <= WriteData[3];
-                cs <= ~WriteData[4];
+                cs <= WriteData[4];
+
+                device <= WriteData[5];
 
                 bus_mapped_buffer <= WriteData[6];
 

@@ -65,4 +65,10 @@ set_io SPI_Clk 48
 set_io SPI_Do 45
 set_io -pullup yes SPI_Di 46
 
+set_io TF_Cs 19
+set_io TF_Do 20
+set_io TF_Di 24
+set_io TF_Clk 21
+
+set_io TF_Detect 25
 set_io TF_Pow 18

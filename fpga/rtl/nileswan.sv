@@ -25,11 +25,18 @@ module nileswan(
     output SPI_Clk,
     output SPI_Do,
     input SPI_Di,
+
+    output TF_Cs,
+    output TF_Clk,
+    output TF_Do,
+    input TF_Di,
     
     output TF_Pow);
 
-    assign FastClkEnable = 1'b1;
-    assign TF_Pow = 1'b0;
+    reg enable_fastclk = 1'b1;
+    assign FastClkEnable = enable_fastclk;
+    reg enable_tf_power = 1'b0;
+    assign TF_Pow = enable_tf_power;
 
     Dance dance (
         .AddrLo(AddrLo[7:0]),
@@ -68,7 +75,14 @@ module nileswan(
         .SPI_Do(SPI_Do),
         .SPI_Di(SPI_Di),
         .SPI_Clk(SPI_Clk),
-        .SPI_Cs(SPI_Cs));
+        .SPI_Cs(SPI_Cs),
+
+        .TF_Pow(enable_tf_power),
+        
+        .TF_Do(TF_Do),
+        .TF_Di(TF_Di),
+        .TF_Clk(TF_Clk),
+        .TF_Cs(TF_Cs));
 
     reg[9:0] ram_addr_ext = 10'h3FF;
     reg[9:0] rom0_addr_ext = 10'h3FF;
@@ -91,6 +105,8 @@ module nileswan(
 
     // Bandai 2003
     localparam MEMORY_CTRL = 8'hCE;
+    localparam RAM_BANK_L = 8'hD0;
+    localparam RAM_BANK_H = 8'hD1;
     localparam ROM_BANK_0_L = 8'hD2;
     localparam ROM_BANK_0_H = 8'hD3;
     localparam ROM_BANK_1_L = 8'hD4;
@@ -103,6 +119,8 @@ module nileswan(
     localparam SPI_CNT_LO = 8'hE0;
     localparam SPI_CNT_HI = 8'hE1;
 
+    localparam POW_CNT = 8'hE2;
+
     always_comb begin
         reg_ack = 1;
         reg_out = 0;
@@ -112,9 +130,10 @@ module nileswan(
 
         case (RegAddr)
         LINEAR_ADDR_OFF: reg_out = rom_linear_addr_ext;
-        RAM_BANK: reg_out = ram_addr_ext[7:0];
+        RAM_BANK, RAM_BANK_L: reg_out = ram_addr_ext[7:0];
         ROM_BANK_0, ROM_BANK_0_L: reg_out = rom0_addr_ext[7:0];
         ROM_BANK_1, ROM_BANK_1_L: reg_out = rom1_addr_ext[7:0];
+        RAM_BANK_H: reg_out = {6'h0, ram_addr_ext[9:8]};
         ROM_BANK_0_H: reg_out = {6'h0, rom0_addr_ext[9:8]};
         ROM_BANK_1_H: reg_out = {6'h0, rom1_addr_ext[9:8]};
         MEMORY_CTRL: reg_out = {7'h0, self_flash};
@@ -129,6 +148,8 @@ module nileswan(
             reg_out = spi_cnt[15:8];
             write_spi_cnt_hi = 1;
         end
+
+        POW_CNT: reg_out = {6'h0, enable_tf_power, enable_fastclk};
         default: reg_ack = 0;
         endcase
     end
@@ -137,9 +158,10 @@ module nileswan(
         if (IOWrite) begin
             case (RegAddr)
             LINEAR_ADDR_OFF: rom_linear_addr_ext <= Data;
-            RAM_BANK: ram_addr_ext <= Data;
+            RAM_BANK, RAM_BANK_L: ram_addr_ext <= Data;
             ROM_BANK_0, ROM_BANK_0_L: rom0_addr_ext[7:0] <= Data;
             ROM_BANK_1, ROM_BANK_1_L: rom1_addr_ext[7:0] <= Data;
+            RAM_BANK_H: ram_addr_ext[9:8] <= Data[1:0];
             ROM_BANK_0_H: rom0_addr_ext[9:8] <= Data[1:0];
             ROM_BANK_1_H: rom1_addr_ext[9:8] <= Data[1:0];
             MEMORY_CTRL: self_flash <= Data[0];
@@ -148,6 +170,11 @@ module nileswan(
             BANK_MASK_HI: begin
                 rom_bank_mask[8] <= Data[0];
                 ram_bank_mask <= Data[7:4];
+            end
+
+            POW_CNT: begin
+                enable_fastclk <= Data[0];
+                enable_tf_power <= Data[1];
             end
 
             default: begin end
@@ -168,16 +195,16 @@ module nileswan(
             4'h1: begin
                 sel_rom_space = self_flash;
                 sel_ram_space = ~self_flash;
-                rom_addr_ext_fin = ram_addr_ext;
+                rom_addr_ext_fin = ram_addr_ext[8:0];
                 access_in_ram_area = 1;
             end
             4'h2: begin
                 sel_rom_space = 1;
-                rom_addr_ext_fin = rom0_addr_ext;
+                rom_addr_ext_fin = rom0_addr_ext[8:0];
             end
             4'h3: begin
                 sel_rom_space = 1;
-                rom_addr_ext_fin = rom1_addr_ext;
+                rom_addr_ext_fin = rom1_addr_ext[8:0];
             end
             default: begin
                 sel_rom_space = 1;
