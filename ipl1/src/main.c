@@ -101,10 +101,10 @@ static uint8_t load_menu(void) {
 	progress_pos = 0;
 
 	while (bank <= PSRAM_MAX_BANK) {
-		update_progress();
-
 		outportw(IO_BANK_2003_RAM, bank);
 		if (offset < 0x8000) {
+			update_progress();
+
 			if ((result = f_read(&fp, MK_FP(0x1000, offset), 0x8000 - offset, NULL)) != FR_OK) {
 				return result;
 			}
@@ -148,6 +148,8 @@ void run_selftest(void) {
 const uint8_t swan_logo_map[] = {0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B};
 
 void main(void) {
+	nile_ipl_data->card_state = 0;
+
     ws_display_set_shade_lut(SHADE_LUT_DEFAULT);
     outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(0, 7, 2, 5));
     outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(0, 0, 0, 0));

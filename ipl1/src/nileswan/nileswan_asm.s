@@ -27,11 +27,10 @@
     .align 2
     .global nile_spi_wait_busy
 nile_spi_wait_busy:
-    mov dx, 3 // timeout loop multiplier
+    ss mov dx, [nile_spi_timeout_ms] // timeout loop multiplier
 nile_spi_wait_busy_loop_start:
-    xor cx, cx
-    dec cx
-    // ~277ms timeout loop
+    mov cx, 240
+    // ~1ms timeout loop
     .balign 2, 0x90
 nile_spi_wait_busy_loop:
     in al, (IO_NILE_SPI_CNT + 1) // 6 cycles
@@ -42,7 +41,7 @@ nile_spi_wait_busy_loop:
     jnz nile_spi_wait_busy_loop_start
 
     // timeout, AL = 0x80
-    mov al, 0
+    mov ax, 0
     ASM_PLATFORM_RET
 
 nile_spi_wait_busy_done:
@@ -120,3 +119,133 @@ nile_spi_tx_done:
     pop si
     ASM_PLATFORM_RET
     
+
+    .section .fartext.s.nile_spi_rx, "ax"
+    .align 2
+    .global nile_spi_rx
+    // AX length, DX mode
+nile_spi_rx:
+    dec ax
+    or ax, dx
+    // AX config options
+nile_spi_rx_inner:
+    push ax
+
+    // if (!nile_spi_wait_busy()) return false;
+    ASM_PLATFORM_CALL nile_spi_wait_busy
+    pop dx
+    test al, al
+    jz nile_spi_rx_done
+
+    // uint16_t cnt = inportw(IO_NILE_SPI_CNT);
+    in ax, IO_NILE_SPI_CNT
+    // uint16_t new_cnt = ((size - 1) | mode) | (cnt & 0x7800);
+    and ax, 0x7800
+    or ax, dx
+    or ah, (NILE_SPI_START >> 8)
+    // outportw(IO_NILE_SPI_CNT, new_cnt | NILE_SPI_START);
+    out IO_NILE_SPI_CNT, ax
+    
+    mov ax, 1
+nile_spi_rx_done:
+    ASM_PLATFORM_RET
+    
+
+    .section .fartext.s.nile_spi_rx_flip, "ax"
+    .align 2
+    .global nile_spi_rx_flip
+    // AX length, DX mode
+nile_spi_rx_flip:
+    ASM_PLATFORM_CALL nile_spi_rx
+    test al, al
+    jz nile_spi_rx_flip_done
+    ASM_PLATFORM_CALL nile_spi_wait_busy
+    test al, al
+    jz nile_spi_rx_flip_done
+    in al, (IO_NILE_SPI_CNT+1)
+    xor al, (NILE_SPI_BUFFER_IDX >> 8)
+    out (IO_NILE_SPI_CNT+1), al
+
+nile_spi_rx_flip_done:
+    ASM_PLATFORM_RET
+
+    
+
+    .section .fartext.s.nile_spi_rx_copy, "ax"
+    .align 2
+    .global nile_spi_rx_copy
+    // DX:AX pointer
+    // CX - length
+    // stack - mode
+nile_spi_rx_copy:
+    mov bx, sp
+    push ds
+    push si
+    push es
+    push di
+    push dx
+    push ax
+
+#ifdef __IA16_CMODEL_IS_FAR_TEXT
+    ss mov ax, [bx + 4]
+#else
+    ss mov ax, [bx + 2]
+#endif
+
+    mov bx, cx
+    dec cx
+    or ax, cx
+    ASM_PLATFORM_CALL nile_spi_rx_inner
+    test al, al
+    jz nile_spi_rx_copy_done1
+
+    // if (!nile_spi_wait_busy()) return false;
+    ASM_PLATFORM_CALL nile_spi_wait_busy
+    test al, al
+    jz nile_spi_rx_copy_done1
+
+    mov cx, bx
+#ifndef NILESWAN_IPL1
+    // volatile uint16_t prev_bank = inportw(IO_BANK_2003_ROM1);
+    in ax, IO_BANK_2003_ROM1
+    xchg ax, bx
+#endif
+    // outportw(IO_NILE_SPI_CNT, new_cnt ^ NILE_SPI_BUFFER_IDX);
+    in al, (IO_NILE_SPI_CNT+1)
+    xor al, (NILE_SPI_BUFFER_IDX >> 8)
+    out (IO_NILE_SPI_CNT+1), al
+    // outportw(IO_BANK_2003_ROM1, NILE_SEG_ROM_RX);
+    mov ax, NILE_SEG_ROM_RX
+    out IO_BANK_2003_ROM1, ax
+
+    // memcpy(buf, MK_FP(0x3000, 0x0000), size);
+    pop di
+    pop es
+    push 0x3000
+    pop ds
+    xor si, si
+    cld
+    shr cx, 1
+    rep movsw
+    jnc nile_spi_rx_copy_no_byte
+    movsb
+nile_spi_rx_copy_no_byte:
+
+#ifndef NILESWAN_IPL1
+    // outportw(IO_BANK_2003_ROM1, prev_bank);
+    xchg ax, bx
+    out IO_BANK_2003_ROM1, ax
+#endif
+    mov ax, 1
+
+nile_spi_rx_copy_done:
+    pop di
+    pop es
+    pop si
+    pop ds
+    ASM_PLATFORM_RET 0x2
+
+nile_spi_rx_copy_done1:
+    pop ax
+    pop dx
+    jmp nile_spi_rx_copy_done

@@ -20,6 +20,8 @@
 #include <ws/hardware.h>
 #include "nileswan.h"
 
+uint16_t nile_spi_timeout_ms;
+
 bool nile_spi_wait_busy(void);
 
 #if 0
@@ -41,7 +43,6 @@ bool nile_spi_tx(const void __far* buf, uint16_t size) {
 	
 	return true;
 }
-#endif
 
 bool nile_spi_rx(void __far* buf, uint16_t size, uint16_t mode) {
 	if (!nile_spi_wait_busy()) return false;
@@ -63,3 +64,4 @@ bool nile_spi_rx(void __far* buf, uint16_t size, uint16_t mode) {
 
 	return true;
 }
+#endif
