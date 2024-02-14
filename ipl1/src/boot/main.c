@@ -18,6 +18,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <ws.h>
+#include <ws/hardware.h>
 #include "fatfs/ff.h"
 #include "nileswan/nileswan.h"
 #include "../../build/assets/tiles.h"
@@ -122,6 +123,7 @@ const uint8_t swan_logo_map[] = {0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
 
 void main(void) {
 	nile_ipl_data->card_state = 0;
+	outportb(IO_SYSTEM_CTRL2, 0x00); // Disable SRAM/IO wait states
 
     ws_display_set_shade_lut(SHADE_LUT_DEFAULT);
     outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(0, 7, 2, 5));
