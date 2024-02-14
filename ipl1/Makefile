@@ -106,7 +106,7 @@ DEPS		:= $(OBJS:.o=.d)
 all: $(EXE_BOOT) $(EXE_SELFTEST) compile_commands.json
 
 program: $(EXE_BOOT)
-       iceprog -o 128k $<
+	iceprog -o 128k $<
 
 $(EXE_BOOT): $(ELF_BOOT)
 	@echo "  OBJCOPY $@"
