@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License along
  * with Nileswan IPL1. If not, see <https://www.gnu.org/licenses/>.
  */
-
+ 
 #include <string.h>
 #include <ws.h>
 #include <ws/hardware.h>

@@ -106,7 +106,9 @@ uint8_t diskio_detail_code;
 
 /* Wait until the TF card is finished */
 /* Returns resp on success, 0xFF on failure */
-static uint8_t nile_tf_wait_ready(uint8_t resp) {
+uint8_t nile_tf_wait_ready(uint8_t resp);
+#if 0
+uint8_t nile_tf_wait_ready(uint8_t resp) {
 	uint32_t timeout = 1500000;
 	uint8_t resp_busy[1];
 	while (--timeout) {
@@ -121,8 +123,11 @@ static uint8_t nile_tf_wait_ready(uint8_t resp) {
 		return 0xFF;
 	return resp;
 }
+#endif
 
-static bool nile_tf_cs_high(void) {
+bool nile_tf_cs_high(void);
+#if 0
+bool nile_tf_cs_high(void) {
 	if (!nile_spi_wait_busy())
 		return false;
 	outportw(IO_NILE_SPI_CNT, inportw(IO_NILE_SPI_CNT) & ~NILE_SPI_CS);
@@ -130,8 +135,11 @@ static bool nile_tf_cs_high(void) {
 		return false;
 	return true;
 }
+#endif
 
-static bool nile_tf_cs_low(void) {
+bool nile_tf_cs_low(void);
+#if 0
+bool nile_tf_cs_low(void) {
 	if (!nile_spi_wait_busy())
 		return false;
 	outportw(IO_NILE_SPI_CNT, inportw(IO_NILE_SPI_CNT) | NILE_SPI_CS);
@@ -141,6 +149,7 @@ static bool nile_tf_cs_low(void) {
 		return false;
 	return true;
 }
+#endif
 
 static uint8_t nile_tf_read_response_r1b(void) {
 	uint8_t resp = 0xFF;
@@ -305,11 +314,17 @@ card_init_complete:
 
 card_init_complete_hc:
 	nile_spi_timeout_ms = 100;
-	nile_tf_cs_high();
+	// nile_tf_cs_high(); but also changes clocks
+	if (!nile_spi_wait_busy())
+		return false;
 	outportb(IO_NILE_POW_CNT, powcnt | NILE_POW_CLOCK);
 	outportw(IO_NILE_SPI_CNT, NILE_SPI_DEV_TF | NILE_SPI_25MHZ | NILE_SPI_CS_HIGH);
+	if (!nile_spi_rx(1, NILE_SPI_MODE_READ))
+		return false;
 	return 0;
 }
+
+bool nile_disk_read_inner(BYTE __far* buff, uint16_t count);
 
 DRESULT disk_read (BYTE pdrv, BYTE __far* buff, LBA_t sector, UINT count) {
 	uint8_t result = RES_ERROR;
@@ -325,6 +340,10 @@ DRESULT disk_read (BYTE pdrv, BYTE __far* buff, LBA_t sector, UINT count) {
 		goto disk_read_end;
 	}
 
+#if 1
+	if (!nile_disk_read_inner(buff, count)) 
+		goto disk_read_stop;
+#else
 	while (count) {
 		if (!nile_spi_rx_copy(resp, 1, NILE_SPI_MODE_WAIT_READ)) {
 			set_detail_code(0x11);
@@ -345,6 +364,8 @@ DRESULT disk_read (BYTE pdrv, BYTE __far* buff, LBA_t sector, UINT count) {
 		buff += 512;
 		count--;
 	}
+#endif
+	result = RES_OK;
 
 disk_read_stop:
 	if (multi_transfer) {
@@ -353,10 +374,12 @@ disk_read_stop:
 		resp[6] = 0xFF; // skip one byte
 		if (!nile_spi_tx(resp, 7)) {
 			set_detail_code(0x15);
+			result = RES_ERROR;
 			goto disk_read_end;
 		}
 		if (nile_tf_read_response_r1b()) {
 			set_detail_code(0x16);
+			result = RES_ERROR;
 			goto disk_read_end;
 		}
 	}
