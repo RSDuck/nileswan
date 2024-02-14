@@ -70,7 +70,7 @@ module SPI (
         .OutClk(transfer_clk)
     );
 
-    typedef enum reg[1:0] { 
+    typedef enum reg[1:0] {
         mode_Write,
         mode_Read,
         mode_Exchange,
@@ -146,7 +146,7 @@ module SPI (
         if (Start)
             running <= 1;
         else if (LastPeriod)
-            running <= 0;            
+            running <= 0;
     end
 
     reg last_period_delay;

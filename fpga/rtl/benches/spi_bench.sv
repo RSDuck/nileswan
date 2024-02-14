@@ -143,6 +143,7 @@ module spi_bench ();
     initial begin
         #1000
 
+        // exchange
         writeTXBuf(0, 8'hAB);
         writeTXBuf(1, 8'hCD);
         writeTXBuf(2, 8'hEF);
@@ -166,6 +167,9 @@ module spi_bench ();
         // start transfer, slowclk, mode=exchange, /cs = lo, use other buffer
         writeReg(8'h80 | (8'h2 << 1) | (8'h1 << 3) | (8'h1 << 4) | (8'h1 << 6));
         write_spicnt_hi = 0;
+
+        assert (spi_cnt[11] == 1) 
+        else   $error("slow clock bit should be 1");
 
         assert (spi_cs == 0) 
         else   $error("/CS should be low now");
@@ -197,6 +201,7 @@ module spi_bench ();
         compareTestDevRX(8'hEF);
         compareTestDevRX(8'h12);
 
+        // multiple bytes wait and read
         pushTestDevTx(8'hFF);
         pushTestDevTx(8'hFF);
         pushTestDevTx(8'hFF);
@@ -216,6 +221,9 @@ module spi_bench ();
         // start transfer, mode=wait and read, /cs = lo, use other buffer
         writeReg(8'h80 | (8'h3 << 1) | (8'h1 << 4) | (8'h1 << 6));
         write_spicnt_hi = 0;
+
+        assert (spi_cnt[11] == 0)
+        else   $error("slow clock bit should be 1");
 
         assert (spi_cs == 0) 
         else   $error("/CS should be low now");
@@ -251,6 +259,7 @@ module spi_bench ();
         compareTestDevRX(8'hFF);
         compareTestDevRX(8'hFF);
 
+        // wait and read with a single byte
         pushTestDevTx(8'hFF);
         pushTestDevTx(8'hFF);
         pushTestDevTx(8'hFF);
@@ -267,8 +276,11 @@ module spi_bench ();
 
         write_spicnt_hi = 1;
         // start transfer, mode=wait and read, /cs = lo, use other buffer
-        writeReg(8'h80 | (8'h3 << 1) | (8'h1 << 4) | (8'h1 << 6));
+        writeReg(8'h80 | (8'h3 << 1) | (8'h1 << 4) | (8'h1 << 3) | (8'h1 << 6));
         write_spicnt_hi = 0;
+
+        assert (spi_cnt[11] == 1) 
+        else   $error("slow clock bit should be 1");
 
         assert (spi_cs == 0) 
         else   $error("/CS should be low now");
