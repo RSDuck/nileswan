@@ -22,6 +22,7 @@ IPL0Size	 equ 512
 
 IPL1FlashAddr    equ 0x20000
 IPL1AltFlashAddr equ 0x24000
+IPL1SelftestFlashAddr equ 0x28000
 IPL1IRAMAddr	 equ 0x0060
 
 ; assumption: at minimum 0x0600
@@ -85,11 +86,18 @@ start:
 
 ; Vary IPL1 load location depending on a special keybind.
 	call keypadScan
+	mov bx, ax
 	and ax, (KEY_Y1 | KEY_A)
 	cmp ax, (KEY_Y1 | KEY_A)
 	je altFlashAddr
+	mov ax, bx
+	and ax, (KEY_X3 | KEY_A)
+	cmp ax, (KEY_X3 | KEY_A)
+	je selftestFlashAddr
 	mov bx, IPL1FlashAddr >> 8
 	jmp postFlashAddr
+selftestFlashAddr:
+	mov bx, IPL1SelftestFlashAddr >> 8
 altFlashAddr:
 	mov bx, IPL1AltFlashAddr >> 8
 postFlashAddr:
