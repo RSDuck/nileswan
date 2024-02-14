@@ -42,8 +42,6 @@ _start:
 
 	// clear int enable
 	out	0xB2, al
-	// clear display visibility
-	out 0x00, al
 
 	// clear BSS
 	mov	di, offset "__edata"
