@@ -71,6 +71,10 @@ ram_fault_test_perform:
 
     xor di, di
 
+    // test read only?
+    ss cmp byte ptr [ram_fault_test_mode], 1
+    je ram_fault_test_read_start
+
     // initialize random value
     mov ax, 12345
 ram_fault_test_write_outer_loop:
@@ -98,6 +102,7 @@ ram_fault_test_write_loop:
     test dx, dx
     jnz ram_fault_test_write_outer_loop
 
+ram_fault_test_read_start:
     // restore bank counter
     pop dx
     // initialize random value
@@ -122,8 +127,8 @@ ram_fault_test_read_next:
 ram_fault_test_read_page_done:
     // write "no error" result
     // ... unless test mode inhibits
-    ss cmp byte ptr [ram_fault_test_mode], 0
-    jnz ram_fault_test_read_page_done_error
+    ss cmp byte ptr [ram_fault_test_mode], 254
+    jae ram_fault_test_read_page_done_error
     // ... unless error already printed
     cmp word ptr ss:[bx], 0x0121
     je ram_fault_test_read_page_done_error
@@ -145,15 +150,15 @@ ram_fault_test_read_page_done_error:
     ret
 
 ram_fault_test_read_found_skip:
-    ss mov byte ptr [ram_fault_test_mode], 2
+    ss mov byte ptr [ram_fault_test_mode], 255
     pop dx
     ret
 
 ram_fault_test_read_found:
     // write "error" result
     // ... unless test mode inhibits
-    ss cmp byte ptr [ram_fault_test_mode], 0
-    jnz ram_fault_test_read_found_skip
+    ss cmp byte ptr [ram_fault_test_mode], 254
+    jae ram_fault_test_read_found_skip
     mov word ptr ss:[bx], 0x0121
     // write "error" location
     pusha
@@ -201,7 +206,8 @@ ram_fault_test_incr_bx_end:
 
     .section .data, "a"
     // 0 (default) - print tiles, stop on every read
-    // 1 - set test mode to 2 on failure
+    // 1 - only do read test
+    // 254 - set test mode to 255 on failure
     .global ram_fault_test_mode
 ram_fault_test_mode:
     .byte 0

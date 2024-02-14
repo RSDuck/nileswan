@@ -36,12 +36,16 @@
 
 // tests_asm.s
 extern void ram_fault_test(void *results, uint16_t bank_count);
+#define TEST_MODE_DEFAULT 0
+#define TEST_MODE_ONLY_READ 1
+#define TEST_MODE_BOOL_PASS 254
+#define TEST_MODE_BOOL_FAIL 255
 extern uint8_t ram_fault_test_mode;
 bool ram_fault_test_bool(uint16_t bank_count) {
-	ram_fault_test_mode = 1;
+	ram_fault_test_mode = TEST_MODE_BOOL_PASS;
 	ram_fault_test(NULL, bank_count);
-	bool result = ram_fault_test_mode == 1;
-	ram_fault_test_mode = 0;
+	bool result = ram_fault_test_mode == TEST_MODE_BOOL_PASS;
+	ram_fault_test_mode = TEST_MODE_DEFAULT;
 	return result;
 }
 
@@ -62,6 +66,12 @@ static void draw_pass_fail(uint8_t y, bool result) {
 	memcpy8to16(SCREEN + ((y * 32)) + 22, result ? "PASS" : "FAIL", 4, SCR_ENTRY_PALETTE(result ? 3 : 2) | 0x100);
 }
 
+static void wait_for_button(void) {
+	DRAW_STRING_CENTERED(17, "press any button", 0);
+	while(!ws_keypad_scan());
+	while(ws_keypad_scan());
+}
+
 void run_quick_test(void) {
 	clear_screen();
 	DRAW_STRING_CENTERED(0, "quick test in progress", 0);
@@ -75,9 +85,7 @@ void run_quick_test(void) {
 
 	ws_screen_fill_tiles(SCREEN, 0x120, 0, 0, 28, 1);
 	DRAW_STRING_CENTERED(0, "quick test complete", 0);
-	DRAW_STRING_CENTERED(17, "press any button", 0);
-	while(!ws_keypad_scan());
-	while(ws_keypad_scan());
+	wait_for_button();
 }
 
 void run_full_memory_test(void) {
@@ -90,6 +98,20 @@ void run_full_memory_test(void) {
 		outportb(IO_CART_FLASH, 0);
 		ram_fault_test(SCREEN + (1 * 32) + 19, SRAM_MAX_BANK + 1);
 	}
+}
+
+void run_read_memory_test(void) {
+	clear_screen();
+	DRAW_STRING_CENTERED(0, "testing SRAM read", 0);
+	DRAW_STRING(19, 2, "76543210", 0);
+
+	while (true) {
+		outportb(IO_CART_FLASH, 0);
+		ram_fault_test_mode = TEST_MODE_ONLY_READ;
+		ram_fault_test(SCREEN + (3 * 32) + 19, SRAM_MAX_BANK + 1);
+		ram_fault_test_mode = TEST_MODE_DEFAULT;
+	}
+	wait_for_button();
 }
 
 void main(void) {
@@ -128,22 +150,23 @@ update_full_menu:
 	DRAW_STRING_CENTERED(0, "nileswan self-test 0.1", 0);
 	DRAW_STRING_CENTERED(17, "copyright (c) 2024", 0);
 
-	int test_menu_y = (18 - 2) >> 1;
 	int test_pos = 0;
-	int test_count = 3;
+	int test_count = 4;
+	int test_menu_y = (18 - test_count) >> 1;
 
 
 	DRAW_STRING_CENTERED(test_menu_y, "quick test", 0);
 	DRAW_STRING_CENTERED(test_menu_y+1, "full memory test", 0);
+	DRAW_STRING_CENTERED(test_menu_y+2, "SRAM persistence read test", 0);
 
 	uint16_t keys_pressed = 0;
 	uint16_t keys_held = 0;
 
 update_dynamic_options:
 	if (sram_io_speed_limit)
-		DRAW_STRING_CENTERED(test_menu_y+2, "io speed: slow", 0)
+		DRAW_STRING_CENTERED(test_menu_y+3, "io speed: slow", 0)
 	else
-		DRAW_STRING_CENTERED(test_menu_y+2, "io speed: fast", 0);
+		DRAW_STRING_CENTERED(test_menu_y+3, "io speed: fast", 0);
 	for (int i = 0; i < test_count; i++) {
 		ws_screen_modify_tiles(SCREEN, 0x1FF, SCR_ENTRY_PALETTE(i == test_pos ? 1 : 0),
 			0, test_menu_y + i, 28, 1);
@@ -166,6 +189,7 @@ update_dynamic_options:
 			if (test_pos >= test_count) test_pos = 0;
 		}
 		if (keys_pressed & KEY_A) {
+			while(ws_keypad_scan());
 			switch (test_pos) {
 			case 0: {
 				run_quick_test();
@@ -175,6 +199,10 @@ update_dynamic_options:
 				while(1) run_full_memory_test();
 			} break;
 			case 2: {
+				run_read_memory_test();
+				goto update_full_menu;
+			} break;
+			case 3: {
 				if (ws_system_color_active()) {
 					sram_io_speed_limit = !sram_io_speed_limit;
 					if (sram_io_speed_limit) {
@@ -191,5 +219,4 @@ update_dynamic_options:
 			goto update_dynamic_options;
 		}
 	}
-	//while(1) run_selftest();
 }
