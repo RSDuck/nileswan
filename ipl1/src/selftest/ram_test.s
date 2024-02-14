@@ -121,13 +121,16 @@ ram_fault_test_read_next:
     jnz ram_fault_test_read_loop
 ram_fault_test_read_page_done:
     // write "no error" result
+    // ... unless test mode inhibits
+    ss cmp byte ptr [ram_fault_test_mode], 0
+    jnz ram_fault_test_read_page_done_error
+    // ... unless error already printed
     cmp word ptr ss:[bx], 0x0121
     je ram_fault_test_read_page_done_error
     mov word ptr ss:[bx], 0x012E
 ram_fault_test_read_page_done_error:
     call ram_fault_test_incr_bx
 
-    // increment indicator
     ss mov cx, word ptr [INDICATOR_ADDR]
     inc cx
     or cx, 0x140
@@ -141,8 +144,16 @@ ram_fault_test_read_page_done_error:
     pop dx
     ret
 
+ram_fault_test_read_found_skip:
+    ss mov byte ptr [ram_fault_test_mode], 2
+    pop dx
+    ret
+
 ram_fault_test_read_found:
     // write "error" result
+    // ... unless test mode inhibits
+    ss cmp byte ptr [ram_fault_test_mode], 0
+    jnz ram_fault_test_read_found_skip
     mov word ptr ss:[bx], 0x0121
     // write "error" location
     pusha
@@ -187,3 +198,10 @@ ram_fault_test_incr_bx:
     add bx, 32
 ram_fault_test_incr_bx_end:
     ret
+
+    .section .data, "a"
+    // 0 (default) - print tiles, stop on every read
+    // 1 - set test mode to 2 on failure
+    .global ram_fault_test_mode
+ram_fault_test_mode:
+    .byte 0
