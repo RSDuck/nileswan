@@ -81,7 +81,7 @@ static uint8_t load_menu(void) {
 	if (result != FR_OK) {
 		return result;
 	}
-	result = f_open(&fp, "/MENU.WS", FA_READ);
+	result = f_open(&fp, "/NILESWAN/MENU.WS", FA_READ);
 	if (result != FR_OK) {
 		return result;
 	}
