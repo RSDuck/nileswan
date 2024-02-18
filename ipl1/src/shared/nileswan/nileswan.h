@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License along
  * with Nileswan IPL1. If not, see <https://www.gnu.org/licenses/>.
  */
-
+ 
 #ifndef __NILESWAN_H__
 #define __NILESWAN_H__
 
@@ -57,9 +57,32 @@
 #include <stddef.h>
 #include <stdint.h>
 
+extern uint16_t nile_spi_timeout_ms;
+
 bool nile_spi_wait_busy(void);
 bool nile_spi_tx(const void __far* buf, uint16_t size);
-bool nile_spi_rx(void __far* buf, uint16_t size, uint16_t mode);
+bool nile_spi_rx(uint16_t size, uint16_t mode);
+bool nile_spi_rx_flip(uint16_t size, uint16_t mode);
+bool nile_spi_rx_copy(void __far* buf, uint16_t size, uint16_t mode);
+
+typedef struct {
+    struct {
+        uint16_t ax, bx, cx, dx;
+        uint16_t sp, bp, si, di;
+        uint16_t ds, es, ss, flags;
+    } regs;
+    uint8_t card_state;
+    uint8_t pad[7];
+} nile_ipl_data_t;
+
+#define NILE_CARD_TYPE_NONE        0x00
+#define NILE_CARD_TYPE_MMC         0x01
+#define NILE_CARD_TYPE_TF1         0x02
+#define NILE_CARD_TYPE_TF2         0x03
+#define NILE_CARD_TYPE_MASK        0x03
+#define NILE_CARD_BLOCK_ADDRESSING 0x04
+
+#define nile_ipl_data ((volatile nile_ipl_data_t*) 0x0040)
 
 #endif
 

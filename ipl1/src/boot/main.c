@@ -18,24 +18,19 @@
 #include <stddef.h>
 #include <string.h>
 #include <ws.h>
+#include <ws/hardware.h>
 #include "fatfs/ff.h"
 #include "nileswan/nileswan.h"
-#include "../build/assets/tiles.h"
+#include "../../build/assets/tiles.h"
+#include "util.h"
 
 #define SCREEN ((uint16_t*) (0x3800 + (13 * 32 * 2)))
-const uint8_t hexchars[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
 #define PSRAM_MAX_BANK 127
 #define SRAM_MAX_BANK 7
 
-// lzsa_decompress_small_v2.s
-uint16_t lzsa2_decompress_small(void __far* dest, const void __far* src);
 // tests_asm.s
 void ram_fault_test(void *results, uint16_t bank_count);
-// util.s
-void memcpy8to16(void *dst, const void *src, uint16_t count, uint16_t fill_value);
-void print_hex_number(void *dst, uint16_t value);
-
 static FATFS fs;
 static uint16_t bank_count;
 static uint16_t bank_count_max;
@@ -86,7 +81,7 @@ static uint8_t load_menu(void) {
 	if (result != FR_OK) {
 		return result;
 	}
-	result = f_open(&fp, "/MENU.WS", FA_READ);
+	result = f_open(&fp, "/NILESWAN/MENU.WS", FA_READ);
 	if (result != FR_OK) {
 		return result;
 	}
@@ -101,10 +96,10 @@ static uint8_t load_menu(void) {
 	progress_pos = 0;
 
 	while (bank <= PSRAM_MAX_BANK) {
-		update_progress();
-
 		outportw(IO_BANK_2003_RAM, bank);
 		if (offset < 0x8000) {
+			update_progress();
+
 			if ((result = f_read(&fp, MK_FP(0x1000, offset), 0x8000 - offset, NULL)) != FR_OK) {
 				return result;
 			}
@@ -124,30 +119,12 @@ static uint8_t load_menu(void) {
 	return 0;
 }
 
-static const char header_string[] = "PSRAM  Self Test  SRAM";
-static const char footer_string[] = "(c) nileswan 2024 @";
-
-void run_selftest(void) {
-	// deinitialize hardware
-	outportw(IO_NILE_SPI_CNT, NILE_SPI_390KHZ);
-	outportb(IO_NILE_POW_CNT, 0);
-
-	memcpy8to16(SCREEN + 3, header_string, sizeof(header_string) - 1, 0x0100);
-	memcpy8to16(SCREEN + (17 * 32) + 9, footer_string, sizeof(footer_string) - 1, 0x0100);
-
-	while (true) {
-		outportb(IO_CART_FLASH, 1);
-		ram_fault_test(SCREEN + (1 * 32), PSRAM_MAX_BANK + 1);
-		outportb(IO_CART_FLASH, 0);
-		ram_fault_test(SCREEN + (1 * 32) + 19, 8);
-	}
-}
-
-#define KEYBIND_SELF_TEST (KEY_X3 | KEY_A)
-
 const uint8_t swan_logo_map[] = {0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B};
 
 void main(void) {
+	nile_ipl_data->card_state = 0;
+	outportb(IO_SYSTEM_CTRL2, 0x00); // Disable SRAM/IO wait states
+
     ws_display_set_shade_lut(SHADE_LUT_DEFAULT);
     outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(0, 7, 2, 5));
     outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(0, 0, 0, 0));
@@ -155,24 +132,12 @@ void main(void) {
 	lzsa2_decompress_small((uint16_t*) 0x3200, gfx_tiles);
 	_nmemset(SCREEN, 0x6, (32 * 19 - 4) * sizeof(uint16_t));
 
-	uint16_t keys_pressed = ws_keypad_scan() & 0xDDD;
-	bool do_run_selftest = (keys_pressed & KEYBIND_SELF_TEST) == KEYBIND_SELF_TEST;
-
-	// draw swan
-	if (!do_run_selftest) {
-		memcpy8to16(SCREEN + (8 * 32) + 12, swan_logo_map, 4, 0x100);
-		memcpy8to16(SCREEN + (9 * 32) + 12, swan_logo_map + 4, 4, 0x100);
-		memcpy8to16(SCREEN + (10 * 32) + 12, swan_logo_map + 8, 4, 0x100);
-	    outportw(IO_SCR1_SCRL_X, (14 * 8 - 4) << 8);
-	} else {
-	    outportw(IO_SCR1_SCRL_X, (13 * 8) << 8);
-	}
+	memcpy8to16(SCREEN + (8 * 32) + 12, swan_logo_map, 4, 0x100);
+	memcpy8to16(SCREEN + (9 * 32) + 12, swan_logo_map + 4, 4, 0x100);
+	memcpy8to16(SCREEN + (10 * 32) + 12, swan_logo_map + 8, 4, 0x100);
+	outportw(IO_SCR1_SCRL_X, (14 * 8 - 4) << 8);
 
     outportb(IO_DISPLAY_CTRL, DISPLAY_SCR1_ENABLE);
-
-	if (do_run_selftest) {
-		while(1) run_selftest();
-	}
 
 	uint8_t result;
 	if (!(result = load_menu())) {

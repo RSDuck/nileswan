@@ -9,15 +9,13 @@ include $(WONDERFUL_TOOLCHAIN)/target/$(TARGET)/makedefs.mk
 # Metadata
 # --------
 
-NAME		:= ipl1
+NAME_BOOT	:= ipl1
+NAME_SELFTEST	:= ipl1_selftest
 
 # Source code paths
 # -----------------
 
-INCLUDEDIRS	:=
-SOURCEDIRS	:= src
-ASSETDIRS	:= assets
-CBINDIRS	:=
+INCLUDEDIRS	:= src/boot src/selftest src/shared
 
 # Defines passed to all files
 # ---------------------------
@@ -34,9 +32,12 @@ LIBDIRS		:= $(WF_TARGET_DIR)
 # ---------------
 
 BUILDDIR	:= build
-ELF		:= build/$(NAME).elf
-MAP		:= build/$(NAME).map
-EXECUTABLE	:= $(NAME).bin
+ELF_BOOT	:= build/$(NAME_BOOT).elf
+MAP_BOOT	:= build/$(NAME_BOOT).map
+EXE_BOOT	:= $(NAME_BOOT).bin
+ELF_SELFTEST	:= build/$(NAME_SELFTEST).elf
+MAP_SELFTEST	:= build/$(NAME_SELFTEST).map
+EXE_SELFTEST	:= $(NAME_SELFTEST).bin
 
 # Verbose flag
 # ------------
@@ -50,16 +51,20 @@ endif
 # Source files
 # ------------
 
-ifneq ($(ASSETDIRS),)
-    SOURCES_WFPROCESS	:= $(shell find -L $(ASSETDIRS) -name "*.lua")
-    INCLUDEDIRS		+= $(addprefix $(BUILDDIR)/,$(ASSETDIRS))
-endif
-ifneq ($(CBINDIRS),)
-    SOURCES_CBIN	:= $(shell find -L $(CBINDIRS) -name "*.bin")
-    INCLUDEDIRS		+= $(addprefix $(BUILDDIR)/,$(CBINDIRS))
-endif
-SOURCES_S	:= $(shell find -L $(SOURCEDIRS) -name "*.s")
-SOURCES_C	:= $(shell find -L $(SOURCEDIRS) -name "*.c")
+SOURCES_WFPROCESS	:= $(shell find -L assets -name "*.lua")
+INCLUDEDIRS		+= $(addprefix $(BUILDDIR)/,$(ASSETDIRS))
+
+SOURCES_SHARED		:= \
+	$(shell find -L src/shared -name "*.s") \
+	$(shell find -L src/shared -name "*.c")
+
+SOURCES_BOOT		:= \
+	$(shell find -L src/boot -name "*.s") \
+	$(shell find -L src/boot -name "*.c")
+	
+SOURCES_SELFTEST	:= \
+	$(shell find -L src/selftest -name "*.s") \
+	$(shell find -L src/selftest -name "*.c")
 
 # Compiler and linker flags
 # -------------------------
@@ -77,7 +82,7 @@ ASFLAGS		+= -x assembler-with-cpp $(DEFINES) $(WF_ARCH_CFLAGS) \
 CFLAGS		+= -std=gnu11 $(WARNFLAGS) $(DEFINES) $(WF_ARCH_CFLAGS) \
 		   $(INCLUDEFLAGS) -ffunction-sections -fdata-sections -Os
 
-LDFLAGS		:= -Tlink.ld -Wl,-Map,$(MAP) -Wl,--gc-sections $(LIBDIRSFLAGS) \
+LDFLAGS		:= -Tlink.ld -Wl,--gc-sections $(LIBDIRSFLAGS) \
 		   $(WF_ARCH_LDFLAGS) $(LIBS)
 
 # Intermediate build files
@@ -86,10 +91,10 @@ LDFLAGS		:= -Tlink.ld -Wl,-Map,$(MAP) -Wl,--gc-sections $(LIBDIRSFLAGS) \
 OBJS_ASSETS	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_CBIN))) \
 		   $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_WFPROCESS)))
 
-OBJS_SOURCES	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_S))) \
-		   $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_C)))
-
-OBJS		:= $(OBJS_ASSETS) $(OBJS_SOURCES)
+OBJS_SHARED	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_SHARED)))
+OBJS_BOOT	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_BOOT)))
+OBJS_SELFTEST	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_SELFTEST)))
+OBJS		:= $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_BOOT) $(OBJS_SELFTEST)
 
 DEPS		:= $(OBJS:.o=.d)
 
@@ -98,30 +103,34 @@ DEPS		:= $(OBJS:.o=.d)
 
 .PHONY: all clean
 
-all: $(EXECUTABLE) ipl1test.ws compile_commands.json
+all: $(EXE_BOOT) $(EXE_SELFTEST) compile_commands.json
 
-ipl1test.ws: $(EXECUTABLE) ipl1test.asm
-	@echo "  NASM    $@"
-	$(_V)nasm -o $@ ipl1test.asm
+program: $(EXE_BOOT)
+	iceprog -o 128k $<
 
-$(EXECUTABLE): $(ELF)
+$(EXE_BOOT): $(ELF_BOOT)
 	@echo "  OBJCOPY $@"
 	$(_V)$(OBJCOPY) -O binary $< $@
 
-$(ELF): $(OBJS) link.ld
+$(EXE_SELFTEST): $(ELF_SELFTEST)
+	@echo "  OBJCOPY $@"
+	$(_V)$(OBJCOPY) -O binary $< $@
+
+$(ELF_BOOT): $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_BOOT) link.ld
 	@echo "  LD      $@"
-	$(_V)$(CC) -o $(ELF) $(OBJS) $(LDFLAGS)
+	$(_V)$(CC) -o $(ELF_BOOT) $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_BOOT) $(LDFLAGS) -Wl,-Map,$(MAP_BOOT)
+
+$(ELF_SELFTEST): $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_SELFTEST) link.ld
+	@echo "  LD      $@"
+	$(_V)$(CC) -o $(ELF_SELFTEST) $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_SELFTEST) $(LDFLAGS) -Wl,-Map,$(MAP_SELFTEST) 
 
 clean:
 	@echo "  CLEAN"
-	$(_V)$(RM) $(ROM) $(BUILDDIR) compile_commands.json
+	$(_V)$(RM) $(EXE_BOOT) $(ELF_BOOT) $(EXE_SELFTEST) $(ELF_SELFTEST) $(BUILDDIR) compile_commands.json
 
 compile_commands.json: $(OBJS) | Makefile
 	@echo "  MERGE   compile_commands.json"
 	$(_V)$(WF)/bin/wf-compile-commands-merge $@ $(patsubst %.o,%.cc.json,$^)
-
-program: $(ROM)
-	iceprog -o 128k $<
 
 # Rules
 # -----
@@ -135,12 +144,6 @@ $(BUILDDIR)/%.c.o : %.c | $(OBJS_ASSETS)
 	@echo "  CC      $<"
 	@$(MKDIR) -p $(@D)
 	$(_V)$(CC) $(CFLAGS) -MMD -MP -MJ $(patsubst %.o,%.cc.json,$@) -c -o $@ $<
-
-$(BUILDDIR)/%.bin.o $(BUILDDIR)/%_bin.h : %.bin
-	@echo "  BIN2C   $<"
-	@$(MKDIR) -p $(@D)
-	$(_V)$(WF)/bin/wf-bin2c $(@D) $<
-	$(_V)$(CC) $(CFLAGS) -MMD -MP -c -o $(BUILDDIR)/$*.bin.o $(BUILDDIR)/$*_bin.c
 
 $(BUILDDIR)/%.lua.o : %.lua
 	@echo "  PROCESS $<"
