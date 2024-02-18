@@ -28,12 +28,32 @@ IPL1IRAMAddr	 equ 0x0060
 ; assumption: at minimum 0x0600
 IPL1IRAMSize	 equ 0x3E00
 
+NileIPLConsoleType	equ 0x59
+NileIPLConsoleTypeWS	equ 0
+NileIPLConsoleTypePCv2	equ 1
+
 	org 0x0000
 ; 4000:0000 - boot ROM alternate boot location
-	jmp 0xf000:0x0010
+	jmp 0xf000:start_pcv2
 	db 0, 0, 0, 'nileswan'
 ; 4000:0010 - boot ROM alternate boot location (PCv2)
 ; F000:0010 - IPL0 start location
+start_pcv2:
+; Initialize hardware
+	cli
+
+; Do some tricks to store the full register state on boot
+; in memory area 0x0040 - 0x0058
+
+; Store correct state of AX and DS in a screen LUT
+; We need to initialize DS to access RAM, but we want to preserve it
+        out     0x20, ax
+        mov     ax, ds
+        out     0x22, ax
+
+	mov	al, NileIPLConsoleTypePCv2
+	mov	[NileIPLConsoleType], al
+	jmp	start_shared
 start:
 ; Initialize hardware
 	cli
@@ -47,6 +67,9 @@ start:
         mov     ax, ds
         out     0x22, ax
 
+	mov	al, NileIPLConsoleTypeWS
+	mov	[NileIPLConsoleType], al
+start_shared:
         ; Initialize DS to 0x0000
         mov     ax, 0x0000
         mov     ds, ax
@@ -204,7 +227,7 @@ keypadScan:
 	times (IPL0Size-16)-($-$$) db 0xFF
 
 ; 0xFFFF:0x0000 - boot ROM primary boot location + header
-	jmp 0xf000:0x0010
+	jmp 0xf000:start
 
 	db	0x00	; Maintenance
 	db	0x42	; Developer ID
