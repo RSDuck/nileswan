@@ -110,17 +110,18 @@ start_shared:
 ; Vary IPL1 load location depending on a special keybind.
 	call keypadScan
 	mov bx, ax
-	and ax, (KEY_Y1 | KEY_A)
-	cmp ax, (KEY_Y1 | KEY_A)
+	and ax, (KEY_Y1 | KEY_B)
+	cmp ax, (KEY_Y1 | KEY_B)
 	je altFlashAddr
 	mov ax, bx
-	and ax, (KEY_X3 | KEY_A)
-	cmp ax, (KEY_X3 | KEY_A)
+	and ax, (KEY_X3 | KEY_B)
+	cmp ax, (KEY_X3 | KEY_B)
 	je selftestFlashAddr
 	mov bx, IPL1FlashAddr >> 8
 	jmp postFlashAddr
 selftestFlashAddr:
 	mov bx, IPL1SelftestFlashAddr >> 8
+	jmp postFlashAddr
 altFlashAddr:
 	mov bx, IPL1AltFlashAddr >> 8
 postFlashAddr:
