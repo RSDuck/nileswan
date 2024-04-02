@@ -10,17 +10,21 @@ module nileswan(
     inout[15:0] Data,
 
     output[6:0] AddrExt,
-    output nPSRAMSel,
+    output nMem_OE, nMem_WE,
+    output nPSRAM1Sel, output nPSRAM2Sel,
     output PSRAM_nLB, PSRAM_nUB,
     output nSRAMSel,
 
     output MBC,
     input SClk,
 
-    output[3:0] DebugLEDs,
+    output nCartInt,
 
     input FastClk, output FastClkEnable,
 
+    output Debug,
+
+    output nMCUSel,
     output SPI_Cs,
     output SPI_Clk,
     output SPI_Do,
@@ -34,9 +38,17 @@ module nileswan(
     output TF_Pow);
 
     reg enable_fastclk = 1'b1;
-    assign FastClkEnable = enable_fastclk;
+    assign FastClkEnable = ~enable_fastclk;
     reg enable_tf_power = 1'b0;
     assign TF_Pow = enable_tf_power;
+
+    assign nMCUSel = 1'b1;
+    assign nMem_OE = nOE;
+    assign nMem_WE = nWE;
+
+    assign nCartInt = 1'b1;
+
+    assign Debug = 0;
 
     Dance dance (
         .AddrLo(AddrLo[7:0]),
@@ -218,7 +230,8 @@ module nileswan(
     // while ROM address space depends on where
     wire[3:0] addr_ext_masked_ram = ram_addr_ext[3:0] & ram_bank_mask;
 
-    wire sel_psram = sel_rom_space && addr_ext_masked_rom[8:7] == 2'h0;
+    wire sel_psram_1 = sel_rom_space && addr_ext_masked_rom[8:7] == 2'h0;
+    wire sel_psram_2 = sel_rom_space && addr_ext_masked_rom[8:7] == 2'h1;
     wire sel_rxbuf = sel_rom_space && addr_ext_masked_rom == 9'h1FE;
     wire sel_bootrom = sel_rom_space && addr_ext_masked_rom == 9'h1FF;
     
@@ -227,7 +240,8 @@ module nileswan(
 
     assign AddrExt = sel_rom_space ? addr_ext_masked_rom[6:0] : {3'h0, addr_ext_masked_ram};
 
-    assign nPSRAMSel = ~(~nSel & nIO & sel_psram);
+    assign nPSRAM1Sel = ~(~nSel & nIO & sel_psram_1);
+    assign nPSRAM2Sel = ~(~nSel & nIO & sel_psram_2);
     assign nSRAMSel = ~(~nSel & nIO & sel_sram);
 
     assign PSRAM_nLB = access_in_ram_area & AddrLo[0];
@@ -237,8 +251,8 @@ module nileswan(
 
     wire sel_oe = ~nSel & ~nOE;
 
-    wire psram_hi_write = access_in_ram_area & ~nPSRAMSel & ~nWE & AddrLo[0];
-    wire psram_hi_read = access_in_ram_area & ~nPSRAMSel & ~nOE & AddrLo[0];
+    wire psram_hi_write = access_in_ram_area & ~(nPSRAM1Sel & nPSRAM2Sel) & ~nWE & AddrLo[0];
+    wire psram_hi_read = access_in_ram_area & ~(nPSRAM1Sel & nPSRAM2Sel) & ~nOE & AddrLo[0];
 
     wire output_io_out = ~nIO & reg_ack;
     wire output_bootrom = nIO & sel_bootrom;
@@ -263,11 +277,6 @@ module nileswan(
         default: output_data_hi = rxbuf_read[15:8];
         endcase
     end
-
-    assign DebugLEDs[0] = nPSRAMSel;
-    assign DebugLEDs[1] = output_rxbuf;
-    assign DebugLEDs[2] = output_bootrom;
-    assign DebugLEDs[3] = nSRAMSel;
 
     assign Data[7:0] = enable_output_lo ? output_data_lo : 8'hZZ;
     assign Data[15:8] = enable_output_hi ? output_data_hi : 8'hZZ;

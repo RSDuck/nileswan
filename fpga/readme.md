@@ -5,7 +5,7 @@
 
 ## IPL0
 
-256-byte program stored as the initial value of one EBRAM block. While each EBRAM block is technically 512 bytes in size only the lower 8 bits of the address bus are connected to the FPGA.
+512-byte program stored as the initial value of one EBRAM block which is mapped at bank 500 and bank 511 to boot from it on Pocket Challange V2 or Wonderswan respectively.
 
 ## Building
 

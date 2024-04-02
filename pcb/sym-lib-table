@@ -5,4 +5,5 @@
   (lib (name "AP22966DC8-7")(type "KiCad")(uri "${KIPRJMOD}/snapeda/symbols/AP22966DC8-7.kicad_sym")(options "")(descr ""))
   (lib (name "TPS3619")(type "KiCad")(uri "${KIPRJMOD}/snapeda/symbols/TPS3619-50DGK.kicad_sym")(options "")(descr ""))
   (lib (name "SM02B-SRSS-TB")(type "KiCad")(uri "${KIPRJMOD}/snapeda/symbols/SM02B-SRSS-TB_LF__SN_.kicad_sym")(options "")(descr ""))
+  (lib (name "74LVC245ABQ")(type "KiCad")(uri "${KIPRJMOD}/snapeda/symbols/74LVC245ABQ.kicad_sym")(options "")(descr ""))
 )

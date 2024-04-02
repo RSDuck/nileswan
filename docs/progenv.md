@@ -15,11 +15,13 @@
 
 | Bank(s) | Description |
 |------------|-------------|
-| 0-127 | PSRAM (8 MB) |
-| 128-255 | Reserved for PSRAM expansion to 16 MB |
+| 0-127 | First PSRAM (8 MB) |
+| 128-255 | Second PSRAM (8 MB, optional) |
 | 256-509 | Unused (open bus) |
+| 500 | Bootrom mirror (Pocket Challange V2 boot location) |
+| 501-509 | Unused (open bus) |
 | 510 | SPI RX buffer (read only, 512 bytes mirrored) |
-| 511 | Bootrom |
+| 511 | Bootrom (WonderSwan boot location)|
 
 **RAM**
 
@@ -29,7 +31,7 @@
 | 8-14 | Unused (open bus) |
 | 15 | SPI TX buffer (write only, 512 bytes mirrored) |
 
-SPI RX and TX buffer are double buffered with only one currently visible. This is contrable via `SPI_CNT`.
+SPI RX and TX buffer are double buffered with only one currently visible. This is controlable via `SPI_CNT`.
 
 The PSRAM is writeable by using the self flash mode, which maps ROM at the point in the address space at which RAM usually sits (`0x10000`-`0x1FFFF`). While it is technically possible to read the SPI RX buffer and bootrom in this state, the read values will be wrong. These memories only support 16-bit wide accesses.
 
@@ -42,13 +44,11 @@ The PSRAM is writeable by using the self flash mode, which maps ROM at the point
 |------|------|
 |0-8|SPI transfer length in bytes minus one|
 |9-10|Mode (0 = write, 1 = read, 2 = exchange, 3 = wait and read) |
-|11|Transfer speed (0 = 25 MHz "high frequency clock", 1 = 384 kHz from cartbus)|
-|12|Controls chip select line of the current device (0 = /CS is high, 1 = /CS is low)|
+|11|Transfer speed (0 = 24 MHz "high frequency clock", 1 = 384 kHz from cartbus)|
+|12-13|Channel select/chip select (0=no device selected and output to TF channel, 1=select TF, 2=select flash, 3=select μC)|
 |13|SPI device (0 = SPI flash, 1 = TF)|
 |14|Memory mapped RX and TX buffer index (0-1)|
 |15|Start/busy, when written (0=abort transfer, 1=start transfer), when read (0=idle, 1=transfering)|
-
-Rationale for separating device select from chip select: The TF is hooked up on a separate SPI bus so that it does not interfere while the FPGA initialise. Additionally it is necessary to be eable to send data while the TF card is deselected. Having both on a separate bus also allows safely cutting power to the TF card.
 
 * In read mode all output serial bits are 1. The incoming bits are stored in the RX buffer.
 * In write mode bits from the TX buffer are output. The incoming serial bits are discarded.
@@ -59,20 +59,30 @@ During transfer the data in the TX buffer currently not mapped into the address 
 
 All values besides the transfer abort are read only while a transfer is in progress.
 
+The selected clock will also be used for EEPROM and RTC serial transactions.
+
 ### Power
 
 **`0xE2` - `POW_CNT` (8 bit)**
 | Bit(s) | Description |
 |------|------|
-|0|Enable 25 MHz high frequency clock. If disabled SPI will stop working. (0=off, 1=on)|
-|1|Enable TF power (0=off, 1=on)|
-|2-7|Unused/0|
+|0|Enable 24 MHz high frequency clock. (0=off, 1=on (default))|
+|1|Enable TF power (0=off (default), 1=on)|
+|2|Enable nileswan I/O registers (0=off, 1=on (default))|
+|3|Enable Bandai 2003 banking (0=off, 1=on (default))|
+|4|Emulated serial device mode (0=RTC (default), 1=EEPROM)|
+|5-6|Serial device mode (0=emulate nothing connected (default), 1=emulate FPGA internal, 2=emulate via μC, 3=invalid)
+|7|Unused/0|
 
-By default the HF oscillator is enabled and TF power is disabled.
+Once the nileswan I/O registers are disabled, they can only be brought back via hardware reset.
+
+Depending on the selected serial device mode the appropriate I/O registers for RTC (`RTC_CTRL` and `RTC_DATA`) or EEPROM (`CART_SERIAL_DATA`, `CART_SERIAL_COM` and `CART_SERIAL_CTRL`) become valid or invalid.
+
+If the serial device is set to be emulated FPGA internal an EEPROM or RTC is emulated within the FPGA and no μC needs to be installed on the board.
 
 ### Interrupts
 
-**`0xE2` - `NILE_IRQ` (8 bit)**
+**`0xE3` - `NILE_IRQ` (8 bit)**
 | Bit(s) | Description |
 |------|------|
 |0|Enable SPI IRQ generation|

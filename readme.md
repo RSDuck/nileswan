@@ -6,9 +6,7 @@ Expect exciting things here.
 
 ## Status
 
-A second iteration of the PCB is done which contains 8 MB of PSRAM and 512 KB of SRAM. After with some botch wires (see errata below) it is eable to load both boot stages included in this project and a menu off an TF card.
-
-The save feature is still untested.
+A third iteration of the PCB is done which contains 2*8 MB of PSRAM, 512 KB of SRAM and a microcontroller with USB. It has been tested to work with the changes listed in the errata.
 
 ## icepack
 
@@ -19,8 +17,10 @@ this->freqrange = "high";
 
 Eventually I'll create a PR for this but I've been too lazy.
 
-## Errata/Notes for third PCB iteration
-- TF card power needs a pull down resistor otherwise it will be enabled during the configuration of the FPGA.
-- DI and DO are swapped for the SPI flash!!!!!
-- Inrush current is still a problem. Removing both 1 μF capacitors of the load switch seems to be necessary? Maybe replace them with 0.2 nF or a similar value. The problem is that if the voltage curve is too sharp the power supply gives up, while the FPGA doesn't initialise fast enough if the voltage rises too slowly. Technically it also violates spec (rise time needs to be between 0.1 and 10 V/ms). Partial solution: the load switch enable is currently directly tied to the input power via a pull up resistor. The load switch already sees 1.2 V as logic high. By using a voltage divider the load switch is only enabled once the power supply has reached a more stable value.
- 
+## Errata/Notes for fourth PCB iteration
+- SWD for the microcontroller is not connected
+- The microcontroller needs an interrupt line to be connected to the FPGA
+- The screw hole in the PCB doesn't work. It needs to be larger so that an entire screw post can fit through it.
+- Pin 1 of AP22966DC8 is wrongly marked on the in the IBOM leading me to solder it in the wrong way for the second time!!!!
+- The weak pull up during FPGA init seems to be not enough to keep the MCU deselected. A dedicated 10k pull fixes this.
+- /RESET from the cartridge bus is not connected to the FPGA. Thus power cycling the WonderSwan while keeping the FPGA active is not possible (useful to then save the emulated EEPROM).
