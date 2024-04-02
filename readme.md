@@ -6,7 +6,7 @@ Expect exciting things here.
 
 ## Status
 
-A third iteration of the PCB is done which contains 2*8 MB of PSRAM, 512 KB of SRAM and a microcontroller with USB. It has been tested to work with the changes listed in the errata.
+A third iteration of the PCB is done which contains 2*8 MB of PSRAM, 512 KB of SRAM and a microcontroller with USB. It has been tested to work with the caveats listed in the errata.
 
 ## icepack
 
