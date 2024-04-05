@@ -4,22 +4,47 @@ module Dance (
     input SClk,
     output MBC);
 
-    reg read_A5 = 1'b0;
-    reg[21:0] unlock_cur_state = UnlockBits;
+    wire address_change = AddrLo[3:0] == 4'h5 && AddrHi == 4'hA;
 
-    localparam[22:0] UnlockBits = 23'b000101000101000000111;
-
-    assign MBC = unlock_cur_state[0];
+    reg read_A5 = 0;
+    reg[4:0] state = 5'h0;
 
     always @(posedge SClk) begin
-        if (~read_A5 && AddrLo[3:0] == 4'h5 && AddrHi == 4'hA) begin
-            read_A5 <= 1'h1;
-        end 
+        if (address_change)
+            read_A5 <= 1;
     end
 
     always @(posedge SClk) begin
-        if (read_A5) begin
-            unlock_cur_state <= {1'b1, unlock_cur_state[21:1]};
-        end
+        if (state != 5'h1F && read_A5)
+            state <= state + 1;
+    end
+
+    reg mbc;
+    assign MBC = mbc;
+    always_comb begin
+        case (state)
+        1: mbc = 1;
+        2: mbc = 1;
+        3: mbc = 1;
+        4: mbc = 0;
+        5: mbc = 0;
+        6: mbc = 0;
+        7: mbc = 0;
+        8: mbc = 0;
+        9: mbc = 0;
+        10: mbc = 1;
+        11: mbc = 0;
+        12: mbc = 1;
+        13: mbc = 0;
+        14: mbc = 0;
+        15: mbc = 0;
+        16: mbc = 1;
+        17: mbc = 0;
+        18: mbc = 1;
+        19: mbc = 0;
+        20: mbc = 0;
+        21: mbc = 0;
+        default: mbc = 1;
+        endcase
     end
 endmodule

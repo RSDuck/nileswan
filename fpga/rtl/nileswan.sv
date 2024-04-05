@@ -233,12 +233,14 @@ module nileswan(
     wire sel_psram_1 = sel_rom_space && addr_ext_masked_rom[8:7] == 2'h0;
     wire sel_psram_2 = sel_rom_space && addr_ext_masked_rom[8:7] == 2'h1;
     wire sel_rxbuf = sel_rom_space && addr_ext_masked_rom == 9'h1FE;
-    wire sel_bootrom = sel_rom_space && addr_ext_masked_rom == 9'h1FF;
+    wire sel_bootrom = sel_rom_space && (addr_ext_masked_rom == 9'h1FF || addr_ext_masked_rom == 9'h1F4);
     
     wire sel_sram = sel_ram_space && addr_ext_masked_ram[3] == 1'h0;
     wire sel_txbuf = sel_ram_space && addr_ext_masked_ram == 4'hF;
 
-    assign AddrExt = sel_rom_space ? addr_ext_masked_rom[6:0] : {3'h0, addr_ext_masked_ram};
+    assign AddrExt[2:0] = sel_rom_space ? addr_ext_masked_rom[2:0] : addr_ext_masked_ram[2:0];
+    // save some LEs, SRAM ignores the banking bits above bit 2
+    assign AddrExt[6:3] = addr_ext_masked_rom[6:3];
 
     assign nPSRAM1Sel = ~(~nSel & nIO & sel_psram_1);
     assign nPSRAM2Sel = ~(~nSel & nIO & sel_psram_2);

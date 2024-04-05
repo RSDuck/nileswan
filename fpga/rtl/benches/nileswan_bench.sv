@@ -23,16 +23,19 @@ module nileswan_bench ();
 
     wire[6:0] addrExt;
 
-    wire nPSRAMSel, PSRAM_nLB, PSRAM_nUB;
+    wire nPSRAM1Sel, nPSRAM2Sel, PSRAM_nLB, PSRAM_nUB;
 
     wire MBC;
 
-    wire[3:0] debugLEDs;
+    wire debug;
 
     wire fastClkEnable;
 
     wire spi_cs, spi_clk, spi_do;
     reg spi_di;
+
+    wire tf_cs, tf_clk, tf_do;
+    reg tf_di;
 
     nileswan nswan(
         .nSel(nSel),
@@ -46,14 +49,15 @@ module nileswan_bench ();
 
         .AddrExt(addrExt),
         
-        .nPSRAMSel(nPSRAMSel),
+        .nPSRAM1Sel(nPSRAM1Sel),
+        .nPSRAM2Sel(nPSRAM2Sel),
         .PSRAM_nLB(PSRAM_nLB),
         .PSRAM_nUB(PSRAM_nUB),
 
         .MBC(MBC),
         .SClk(sclk),
 
-        .DebugLEDs(debugLEDs),
+        .Debug(debug),
 
         .FastClk(clk),
         .FastClkEnable(fastClkEnable),
@@ -61,7 +65,12 @@ module nileswan_bench ();
         .SPI_Cs(spi_cs),
         .SPI_Clk(spi_clk),
         .SPI_Do(spi_do),
-        .SPI_Di(spi_di));
+        .SPI_Di(spi_di),
+
+        .TF_Cs(tf_cs),
+        .TF_Clk(tf_clk),
+        .TF_Do(tf_do),
+        .TF_Di(tf_di));
 
     initial begin
         #(swan_clock_period*4);

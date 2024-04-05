@@ -86,55 +86,32 @@ module SPI (
 
     wire StoreShiftReg = bit_position == 7 && mode != mode_Write;
 
-    wire[15:0] rx_read_0, rx_read_1;
+    wire[15:0] rx_read;
     BlockRAM16RN_8W rx_buffer0 (
         .ReadClk(nOE),
         .ReadEnable(1'b1),
-        .ReadAddr(BufAddr[8:1]),
-        .ReadData(rx_read_0),
+        .ReadAddr({~bus_mapped_buffer, BufAddr[8:1]}),
+        .ReadData(rx_read),
 
         .WriteClk(transfer_clk),
-        .WriteEnable(StoreShiftReg & bus_mapped_buffer),
-        .WriteAddr(byte_position),
+        .WriteEnable(StoreShiftReg),
+        .WriteAddr({bus_mapped_buffer, byte_position}),
         .WriteData(ShiftRegNext)
     );
-    BlockRAM16RN_8W rx_buffer1 (
-        .ReadClk(nOE),
-        .ReadEnable(1'b1),
-        .ReadAddr(BufAddr[8:1]),
-        .ReadData(rx_read_1),
+    assign RXBufData = rx_read;
 
-        .WriteClk(transfer_clk),
-        .WriteEnable(StoreShiftReg & ~bus_mapped_buffer),
-        .WriteAddr(byte_position),
-        .WriteData(ShiftRegNext)
-    );
-    assign RXBufData = bus_mapped_buffer ? rx_read_1 : rx_read_0;
-
-    wire[7:0] tx_read_0, tx_read_1;
-    BlockRAM8R_8W tx_buffer0 (
+    wire[7:0] tx_read;
+    BlockRAM8R_8W tx_buffer (
         .ReadClk(transfer_clk),
         .ReadEnable(1'b1),
-        .ReadAddr(NextBytePosition),
-        .ReadData(tx_read_0),
+        .ReadAddr({~bus_mapped_buffer, NextBytePosition}),
+        .ReadData(tx_read),
 
         .WriteClk(nWE),
-        .WriteEnable(WriteTXBuffer & ~bus_mapped_buffer),
-        .WriteAddr(BufAddr),
+        .WriteEnable(WriteTXBuffer),
+        .WriteAddr({bus_mapped_buffer, BufAddr}),
         .WriteData(WriteData)
     );
-    BlockRAM8R_8W tx_buffer1 (
-        .ReadClk(transfer_clk),
-        .ReadEnable(1'b1),
-        .ReadAddr(NextBytePosition),
-        .ReadData(tx_read_1),
-
-        .WriteClk(nWE),
-        .WriteEnable(WriteTXBuffer & bus_mapped_buffer),
-        .WriteAddr(BufAddr),
-        .WriteData(WriteData)
-    );
-    wire[7:0] tx_read = bus_mapped_buffer ? tx_read_0 : tx_read_1;
 
     always @(posedge transfer_clk)
         start_transfer_clk <= {start_transfer_clk[1:0], start_async};
