@@ -24,3 +24,4 @@ Eventually I'll create a PR for this but I've been too lazy.
 - Pin 1 of AP22966DC8 is wrongly marked on the in the IBOM leading me to solder it in the wrong way for the second time!!!!
 - The weak pull up during FPGA init seems to be not enough to keep the MCU deselected. A dedicated 10k pull fixes this.
 - /RESET from the cartridge bus is not connected to the FPGA. Thus power cycling the WonderSwan while keeping the FPGA active is not possible (useful to then save the emulated EEPROM).
+- The link on the silkscreen is wrong
