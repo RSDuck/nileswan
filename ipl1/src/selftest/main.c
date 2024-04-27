@@ -156,8 +156,8 @@ update_full_menu:
 	int test_menu_y = (18 - test_count) >> 1;
 
 
-	DRAW_STRING_CENTERED(test_menu_y, "quick test", 0);
-	DRAW_STRING_CENTERED(test_menu_y+1, "quick test (8 MB) mode", 0);
+	DRAW_STRING_CENTERED(test_menu_y, "quick test (16 MB PSRAM)", 0);
+	DRAW_STRING_CENTERED(test_menu_y+1, "quick test (8 MB PSRAM)", 0);
 	DRAW_STRING_CENTERED(test_menu_y+2, "full memory test", 0);
 	DRAW_STRING_CENTERED(test_menu_y+3, "SRAM persistence read test", 0);
 
