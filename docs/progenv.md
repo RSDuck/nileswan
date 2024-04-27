@@ -46,7 +46,6 @@ The PSRAM is writeable by using the self flash mode, which maps ROM at the point
 |9-10|Mode (0 = write, 1 = read, 2 = exchange, 3 = wait and read) |
 |11|Transfer speed (0 = 24 MHz "high frequency clock", 1 = 384 kHz from cartbus)|
 |12-13|Channel select/chip select (0=no device selected and output to TF channel, 1=select TF, 2=select flash, 3=select μC)|
-|13|SPI device (0 = SPI flash, 1 = TF)|
 |14|Memory mapped RX and TX buffer index (0-1)|
 |15|Start/busy, when written (0=abort transfer, 1=start transfer), when read (0=idle, 1=transfering)|
 
