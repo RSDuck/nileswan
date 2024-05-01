@@ -18,17 +18,18 @@ module SPI (
     input WriteSPICntLo,
     input WriteSPICntHi,
 
-    output SPI_Do,
-    input SPI_Di,
-    output SPI_Clk,
-    output SPI_Cs,
+    output SPIDo,
+    input SPIDi,
+    output SPIClk,
+    output nFlashSel,
+    output nMCUSel,
 
-    input TF_Pow,
+    input TFPow,
 
-    output TF_Cs,
-    output TF_Clk,
-    output TF_Do,
-    input TF_Di);
+    output nTFSel,
+    output TFClk,
+    output TFDo,
+    input TFDi);
 
     reg[2:0] start_transfer_clk = 3'h0;
     reg start_async = 1'h0;
@@ -47,18 +48,21 @@ module SPI (
 
     reg running = 0;
 
-    typedef enum reg {
-        device_Flash,
-        device_TF
-    } Device;
-    Device device = device_Flash;
+    typedef enum reg[1:0] {
+        channelCS_DeselTF,
+        channelCS_SelTF,
+        channelCS_SelFlash,
+        channelCS_SelMCU
+    } ChannelCS;
+    ChannelCS channel_cs = channelCS_DeselTF;
 
-    reg cs = 0;
-    assign SPI_Cs = ~(cs && device == device_Flash);
-    assign TF_Cs = TF_Pow ? ~(cs && device == device_TF) : 1'bZ;
+    assign nFlashSel = ~(channel_cs == channelCS_SelFlash);
+    assign nMCUSel = ~(channel_cs == channelCS_SelMCU);
+    assign nTFSel = TFPow ? ~(channel_cs == channelCS_SelTF) : 1'bZ;
 
     // the first will be the last and the last will be the first
-    wire[7:0] ShiftRegNext = {shiftreg[6:0], device == device_Flash ? SPI_Di : TF_Di};
+    wire[7:0] ShiftRegNext = {shiftreg[6:0], (channel_cs == channelCS_SelFlash ||
+        channel_cs == channelCS_SelMCU) ? SPIDi : TFDi};
 
     reg use_slow_clk = 0;
 
@@ -165,7 +169,7 @@ module SPI (
         .PIN_TYPE(6'b010001), // PIN_OUTPUT_DDR
         .IO_STANDARD("SB_LVCMOS")
     ) spi_clk_iob (
-        .PACKAGE_PIN(SPI_Clk),
+        .PACKAGE_PIN(SPIClk),
         .D_OUT_0(running),
         .D_OUT_1(1'b0),
         .OUTPUT_CLK(transfer_clk),
@@ -176,11 +180,11 @@ module SPI (
         .PIN_TYPE(6'b100000), // PIN_OUTPUT_DDR_ENABLE
         .IO_STANDARD("SB_LVCMOS")
     ) tf_clk_iob (
-        .PACKAGE_PIN(TF_Clk),
+        .PACKAGE_PIN(TFClk),
         .D_OUT_0(running),
         .D_OUT_1(1'b0),
         .OUTPUT_CLK(transfer_clk),
-        .OUTPUT_ENABLE(TF_Pow),
+        .OUTPUT_ENABLE(TFPow),
         .CLOCK_ENABLE(1'b1)
     );
 
@@ -209,7 +213,7 @@ module SPI (
         .PIN_TYPE(6'b010001), // PIN_OUTPUT_DDR
         .IO_STANDARD("SB_LVCMOS")
     ) spi_do_iob (
-        .PACKAGE_PIN(SPI_Do),
+        .PACKAGE_PIN(SPIDo),
         .D_OUT_0(outbit),
         .D_OUT_1(outbit),
         .OUTPUT_CLK(transfer_clk),
@@ -220,15 +224,15 @@ module SPI (
         .PIN_TYPE(6'b100000), // PIN_OUTPUT_DDR_ENABLE
         .IO_STANDARD("SB_LVCMOS")
     ) tf_do_iob (
-        .PACKAGE_PIN(TF_Do),
+        .PACKAGE_PIN(TFDo),
         .D_OUT_0(outbit),
         .D_OUT_1(outbit),
         .OUTPUT_CLK(transfer_clk),
-        .OUTPUT_ENABLE(TF_Pow),
+        .OUTPUT_ENABLE(TFPow),
         .CLOCK_ENABLE(1'b1)
     );
 
-    assign SPICnt = {Busy, bus_mapped_buffer, device, cs, use_slow_clk, mode, transfer_len};
+    assign SPICnt = {Busy, bus_mapped_buffer, channel_cs, use_slow_clk, mode, transfer_len};
 
     // technically this means that just waiting until the transfer is done
     // without polling is not possible, because the busy state will block writes to SPI_CNT
@@ -252,9 +256,7 @@ module SPI (
                 // switch over cycle with a lengthened period
                 // though it doesn't affect the outgoing SPI transfer
                 use_slow_clk <= WriteData[3];
-                cs <= WriteData[4];
-
-                device <= WriteData[5];
+                channel_cs <= WriteData[5:4];
 
                 bus_mapped_buffer <= WriteData[6];
 

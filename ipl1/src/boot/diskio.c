@@ -130,7 +130,10 @@ bool nile_tf_cs_high(void);
 bool nile_tf_cs_high(void) {
 	if (!nile_spi_wait_busy())
 		return false;
-	outportw(IO_NILE_SPI_CNT, inportw(IO_NILE_SPI_CNT) & ~NILE_SPI_CS);
+	uint16_t spi_cnt = inportw(IO_NILE_SPI_CNT);
+	spi_cnt &= ~NILE_SPI_CS_DEV;
+	spi_cnt |= NILE_SPI_CS_DEV_TF_DESEL;
+	outportw(IO_NILE_SPI_CNT, spi_cnt);
 	if (!nile_spi_rx(1, NILE_SPI_MODE_READ))
 		return false;
 	return true;
@@ -142,7 +145,10 @@ bool nile_tf_cs_low(void);
 bool nile_tf_cs_low(void) {
 	if (!nile_spi_wait_busy())
 		return false;
-	outportw(IO_NILE_SPI_CNT, inportw(IO_NILE_SPI_CNT) | NILE_SPI_CS);
+	uint16_t spi_cnt = inportw(IO_NILE_SPI_CNT);
+	spi_cnt &= ~NILE_SPI_CS_DEV;
+	spi_cnt |= NILE_SPI_CS_DEV_TF_SEL;
+	outportw(IO_NILE_SPI_CNT, spi_cnt);
 	if (!nile_spi_rx(1, NILE_SPI_MODE_READ))
 		return false;
 	if (nile_tf_wait_ready(0x00))
@@ -204,7 +210,7 @@ DSTATUS disk_initialize(BYTE pdrv) {
 	nile_spi_timeout_ms = 1000;
 
 	set_detail_code(0);
-	outportw(IO_NILE_SPI_CNT, NILE_SPI_DEV_TF | NILE_SPI_390KHZ | NILE_SPI_CS_HIGH);
+	outportw(IO_NILE_SPI_CNT, NILE_SPI_CS_DEV_TF_DESEL | NILE_SPI_390KHZ);
 	nile_tf_cs_high();
 
 	uint8_t powcnt = inportb(IO_NILE_POW_CNT);
@@ -318,7 +324,7 @@ card_init_complete_hc:
 	if (!nile_spi_wait_busy())
 		return false;
 	outportb(IO_NILE_POW_CNT, powcnt | NILE_POW_CLOCK);
-	outportw(IO_NILE_SPI_CNT, NILE_SPI_DEV_TF | NILE_SPI_25MHZ | NILE_SPI_CS_HIGH);
+	outportw(IO_NILE_SPI_CNT, NILE_SPI_CS_DEV_TF_DESEL | NILE_SPI_25MHZ);
 	if (!nile_spi_rx(1, NILE_SPI_MODE_READ))
 		return false;
 	return 0;

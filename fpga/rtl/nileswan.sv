@@ -25,24 +25,23 @@ module nileswan(
     output Debug,
 
     output nMCUSel,
-    output SPI_Cs,
-    output SPI_Clk,
-    output SPI_Do,
-    input SPI_Di,
+    output nFlashSel,
+    output SPIClk,
+    output SPIDo,
+    input SPIDi,
 
-    output TF_Cs,
-    output TF_Clk,
-    output TF_Do,
-    input TF_Di,
+    output nTFSel,
+    output TFClk,
+    output TFDo,
+    input TFDi,
     
-    output TF_Pow);
+    output TFPow);
 
     reg enable_fastclk = 1'b1;
     assign FastClkEnable = ~enable_fastclk;
     reg enable_tf_power = 1'b0;
-    assign TF_Pow = enable_tf_power;
+    assign TFPow = enable_tf_power;
 
-    assign nMCUSel = 1'b1;
     assign nMem_OE = nOE;
     assign nMem_WE = nWE;
 
@@ -84,17 +83,18 @@ module nileswan(
         .WriteSPICntHi(write_spi_cnt_hi & IOWrite),
         .WriteTXBuffer(write_txbuf),
 
-        .SPI_Do(SPI_Do),
-        .SPI_Di(SPI_Di),
-        .SPI_Clk(SPI_Clk),
-        .SPI_Cs(SPI_Cs),
+        .SPIDo(SPIDo),
+        .SPIDi(SPIDi),
+        .SPIClk(SPIClk),
+        .nFlashSel(nFlashSel),
+        .nMCUSel(nMCUSel),
 
-        .TF_Pow(enable_tf_power),
-        
-        .TF_Do(TF_Do),
-        .TF_Di(TF_Di),
-        .TF_Clk(TF_Clk),
-        .TF_Cs(TF_Cs));
+        .TFPow(enable_tf_power),
+
+        .TFDo(TFDo),
+        .TFDi(TFDi),
+        .TFClk(TFClk),
+        .nTFSel(nTFSel));
 
     reg[9:0] ram_addr_ext = 10'h3FF;
     reg[9:0] rom0_addr_ext = 10'h3FF;

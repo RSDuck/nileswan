@@ -20,21 +20,21 @@
 
 #include <wonderful.h>
 
-#define NILE_SPI_MODE_WRITE      0x0000
-#define NILE_SPI_MODE_READ       0x0200
-#define NILE_SPI_MODE_EXCH       0x0400
-#define NILE_SPI_MODE_WAIT_READ  0x0600
-#define NILE_SPI_MODE_MASK       0x0600
-#define NILE_SPI_390KHZ          0x0800
-#define NILE_SPI_25MHZ           0x0000
-#define NILE_SPI_CS_HIGH         0x0000
-#define NILE_SPI_CS_LOW          0x1000
-#define NILE_SPI_CS              0x1000
-#define NILE_SPI_DEV_FLASH       0x0000
-#define NILE_SPI_DEV_TF          0x2000
-#define NILE_SPI_BUFFER_IDX      0x4000
-#define NILE_SPI_START           0x8000
-#define NILE_SPI_BUSY            0x8000
+#define NILE_SPI_MODE_WRITE         0x0000
+#define NILE_SPI_MODE_READ          0x0200
+#define NILE_SPI_MODE_EXCH          0x0400
+#define NILE_SPI_MODE_WAIT_READ     0x0600
+#define NILE_SPI_MODE_MASK          0x0600
+#define NILE_SPI_390KHZ             0x0800
+#define NILE_SPI_25MHZ              0x0000
+#define NILE_SPI_CS_DEV             0x3000
+#define NILE_SPI_CS_DEV_TF_DESEL    0x0000
+#define NILE_SPI_CS_DEV_TF_SEL      0x1000
+#define NILE_SPI_CS_DEV_FLASH_SEL   0x2000
+#define NILE_SPI_CS_DEV_MCU_SEL     0x3000
+#define NILE_SPI_BUFFER_IDX         0x4000
+#define NILE_SPI_START              0x8000
+#define NILE_SPI_BUSY               0x8000
 #define IO_NILE_SPI_CNT    0xE0
 
 #define NILE_POW_CLOCK     0x01

@@ -48,17 +48,17 @@ module spi_bench ();
         .WriteSPICntLo(write_spicnt_lo),
         .WriteSPICntHi(write_spicnt_hi),
 
-        .TF_Pow(tf_pow),
+        .TFPow(tf_pow),
 
-        .SPI_Do(spi_do),
-        .SPI_Di(spi_di),
-        .SPI_Clk(spi_clk),
-        .SPI_Cs(spi_cs),
+        .SPIDo(spi_do),
+        .SPIDi(spi_di),
+        .SPIClk(spi_clk),
+        .nFlashSel(spi_cs),
 
-        .TF_Do(tf_do),
-        .TF_Di(tf_di),
-        .TF_Clk(tf_clk),
-        .TF_Cs(tf_cs)
+        .TFDo(tf_do),
+        .TFDi(tf_di),
+        .TFClk(tf_clk),
+        .nTFSel(tf_cs)
     );
 
     integer i;
@@ -164,8 +164,8 @@ module spi_bench ();
         else   $error("/CS should be high");
 
         write_spicnt_hi = 1;
-        // start transfer, slowclk, mode=exchange, /cs = lo, use other buffer
-        writeReg(8'h80 | (8'h2 << 1) | (8'h1 << 3) | (8'h1 << 4) | (8'h1 << 6));
+        // start transfer, slowclk, mode=exchange, dev/cs=flash, use other buffer
+        writeReg(8'h80 | (8'h2 << 1) | (8'h1 << 3) | (8'h2 << 4) | (8'h1 << 6));
         write_spicnt_hi = 0;
 
         assert (spi_cnt[11] == 1) 
@@ -218,8 +218,8 @@ module spi_bench ();
         write_spicnt_lo = 0;
 
         write_spicnt_hi = 1;
-        // start transfer, mode=wait and read, /cs = lo, use other buffer
-        writeReg(8'h80 | (8'h3 << 1) | (8'h1 << 4) | (8'h1 << 6));
+        // start transfer, mode=wait and read, dev/cs=flash, use other buffer
+        writeReg(8'h80 | (8'h3 << 1) | (8'h2 << 4) | (8'h1 << 6));
         write_spicnt_hi = 0;
 
         assert (spi_cnt[11] == 0)
@@ -275,8 +275,8 @@ module spi_bench ();
         write_spicnt_lo = 0;
 
         write_spicnt_hi = 1;
-        // start transfer, mode=wait and read, /cs = lo, use other buffer
-        writeReg(8'h80 | (8'h3 << 1) | (8'h1 << 4) | (8'h1 << 3) | (8'h1 << 6));
+        // start transfer, mode=wait and read, dev/cs = flash, use other buffer
+        writeReg(8'h80 | (8'h3 << 1) | (8'h2 << 4) | (8'h1 << 3) | (8'h1 << 6));
         write_spicnt_hi = 0;
 
         assert (spi_cnt[11] == 1) 

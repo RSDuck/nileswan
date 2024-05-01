@@ -62,15 +62,15 @@ module nileswan_bench ();
         .FastClk(clk),
         .FastClkEnable(fastClkEnable),
 
-        .SPI_Cs(spi_cs),
-        .SPI_Clk(spi_clk),
-        .SPI_Do(spi_do),
-        .SPI_Di(spi_di),
+        .nFlashSel(spi_cs),
+        .SPIClk(spi_clk),
+        .SPIDo(spi_do),
+        .SPIDi(spi_di),
 
-        .TF_Cs(tf_cs),
-        .TF_Clk(tf_clk),
-        .TF_Do(tf_do),
-        .TF_Di(tf_di));
+        .nTFSel(tf_cs),
+        .TFClk(tf_clk),
+        .TFDo(tf_do),
+        .TFDi(tf_di));
 
     initial begin
         #(swan_clock_period*4);

@@ -65,16 +65,15 @@ set_io AddrExt[5] 52
 set_io AddrExt[6] 57
 
 set_io nMCUSel 19
+set_io nFlashSel 49
+set_io SPIClk 48
+set_io SPIDo 45
+set_io -pullup yes SPIDi 46
 
-set_io SPI_Cs 49
-set_io SPI_Clk 48
-set_io SPI_Do 45
-set_io -pullup yes SPI_Di 46
+set_io nTFSel 74
+set_io TFDo 73
+set_io TFDi 71
+set_io TFClk 72
 
-set_io TF_Cs 74
-set_io TF_Do 73
-set_io TF_Di 71
-set_io TF_Clk 72
-
-set_io -pullup yes TF_Detect 25
-set_io TF_Pow 69
+set_io -pullup yes TFDetect 25
+set_io TFPow 69

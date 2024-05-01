@@ -135,12 +135,12 @@ postFlashAddr:
 	stosw
 
 ; Initialize SPI write to flash device, flip buffer
-	mov ax, ((4 - 1) | SPI_MODE_WRITE | SPI_CNT_CS | SPI_CNT_BUFFER | SPI_CNT_BUSY)
+	mov ax, ((4 - 1) | SPI_MODE_WRITE | SPI_CNT_DEV_FLASH | SPI_CNT_BUFFER | SPI_CNT_BUSY)
 	out NILE_SPI_CNT, ax
 	call spiSpinwait
 
 ; Initialize first SPI read from flash device, flip buffer
-	mov ax, ((512 - 1) | SPI_MODE_READ | SPI_CNT_CS | SPI_CNT_BUSY)
+	mov ax, ((512 - 1) | SPI_MODE_READ | SPI_CNT_DEV_FLASH | SPI_CNT_BUSY)
 	out NILE_SPI_CNT, ax
 
 ; Set up read loop, wait for SPI read to finish
@@ -155,7 +155,7 @@ readLoop:
 	in ax, NILE_SPI_CNT
 ; Initialize SPI read from flash device, flip buffer
 	and ax, SPI_CNT_BUFFER
-	xor ax, ((512 - 1) | SPI_MODE_READ | SPI_CNT_CS | SPI_CNT_BUFFER | SPI_CNT_BUSY)
+	xor ax, ((512 - 1) | SPI_MODE_READ | SPI_CNT_DEV_FLASH | SPI_CNT_BUFFER | SPI_CNT_BUSY)
 	out NILE_SPI_CNT, ax
 
 ; Read 512 bytes from flipped buffer
