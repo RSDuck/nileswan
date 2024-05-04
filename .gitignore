@@ -5,6 +5,8 @@ build
 *.history
 
 *.bin
+*.elf
+generated.*.ld
 
 *.ram
 *.ws
@@ -13,3 +15,5 @@ build
 compile_commands.json
 
 *.FCBak
+
+*.kicad_sch.lck
