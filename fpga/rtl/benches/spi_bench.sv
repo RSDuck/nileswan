@@ -5,6 +5,7 @@
 module spi_bench ();
 
 `include "helper/common_signals.sv"
+`include "helper/spi_dev.sv"
 
     initial begin
         $dumpfile("spi.vcd");
@@ -63,48 +64,10 @@ module spi_bench ();
 
     integer i;
 
-    bit testdev_rx_queue[$];
-    bit testdev_tx_queue[$];
-
-    bit testtf_rx_queue[$];
-    bit testtf_tx_queue[$];
-
-    always @(posedge spi_clk) begin
-        if (~spi_cs)
-            testdev_rx_queue.push_back(spi_do);
-    end
-    always @(negedge spi_clk or negedge spi_cs) begin
-        if (~spi_cs) begin
-            spi_di = testdev_tx_queue.pop_front();
-        end
-    end
-
-    always @(posedge tf_clk) begin
-        if (~tf_cs)
-            testtf_rx_queue.push_back(tf_do);
-    end
-    always @(negedge tf_clk or negedge tf_cs) begin
-        if (~tf_cs) begin
-            tf_di = testtf_tx_queue.pop_front();
-        end
-    end
+    `make_spi_dev(testdev, TestDev, spi_cs, spi_clk, spi_di, spi_do)
+    `make_spi_dev(testtf, TestTF, tf_cs, tf_clk, tf_di, tf_do)
 
     localparam swan_clock_period = 1000 / 6;
-
-    task pushTestDevTx(input[7:0] data);
-        for (i = 7; i >= 0; i--) begin
-            testdev_tx_queue.push_back(data[i]);
-        end
-    endtask
-
-    task compareTestDevRX(input[7:0] should);
-        reg[7:0] got;
-        for (i = 7; i >= 0; i--) begin
-            got[i] = testdev_rx_queue.pop_front();
-        end
-        assert (got == should) 
-        else   $error("SPI test device data mismatch (expected %x got %x)", should, got);
-    endtask
 
     task readRXBuf(input[8:0] addr, output[15:0] data);
         buf_addr = addr;
