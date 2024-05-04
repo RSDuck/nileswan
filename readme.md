@@ -25,3 +25,4 @@ Eventually I'll create a PR for this but I've been too lazy.
 - The weak pull up during FPGA init seems to be not enough to keep the MCU deselected. A dedicated 10k pull fixes this.
 - /RESET from the cartridge bus is not connected to the FPGA. Thus power cycling the WonderSwan while keeping the FPGA active is not possible (useful to then save the emulated EEPROM).
 - The link on the silkscreen is wrong
+- There is no way for the microcontroller to know when main power is connected/it should go to sleep
