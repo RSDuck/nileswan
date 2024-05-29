@@ -6,16 +6,11 @@ Expect exciting things here.
 
 ## Status
 
-A third iteration of the PCB is done which contains 2*8 MB of PSRAM, 512 KB of SRAM and a microcontroller with USB. It has been tested to work with the caveats listed in the errata.
+A third iteration of the PCB is done which contains 2\*8 MB of PSRAM, 512 KB of SRAM and a microcontroller with USB. It has been tested to work with the caveats listed in the errata.
 
 ## icepack
 
-For the FPGA to be ready in time the bitstream needs to be loaded at the highest speed possible. To achieve this icepack currently needs to be patched in this spot: https://github.com/YosysHQ/icestorm/blob/1a40ae75d4eebee9cce73a2c4d634fd42ed0110f/icepack/icepack.cc#L623 to
-```c++
-this->freqrange = "high";
-```
-
-Eventually I'll create a PR for this but I've been too lazy.
+For the FPGA to be ready in time, the bitstream needs to be loaded at the highest speed possible. I created a [PR](https://github.com/YosysHQ/icestorm/pull/332) for icepack which adds a setting to change this. Without it is not possible to compile the FPGA bitstream.
 
 ## Errata/Notes for fourth PCB iteration
 - SWD for the microcontroller is not connected
