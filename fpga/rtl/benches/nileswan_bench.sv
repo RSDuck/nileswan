@@ -4,15 +4,13 @@
 
 module nileswan_bench ();
     `include "helper/common_signals.sv"
-        
-    localparam swan_clock_period = 1000 / 6;
 
     initial begin
         $dumpfile("nileswan.vcd");
         $dumpvars(0, nileswan_bench);
     end
 
-    reg nOE = 1, nWE = 1, nSel = 1, nIO = 1;
+    reg nSel;
 
     reg[8:0] addrLo = 0;
     reg[3:0] addrHi = 0;

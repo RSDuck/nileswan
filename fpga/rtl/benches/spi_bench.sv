@@ -12,10 +12,8 @@ module spi_bench ();
         $dumpvars(0, spi_bench);
     end
 
-    reg nOE = 1, nWE = 1, nIO = 1;
-
     reg spi_di = 0;
-    wire spi_do, spi_cs, spi_clk;
+    wire spi_do, spi_cs, spi_clk, spi_mcu_cs;
 
     reg tf_di = 0;
     wire tf_do, tf_cs, tf_clk;
@@ -55,6 +53,7 @@ module spi_bench ();
         .SPIDi(spi_di),
         .SPIClk(spi_clk),
         .nFlashSel(spi_cs),
+        .nMCUSel(spi_mcu_cs),
 
         .TFDo(tf_do),
         .TFDi(tf_di),
@@ -64,10 +63,8 @@ module spi_bench ();
 
     integer i;
 
-    `make_spi_dev(testdev, TestDev, spi_cs, spi_clk, spi_di, spi_do)
+    `make_spi_dev(testdev, TestDev, spi_cs&spi_mcu_cs, spi_clk, spi_di, spi_do)
     `make_spi_dev(testtf, TestTF, tf_cs, tf_clk, tf_di, tf_do)
-
-    localparam swan_clock_period = 1000 / 6;
 
     task readRXBuf(input[8:0] addr, output[15:0] data);
         buf_addr = addr;
@@ -89,17 +86,6 @@ module spi_bench ();
         nWE = 1;
         #(swan_clock_period/2);
         write_txbuffer = 0;
-    endtask
-
-    task writeReg(input[7:0] data);
-        write_data = data;
-        #(swan_clock_period/2);
-        nIO = 0;
-        nWE = 0;
-        #(swan_clock_period);
-        nWE = 1;
-        #(swan_clock_period/2);
-        nIO = 1;
     endtask
 
     reg[15:0] read_spi_data;
@@ -263,6 +249,14 @@ module spi_bench ();
         readRXBuf(0, read_spi_data);
         assert (read_spi_data == 16'h85E3) // 85 is from the previous transfer
         else   $error("Wrong value read from SPI RX buffer (offset=0) got %x", read_spi_data);
+
+        compareTestDevRX(8'hFF);
+        compareTestDevRX(8'hFF);
+        compareTestDevRX(8'hFF);
+        compareTestDevRX(8'hFF);
+        compareTestDevRX(8'hFF);
+        compareTestDevRX(8'hFF);
+        compareTestDevRX(8'hFF);
 /*
         tf_pow = 1;
 

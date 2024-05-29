@@ -2,12 +2,12 @@
     bit ``name``_rx_queue[$]; \
     bit ``name``_tx_queue[$]; \
     \
-    always @(posedge ``clk``) begin \
-        if (~``cs``) \
+    always @(posedge (``clk``)) begin \
+        if (~(``cs``)) \
             ``name``_rx_queue.push_back(``pico``); \
     end \
-    always @(negedge ``clk`` or negedge ``cs``) begin \
-        if (~``cs``) begin \
+    always @(negedge (``clk``) or negedge (``cs``)) begin \
+        if (~(``cs``)) begin \
             ``poci`` = ``name``_tx_queue.pop_front(); \
         end \
     end \
