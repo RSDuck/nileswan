@@ -14,30 +14,14 @@
  * You should have received a copy of the GNU General Public License along
  * with Nileswan IPL1. If not, see <https://www.gnu.org/licenses/>.
  */
+#ifndef __FLASH_COMM_H__
+#define __FLASH_COMM_H__
 
-#include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/spi.h>
+#include <stdbool.h>
+#include <stdint.h>
 
-int main(void) {
-    rcc_periph_clock_enable(RCC_GPIOA);
-    rcc_periph_clock_enable(RCC_GPIOB);
-    rcc_periph_clock_enable(RCC_GPIOC);
-    rcc_periph_clock_enable(RCC_SPI1);
+#include <wonderful.h>
 
-    gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO4|GPIO5|GPIO6|GPIO7);
-    gpio_set_af(GPIOA, GPIO_AF0, GPIO4|GPIO5|GPIO6|GPIO7);
+void flash_read(uint32_t addr, uint16_t size, uint8_t __far* out);
 
-    rcc_periph_reset_pulse(RST_SPI1);
-
-    spi_set_slave_mode(SPI1);
-    spi_set_standard_mode(SPI1, 0);
-
-    spi_enable(SPI1);
-
-    uint8_t prev_value = 0xAB;
-    while (1) {
-        spi_send(SPI1, prev_value);
-        prev_value++;
-    }
-}
+#endif

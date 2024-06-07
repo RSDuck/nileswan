@@ -15,29 +15,21 @@
  * with Nileswan IPL1. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/spi.h>
+#include "flash_comm.h"
 
-int main(void) {
-    rcc_periph_clock_enable(RCC_GPIOA);
-    rcc_periph_clock_enable(RCC_GPIOB);
-    rcc_periph_clock_enable(RCC_GPIOC);
-    rcc_periph_clock_enable(RCC_SPI1);
+#include "nileswan.h"
 
-    gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO4|GPIO5|GPIO6|GPIO7);
-    gpio_set_af(GPIOA, GPIO_AF0, GPIO4|GPIO5|GPIO6|GPIO7);
+#include <ws/hardware.h>
 
-    rcc_periph_reset_pulse(RST_SPI1);
+void flash_read(uint32_t addr, uint16_t size, uint8_t __far *out) {
+    outportw(IO_NILE_SPI_CNT, NILE_SPI_CS_DEV_FLASH_SEL|NILE_SPI_25MHZ);
 
-    spi_set_slave_mode(SPI1);
-    spi_set_standard_mode(SPI1, 0);
+    uint8_t data[4] = {0x03, addr >> 16, (addr >> 8) & 0xFF, addr & 0xFF};
+    outportb(IO_LCD_SEG, 0xF);
+    nile_spi_tx(data, 4);
+    outportb(IO_LCD_SEG, 0xE);
+    nile_spi_rx_copy(out, size, NILE_SPI_MODE_READ);
+    outportb(IO_LCD_SEG, 0xA);
 
-    spi_enable(SPI1);
-
-    uint8_t prev_value = 0xAB;
-    while (1) {
-        spi_send(SPI1, prev_value);
-        prev_value++;
-    }
+    outportw(IO_NILE_SPI_CNT, NILE_SPI_CS_DEV_TF_DESEL);
 }

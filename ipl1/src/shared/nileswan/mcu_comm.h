@@ -14,30 +14,26 @@
  * You should have received a copy of the GNU General Public License along
  * with Nileswan IPL1. If not, see <https://www.gnu.org/licenses/>.
  */
+#ifndef __MCU_COMM_H__
+#define __MCU_COMM_H__
 
-#include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/spi.h>
+#include <stdbool.h>
+#include <stdint.h>
 
-int main(void) {
-    rcc_periph_clock_enable(RCC_GPIOA);
-    rcc_periph_clock_enable(RCC_GPIOB);
-    rcc_periph_clock_enable(RCC_GPIOC);
-    rcc_periph_clock_enable(RCC_SPI1);
+#include <wonderful.h>
 
-    gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO4|GPIO5|GPIO6|GPIO7);
-    gpio_set_af(GPIOA, GPIO_AF0, GPIO4|GPIO5|GPIO6|GPIO7);
+#define MCU_FLASH_START 0x08000000
 
-    rcc_periph_reset_pulse(RST_SPI1);
+#define MCU_FLASH_PAGE_SIZE 128
+#define MCU_FLASH_SECTOR_SIZE 4096
 
-    spi_set_slave_mode(SPI1);
-    spi_set_standard_mode(SPI1, 0);
+bool mcu_comm_start();
+void mcu_comm_stop();
 
-    spi_enable(SPI1);
+bool mcu_comm_bootloader_version(uint8_t __far* version);
+bool mcu_comm_bootloader_erase_memory(uint16_t page_address, uint8_t num_pages);
+bool mcu_comm_bootloader_read_memory(uint32_t addr, uint8_t __far* data, uint8_t size_minus_one);
+bool mcu_comm_bootloader_write_memory(uint32_t addr, const uint8_t __far* data, uint8_t size_minus_one);
+bool mcu_comm_bootloader_go(uint32_t addr);
 
-    uint8_t prev_value = 0xAB;
-    while (1) {
-        spi_send(SPI1, prev_value);
-        prev_value++;
-    }
-}
+#endif

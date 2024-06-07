@@ -18,3 +18,6 @@ OPENCM3_DIR=libopencm3
 include $(OPENCM3_DIR)/mk/genlink-config.mk
 include rules.mk
 include $(OPENCM3_DIR)/mk/genlink-rules.mk
+
+program: $(PROJECT).bin
+	iceprog -i 4 -o 192k $(PROJECT).bin
