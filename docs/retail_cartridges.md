@@ -78,6 +78,10 @@ The opening sequence is synchronous to the serial clock signal. It begins after 
 
 It seems like there is some allowed variance in the number of cycles before the first low MBC value. Though how it is depicted in the trace (where it is output during the fourth rising edge after the rising edge with the address change) is how official Bandai chips seem to behave.
 
+## Serial clock
+
+The positive edge of the serial clock seems to always coincide with the positive edge of bus control signals `/OE` or `/WE`. This makes it easy to latch on either signals without having to fear timing violations.
+
 ## Speed requirements
 
 Generally speaking the `/OE` or `/WE` signal seem to go low and high again with a frequency of about 3 MHz which is probably derived from the 12.288MHz system clock. This leaves half the period, so about 162 ns to handle one memory access.
