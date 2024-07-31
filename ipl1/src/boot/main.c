@@ -19,7 +19,7 @@
 #include <string.h>
 #include <ws.h>
 #include <ws/hardware.h>
-#include "fatfs/ff.h"
+#include "ff.h"
 #include "nileswan/nileswan.h"
 #include "../../build/assets/tiles.h"
 #include "util.h"

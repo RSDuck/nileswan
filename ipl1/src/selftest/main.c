@@ -22,7 +22,6 @@
 #include <ws/hardware.h>
 #include <ws/keypad.h>
 #include <ws/system.h>
-#include "fatfs/ff.h"
 #include "nileswan/nileswan.h"
 #include "nileswan/mcu_comm.h"
 #include "nileswan/flash_comm.h"

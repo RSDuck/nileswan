@@ -20,8 +20,8 @@
 #include <ws/display.h>
 #include <ws/util.h>
 #include "nileswan/nileswan.h"
-#include "fatfs/ff.h"
-#include "fatfs/diskio.h"
+#include "ff.h"
+#include "diskio.h"
 
 // #define USE_DEVFS
 #define USE_MULTI_TRANSFER_READS
@@ -509,7 +509,7 @@ disk_read_end:
 
 #endif
 
-DRESULT disk_ioctl (BYTE pdrv, BYTE cmd, void *buff) {
+DRESULT disk_ioctl (BYTE pdrv, BYTE cmd, void* buff) {
 	if (cmd == CTRL_SYNC)
 		return RES_OK;
 	return RES_PARERR;

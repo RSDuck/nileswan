@@ -15,7 +15,7 @@ NAME_SELFTEST	:= ipl1_selftest
 # Source code paths
 # -----------------
 
-INCLUDEDIRS	:= src/boot src/selftest src/shared
+INCLUDEDIRS	:= src/boot src/selftest src/shared vendor/fatfs/source
 
 # Defines passed to all files
 # ---------------------------
@@ -60,7 +60,8 @@ SOURCES_SHARED		:= \
 
 SOURCES_BOOT		:= \
 	$(shell find -L src/boot -name "*.s") \
-	$(shell find -L src/boot -name "*.c")
+	$(shell find -L src/boot -name "*.c") \
+	$(shell find -L vendor/fatfs/source -name "*.c")
 	
 SOURCES_SELFTEST	:= \
 	$(shell find -L src/selftest -name "*.s") \

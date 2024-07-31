@@ -84,7 +84,7 @@
 / Locale and Namespace Configurations
 /---------------------------------------------------------------------------*/
 
-#define FF_CODE_PAGE	437
+#define FF_CODE_PAGE	1
 /* This option specifies the OEM code page to be used on the target system.
 /  Incorrect code page setting can cause a file open failure.
 /
@@ -133,7 +133,7 @@
 /  ff_memfree() exemplified in ffsystem.c, need to be added to the project. */
 
 
-#define FF_LFN_UNICODE	2
+#define FF_LFN_UNICODE	0
 /* This option switches the character encoding on the API when LFN is enabled.
 /
 /   0: ANSI/OEM in current CP (TCHAR = char)
@@ -292,5 +292,89 @@
 */
 
 
+/*---------------------------------------------------------------------------/
+/ wf-fatfs Fork Configurations (Optimizations)
+/---------------------------------------------------------------------------*/
+
+#define FF_WF_UNALIGNED_ACCESS 2
+/* FF_WF_UNALIGNED_ACCESS enables performance optimizations based on certain
+/  CPU architecture assumptions.
+/
+/  0: Any endianness, unaligned access support not required. Slowest.
+/  1: Little-endian, unaligned access support not required.
+/  2: Little-endian, unaligned access support required. Fastest.
+*/
+
+
+#define FF_WF_FAST_CONTIGUOUS_READ  1
+#define FF_WF_FAST_CONTIGUOUS_WRITE 0
+/* FF_WF_FAST_CONTIGUOUS_* controls whether or not contiguous reads or writes
+/  of more than 1 cluster (>4-32KB) are optimized to use large disk_read()
+/  and disk_write() calls. This can be useful on platforms where the cost of
+/  initializing a sector read/write is large.
+/
+/  0: Do not optimize this scenario.
+/  1: Optimize this scenario.
+*/
+
+
+#define FF_WF_CACHE_CLUSTER_SHIFT 0
+/* FF_WF_CACHE_CLUSTER_SHIFT controls whether the cluster bitshift value
+/  is cached. This is useful on platforms with slow divisions.
+*/
+
+
+/*---------------------------------------------------------------------------/
+/ wf-fatfs Fork Configurations (Tweaks)
+/---------------------------------------------------------------------------*/
+
+#define FF_WF_LIST_DOTDOT 0
+/* FF_WF_LIST_DOTDOT controls whether or not f_readdir() and other functions
+/  expose "." and ".." directory entries.
+/
+/  0: "." and ".." directory entries are hidden.
+/  1: "." and ".." directory entries are exposed.
+*/
+
+
+#define FF_WF_MARK_WINDOW_READS 0
+/* FF_WF_MARK_WINDOW_READS allows marking reads done on the FATFS instance's
+/  window (directory/cluster reads) with an "| 0x80" on the pdrv argument
+/  in disk_read(). This can be used as information for sector caching
+/  algorithms.
+*/
+
+/*---------------------------------------------------------------------------/
+/ wf-fatfs Fork Configurations (POSIX compatibility improvements)
+/---------------------------------------------------------------------------*/
+
+#define FF_WF_FILINFO_LOCATION 0
+/* FF_WF_FILINFO_LOCATION controls whether or not the FILINFO structure
+/  contains fpdrv (physical drive ID) and fclust (file cluster #) values.
+/
+/  FIXME: This is not currently supported when FF_FS_EXFAT == 1.
+*/
+
+
+#define FF_WF_STAT_ORIGIN_DIRECTORY 0
+/* FF_WF_STAT_ORIGIN_DIRECTORY controls whether or not the origin directory
+/  can pass an f_stat() call.
+*/
+
+
+#define FF_WF_GETFREE_NULL_PATH 0
+/* FF_WF_GETFREE_NULL_PATH controls whether or not f_getfree() can be called
+/  on a FATFS instance directly by passing NULL to path and an instance
+/  in the "return" pointer.
+*/
+
+/*---------------------------------------------------------------------------/
+/ wf-fatfs Fork Configurations (Other)
+/---------------------------------------------------------------------------*/
+
+/* Address spaces used for certain pointer arguments.
+*/
+#define FF_WF_DATA_BUFFER_ADDRESS_SPACE __far
+#define FF_WF_FILINFO_ADDRESS_SPACE
 
 /*--- End of configuration options ---*/
