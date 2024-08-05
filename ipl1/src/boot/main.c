@@ -18,9 +18,8 @@
 #include <stddef.h>
 #include <string.h>
 #include <ws.h>
-#include <ws/hardware.h>
-#include "ff.h"
-#include "nileswan/nileswan.h"
+#include <nile.h>
+#include <nilefs.h>
 #include "../../build/assets/tiles.h"
 #include "util.h"
 
@@ -38,12 +37,12 @@ static uint16_t progress_pos;
 
 static const char fatfs_error_header[] = "TF card read failed (    )";
 
-extern uint8_t diskio_detail_code;
+/* extern */ uint8_t diskio_detail_code;
 
 __attribute__((noreturn))
 static void report_fatfs_error(uint8_t result) {
 	// deinitialize hardware
-	outportw(IO_NILE_SPI_CNT, NILE_SPI_390KHZ);
+	outportw(IO_NILE_SPI_CNT, NILE_SPI_CLOCK_CART);
 	outportb(IO_NILE_POW_CNT, 0);
 	
     outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(7, 0, 2, 5));
@@ -122,7 +121,7 @@ static uint8_t load_menu(void) {
 const uint8_t swan_logo_map[] = {0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B};
 
 void main(void) {
-	nile_ipl_data->card_state = 0;
+//	nile_ipl_data->card_state = 0;
 	outportb(IO_SYSTEM_CTRL2, 0x00); // Disable SRAM/IO wait states
 
     ws_display_set_shade_lut(SHADE_LUT_DEFAULT);

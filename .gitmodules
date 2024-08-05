@@ -1,6 +1,3 @@
 [submodule "firmware/libopencm3"]
 	path = firmware/libopencm3
 	url = https://github.com/libopencm3/libopencm3.git
-[submodule "ipl1/vendor/fatfs"]
-	path = ipl1/vendor/fatfs
-	url = https://github.com/WonderfulToolchain/wf-fatfs

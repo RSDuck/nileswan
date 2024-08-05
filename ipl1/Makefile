@@ -15,18 +15,19 @@ NAME_SELFTEST	:= ipl1_selftest
 # Source code paths
 # -----------------
 
-INCLUDEDIRS	:= src/boot src/selftest src/shared vendor/fatfs/source
+INCLUDEDIRS	:= src/boot src/selftest src/shared
 
 # Defines passed to all files
 # ---------------------------
 
-DEFINES		:= -DNILESWAN_IPL1
+DEFINES		:=
 
 # Libraries
 # ---------
 
-LIBS		:= -lwsx -lws
-LIBDIRS		:= $(WF_TARGET_DIR)
+LIBS		:= -lnilefs -lnile -lwsx -lws
+LIBDIRS		:= $(WF_TARGET_DIR) \
+		   ../libnile/dist/ipl1
 
 # Build artifacts
 # ---------------
@@ -60,8 +61,7 @@ SOURCES_SHARED		:= \
 
 SOURCES_BOOT		:= \
 	$(shell find -L src/boot -name "*.s") \
-	$(shell find -L src/boot -name "*.c") \
-	$(shell find -L vendor/fatfs/source -name "*.c")
+	$(shell find -L src/boot -name "*.c")
 	
 SOURCES_SELFTEST	:= \
 	$(shell find -L src/selftest -name "*.s") \

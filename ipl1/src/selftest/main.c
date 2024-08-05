@@ -18,13 +18,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <ws.h>
-#include <ws/display.h>
-#include <ws/hardware.h>
-#include <ws/keypad.h>
-#include <ws/system.h>
-#include "nileswan/nileswan.h"
-#include "nileswan/mcu_comm.h"
-#include "nileswan/flash_comm.h"
+#include <nile.h>
 #include "../../build/assets/tiles.h"
 #include "util.h"
 
@@ -238,8 +232,8 @@ void run_mcu_test(void) {
 }
 
 void main(void) {
-	// deinitialize hardware
-	//outportw(IO_NILE_SPI_CNT, NILE_SPI_390KHZ);
+	// FIXME: deinitialize hardware
+	//outportw(IO_NILE_SPI_CNT, NILE_SPI_CLOCK_CART);
 	//outportb(IO_NILE_POW_CNT, 0);
 	bool sram_io_speed_limit = true;
 
