@@ -96,7 +96,11 @@ If SPI IRQ generation is enabled an IRQ will be generated whenever the the busy 
 | Bit(s) | Description |
 |------|------|
 |0-8|Mask to be applied to ROM bank index|
-|9-11|Unused/0|
+|9|Use mask for accesses in ROM0 area (0 = no, 1 = yes (default))|
+|10|Use mask for accesses in ROM1 area (0 = no, 1 = yes (default))|
+|11|Use mask for accesses in RAM area (0 = no, 1 = yes (default))|
 |12-15|Mask to be applied to RAM bank index|
 
 To allow booting from bootrom the masks are initialised with all bits set.
+
+Bank mask is always applied to the extended ROM bank (starting from 0x40000).

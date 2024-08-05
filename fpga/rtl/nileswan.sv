@@ -105,6 +105,9 @@ module nileswan(
 
     reg[8:0] rom_bank_mask = 9'h1FF;
     reg[3:0] ram_bank_mask = 8'hF;
+    reg bank_mask_apply_rom_0 = 1;
+    reg bank_mask_apply_rom_1 = 1;
+    reg bank_mask_apply_ram = 1;
 
     reg[7:0] reg_out = 0;
     reg reg_ack = 0;
@@ -151,7 +154,11 @@ module nileswan(
         MEMORY_CTRL: reg_out = {7'h0, self_flash};
 
         BANK_MASK_LO: reg_out = rom_bank_mask[7:0];
-        BANK_MASK_HI: reg_out = {ram_bank_mask, 3'h0, rom_bank_mask[8]};
+        BANK_MASK_HI: reg_out = {ram_bank_mask,
+            bank_mask_apply_ram,
+            bank_mask_apply_rom_1,
+            bank_mask_apply_rom_0,
+            rom_bank_mask[8]};
         SPI_CNT_LO: begin
             reg_out = spi_cnt[7:0];
             write_spi_cnt_lo = 1;
@@ -181,6 +188,9 @@ module nileswan(
             BANK_MASK_LO: rom_bank_mask[7:0] <= Data;
             BANK_MASK_HI: begin
                 rom_bank_mask[8] <= Data[0];
+                bank_mask_apply_rom_0 = Data[1];
+                bank_mask_apply_rom_1 = Data[2];
+                bank_mask_apply_ram = Data[3];
                 ram_bank_mask <= Data[7:4];
             end
 
@@ -199,11 +209,13 @@ module nileswan(
     reg[8:0] rom_addr_ext_fin;
     reg sel_rom_space, sel_ram_space;
     reg access_in_ram_area;
+    reg apply_bank_mask;
     always_comb begin
         rom_addr_ext_fin = 0;
         sel_rom_space = 0;
         sel_ram_space = 0;
         access_in_ram_area = 0;
+        apply_bank_mask = 1;
         case (AddrHi)
             4'h0: begin end
             4'h1: begin
@@ -211,14 +223,17 @@ module nileswan(
                 sel_ram_space = ~self_flash;
                 rom_addr_ext_fin = ram_addr_ext[8:0];
                 access_in_ram_area = 1;
+                apply_bank_mask = bank_mask_apply_ram;
             end
             4'h2: begin
                 sel_rom_space = 1;
                 rom_addr_ext_fin = rom0_addr_ext[8:0];
+                apply_bank_mask = bank_mask_apply_rom_0;
             end
             4'h3: begin
                 sel_rom_space = 1;
                 rom_addr_ext_fin = rom1_addr_ext[8:0];
+                apply_bank_mask = bank_mask_apply_rom_1;
             end
             default: begin
                 sel_rom_space = 1;
@@ -227,10 +242,10 @@ module nileswan(
         endcase
     end
 
-    wire[8:0] addr_ext_masked_rom = rom_addr_ext_fin & rom_bank_mask;
+    wire[8:0] addr_ext_masked_rom =  apply_bank_mask ? (rom_addr_ext_fin & rom_bank_mask) : rom_addr_ext_fin;
     // SRAM address space is always mapped via RAM_BANK
     // while ROM address space depends on where
-    wire[3:0] addr_ext_masked_ram = ram_addr_ext[3:0] & ram_bank_mask;
+    wire[3:0] addr_ext_masked_ram = apply_bank_mask ? (ram_addr_ext[3:0] & ram_bank_mask) : ram_addr_ext[3:0];
 
     wire sel_psram_1 = sel_rom_space && addr_ext_masked_rom[8:7] == 2'h0;
     wire sel_psram_2 = sel_rom_space && addr_ext_masked_rom[8:7] == 2'h1;
