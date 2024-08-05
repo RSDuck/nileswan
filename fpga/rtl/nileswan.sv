@@ -1,6 +1,7 @@
 `include "dance.sv"
 `include "bootrom.sv"
 `include "spi.sv"
+`include "ipcram.sv"
 
 module nileswan(
     input nSel, input nOE, input nWE,
@@ -54,12 +55,6 @@ module nileswan(
         .AddrHi(AddrHi),
         .SClk(SClk),
         .MBC(MBC));
-
-    wire[15:0] bootrom_read;
-    BootROM blockram (
-        .nOE(nOE),
-        .AddrLo(AddrLo),
-        .ReadData(bootrom_read));
 
     wire IOWrite = ~nSel & ~nIO;
     wire[7:0] RegAddr = {AddrHi, AddrLo[3:0]};
@@ -247,26 +242,43 @@ module nileswan(
     // while ROM address space depends on where
     wire[3:0] addr_ext_masked_ram = apply_bank_mask ? (ram_addr_ext[3:0] & ram_bank_mask) : ram_addr_ext[3:0];
 
-    wire sel_psram_1 = sel_rom_space && addr_ext_masked_rom[8:7] == 2'h0;
-    wire sel_psram_2 = sel_rom_space && addr_ext_masked_rom[8:7] == 2'h1;
-    wire sel_rxbuf = sel_rom_space && addr_ext_masked_rom == 9'h1FE;
-    wire sel_bootrom = sel_rom_space && (addr_ext_masked_rom == 9'h1FF || addr_ext_masked_rom == 9'h1F4);
+    wire psram_1_addr = sel_rom_space && addr_ext_masked_rom[8:7] == 2'h0;
+    wire psram_2_addr = sel_rom_space && addr_ext_masked_rom[8:7] == 2'h1;
+    wire rxbuf_addr = sel_rom_space && addr_ext_masked_rom == 9'h1FE;
+    wire bootrom_addr = sel_rom_space && (addr_ext_masked_rom == 9'h1FF || addr_ext_masked_rom == 9'h1F4);
     
-    wire sel_sram = sel_ram_space && addr_ext_masked_ram[3] == 1'h0;
-    wire sel_txbuf = sel_ram_space && addr_ext_masked_ram == 4'hF;
+    wire sram_addr = sel_ram_space && addr_ext_masked_ram[3] == 1'h0;
+    wire ipcbuf_addr = sel_ram_space && addr_ext_masked_ram == 4'hE;
+    wire txbuf_addr = sel_ram_space && addr_ext_masked_ram == 4'hF;
 
     assign AddrExt[2:0] = sel_rom_space ? addr_ext_masked_rom[2:0] : addr_ext_masked_ram[2:0];
     // save some LEs, SRAM ignores the banking bits above bit 2
     assign AddrExt[6:3] = addr_ext_masked_rom[6:3];
 
-    assign nPSRAM1Sel = ~(~nSel & nIO & sel_psram_1);
-    assign nPSRAM2Sel = ~(~nSel & nIO & sel_psram_2);
-    assign nSRAMSel = ~(~nSel & nIO & sel_sram);
+    assign nPSRAM1Sel = ~(~nSel & nIO & psram_1_addr);
+    assign nPSRAM2Sel = ~(~nSel & nIO & psram_2_addr);
+    assign nSRAMSel = ~(~nSel & nIO & sram_addr);
 
     assign PSRAM_nLB = access_in_ram_area & AddrLo[0];
     assign PSRAM_nUB = access_in_ram_area & ~AddrLo[0];
 
-    assign write_txbuf = ~nSel & nIO & sel_txbuf;
+    assign write_txbuf = ~nSel & nIO & txbuf_addr;
+
+    wire[15:0] bootrom_read;
+    BootROM blockram (
+        .nOE(nOE),
+        .AddrLo(AddrLo),
+        .Sel(~nSel & nIO & bootrom_addr),
+        .ReadData(bootrom_read));
+
+    wire[7:0] ipc_read;
+    IPCRAM ipcram (
+        .nOE(nOE),
+        .nWE(nWE),
+        .Sel(~nSel & nIO & ipcbuf_addr),
+        .AddrLo(AddrLo),
+        .ReadData(ipc_read),
+        .WriteData(Data[7:0]));
 
     wire sel_oe = ~nSel & ~nOE;
 
@@ -274,18 +286,20 @@ module nileswan(
     wire psram_hi_read = access_in_ram_area & ~(nPSRAM1Sel & nPSRAM2Sel) & ~nOE & AddrLo[0];
 
     wire output_io_out = ~nIO & reg_ack;
-    wire output_bootrom = nIO & sel_bootrom;
-    wire output_rxbuf = nIO & sel_rxbuf;
+    wire output_bootrom = nIO & bootrom_addr;
+    wire output_ipcbuf = nIO & ipcbuf_addr;
+    wire output_rxbuf = nIO & rxbuf_addr;
 
-    wire enable_output_lo = (sel_oe & (output_io_out | output_bootrom | output_rxbuf)) | psram_hi_read;
+    wire enable_output_lo = (sel_oe & (output_io_out | output_bootrom | output_ipcbuf | output_rxbuf)) | psram_hi_read;
     wire enable_output_hi = (sel_oe & (output_bootrom | output_rxbuf)) | psram_hi_write;
 
     reg[7:0] output_data_lo, output_data_hi;
     always_comb begin
-        casez ({psram_hi_read, output_io_out, output_bootrom, output_rxbuf})
-        4'b1???: output_data_lo = Data[15:8];
-        4'b?1??: output_data_lo = reg_out;
-        4'b??1?: output_data_lo = bootrom_read[7:0];
+        casez ({output_ipcbuf, psram_hi_read, output_io_out, output_bootrom, output_rxbuf})
+        5'b1????: output_data_lo = ipc_read;
+        5'b?1???: output_data_lo = Data[15:8];
+        5'b??1??: output_data_lo = reg_out;
+        5'b???1?: output_data_lo = bootrom_read[7:0];
         default: output_data_lo = rxbuf_read[7:0];
         endcase
     end

@@ -28,7 +28,8 @@
 | Bank(s) | Description |
 |------------|-------------|
 | 0-7 | SRAM (512 KB) |
-| 8-14 | Unused (open bus) |
+| 8-13 | Unused (open bus) |
+| 14 | IPC buffer (512 bytes mirrored) |
 | 15 | SPI TX buffer (write only, 512 bytes mirrored) |
 
 SPI RX and TX buffer are double buffered with only one currently visible. This is controlable via `SPI_CNT`.

@@ -93,6 +93,23 @@ static void wait_for_button(void) {
 	while(ws_keypad_scan());
 }
 
+static bool tiny_ipc_check() {
+	outportw(IO_BANK_2003_RAM, 14);
+	__far uint16_t* ipc_buf = MK_FP(0x1000, 0);
+
+	for (uint16_t i = 0; i < 256; i++)
+		*(ipc_buf++) = i;
+
+	// IPC buffer should mirror
+	for (uint16_t i = 0; i < 256; i++)
+	{
+		if (*(ipc_buf++) != i)
+			return false;
+	}
+
+	return true;
+}
+
 void run_quick_test(int psram_max_bank) {
 	clear_screen();
 	DRAW_STRING_CENTERED(0, "quick test in progress", 0);
@@ -103,6 +120,9 @@ void run_quick_test(int psram_max_bank) {
 	DRAW_STRING(2, 3, "SRAM write/read", 0);
 	outportb(IO_CART_FLASH, 0);
 	draw_pass_fail(3, ram_fault_test_bool(SRAM_MAX_BANK + 1));
+
+	DRAW_STRING(2, 4, "IPC buf write/read", 0);
+	draw_pass_fail(4, tiny_ipc_check());
 
 	ws_screen_fill_tiles(SCREEN, 0x120, 0, 0, 28, 1);
 	DRAW_STRING_CENTERED(0, "quick test complete", 0);
