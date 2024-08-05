@@ -70,14 +70,14 @@ The selected clock will also be used for EEPROM and RTC serial transactions.
 |2|Enable nileswan I/O registers (0=off, 1=on (default))|
 |3|Enable Bandai 2003 banking (0=off, 1=on (default))|
 |4|Emulated serial device mode (0=RTC (default), 1=EEPROM)|
-|5-6|Serial device mode (0=emulate nothing connected (default), 1=emulate FPGA internal, 2=emulate via μC, 3=invalid)
-|7|Unused/0|
+|5-6|Unused/0|
+|7|μC reset line|
 
 Once the nileswan I/O registers are disabled, they can only be brought back via hardware reset.
 
 Depending on the selected serial device mode the appropriate I/O registers for RTC (`RTC_CTRL` and `RTC_DATA`) or EEPROM (`CART_SERIAL_DATA`, `CART_SERIAL_COM` and `CART_SERIAL_CTRL`) become valid or invalid.
 
-If the serial device is set to be emulated FPGA internal an EEPROM or RTC is emulated within the FPGA and no μC needs to be installed on the board.
+The μC reset line bit directly connects to the nRST pin of the microcontroller.
 
 ### Interrupts
 

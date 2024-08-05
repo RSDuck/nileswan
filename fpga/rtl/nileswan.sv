@@ -22,8 +22,6 @@ module nileswan(
 
     input FastClk, output FastClkEnable,
 
-    output Debug,
-
     output nMCUSel,
     output nFlashSel,
     output SPIClk,
@@ -35,19 +33,21 @@ module nileswan(
     output TFDo,
     input TFDi,
     
-    output TFPow);
+    output TFPow,
+    
+    output nMCUReset);
 
     reg enable_fastclk = 1'b1;
     assign FastClkEnable = ~enable_fastclk;
     reg enable_tf_power = 1'b0;
     assign TFPow = enable_tf_power;
+    reg nmcu_reset = 1'b1;
+    assign nMCUReset = nmcu_reset;
 
     assign nMem_OE = nOE;
     assign nMem_WE = nWE;
 
     assign nCartInt = 1'b1;
-
-    assign Debug = 0;
 
     Dance dance (
         .AddrLo(AddrLo[7:0]),
@@ -161,7 +161,7 @@ module nileswan(
             write_spi_cnt_hi = 1;
         end
 
-        POW_CNT: reg_out = {6'h0, enable_tf_power, enable_fastclk};
+        POW_CNT: reg_out = {nmcu_reset, 5'h0, enable_tf_power, enable_fastclk};
         default: reg_ack = 0;
         endcase
     end
@@ -187,6 +187,8 @@ module nileswan(
             POW_CNT: begin
                 enable_fastclk <= Data[0];
                 enable_tf_power <= Data[1];
+
+                nmcu_reset <= Data[7];
             end
 
             default: begin end

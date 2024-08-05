@@ -1,7 +1,7 @@
 set_io FastClk 13
 set_io FastClkEnable 10
 
-set_io Debug 1
+set_io -pullup yes Button 1
 
 set_io AddrLo[0] 80
 set_io AddrLo[1] 83
@@ -77,3 +77,5 @@ set_io TFClk 72
 
 set_io -pullup yes TFDetect 25
 set_io TFPow 69
+
+set_io nMCUReset 16

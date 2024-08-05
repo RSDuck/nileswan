@@ -138,6 +138,15 @@ void run_read_memory_test(void) {
 #define MCU_EXE_SIZE 1024
 
 void run_mcu_test(void) {
+	outportw(IO_NILE_SPI_CNT, NILE_SPI_390KHZ);
+	uint8_t data[1];
+	nile_spi_rx_copy(data, 1, NILE_SPI_MODE_READ);
+	outportb(IO_NILE_POW_CNT, inportb(IO_NILE_POW_CNT)&~0x80);
+	ws_busywait(1000);
+	outportb(IO_NILE_POW_CNT, inportb(IO_NILE_POW_CNT)|0x80);
+
+	ws_busywait(1000*10);
+
 	clear_screen();
 	DRAW_STRING_CENTERED(0, "testing MCU comm", 0);
 	DRAW_STRING(2, 2, "miauz", 0);
