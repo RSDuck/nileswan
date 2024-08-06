@@ -1,5 +1,6 @@
 
 module BootROM (
+    input Sel,
     input nOE,
     input[8:0] AddrLo,
 
@@ -20,7 +21,8 @@ module BootROM (
     reg[15:0] read_data;
     assign ReadData = read_data;
 
-    always @(negedge nOE)
-        read_data <= memory[AddrLo[8:1]];
-
+    always @(negedge nOE) begin
+        if (Sel)
+            read_data <= memory[AddrLo[8:1]];
+    end
 endmodule
