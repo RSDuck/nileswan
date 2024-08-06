@@ -26,9 +26,9 @@
 #define MENU_OPTION_QUICK_TEST_8MB 1
 #define MENU_OPTION_MEMORY_TEST 2
 #define MENU_OPTION_RETENTION 3
-#define MENU_OPTION_MCU 4
-#define MENU_OPTION_SRAM_SPEED 5
-#define MENU_OPTIONS_COUNT 6
+// #define MENU_OPTION_MCU 4
+#define MENU_OPTION_SRAM_SPEED 4
+#define MENU_OPTIONS_COUNT 5
 
 #define SCREEN ((uint16_t*) (0x3800 + (13 * 32 * 2)))
 
@@ -36,8 +36,8 @@
 #define PSRAM_MAX_BANK_16MB 255
 #define SRAM_MAX_BANK 7
 
-uint8_t flash_read_buffer[128];
-uint8_t flash_read_buffer2[128];
+/* uint8_t flash_read_buffer[128];
+uint8_t flash_read_buffer2[128]; */
 
 /* === Test code in external files === */
 
@@ -148,7 +148,7 @@ void run_read_memory_test(void) {
 	wait_for_button();
 }
 
-#define MCU_EXE_SIZE 1024
+/* #define MCU_EXE_SIZE 1024
 
 void run_mcu_test(void) {
 	outportw(IO_NILE_SPI_CNT, NILE_SPI_390KHZ);
@@ -229,7 +229,7 @@ void run_mcu_test(void) {
 	mcu_comm_stop();
 
 	wait_for_button();
-}
+} */
 
 void main(void) {
 	// FIXME: deinitialize hardware
@@ -275,7 +275,7 @@ update_full_menu:
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_QUICK_TEST_8MB, "quick test (8 MB PSRAM)", 0);
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_MEMORY_TEST, "full memory test", 0);
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_RETENTION, "SRAM persistence read test", 0);
-	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_MCU, "MCU comm", 0);
+	// DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_MCU, "MCU comm", 0);
 
 	uint16_t keys_pressed = 0;
 	uint16_t keys_held = 0;
@@ -331,10 +331,10 @@ update_dynamic_options:
 					}
 				}
 			} break;
-			case MENU_OPTION_MCU: {
+			/* case MENU_OPTION_MCU: {
 				run_mcu_test();
 				goto update_full_menu;
-			} break;
+			} break; */
 			}
 			last_test_pos = -1;
 		}
