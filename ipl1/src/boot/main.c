@@ -37,7 +37,7 @@ static uint16_t progress_pos;
 
 static const char fatfs_error_header[] = "TF card read failed (    )";
 
-/* extern */ uint8_t diskio_detail_code;
+extern uint8_t diskio_detail_code;
 
 __attribute__((noreturn))
 static void report_fatfs_error(uint8_t result) {
