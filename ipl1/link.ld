@@ -2,7 +2,12 @@ OUTPUT_FORMAT("elf32-i386")
 ENTRY(_start)
 SECTIONS
 {
-	. = SEGMENT_START ("text-segment", 0x0060);
+	. = SEGMENT_START ("text-segment", 0x0040 - 16);
+
+	.header : {
+		KEEP(*(".header"))
+		. = ALIGN (16);
+	}
 
 	.text : {
 		__stext = .;
@@ -32,4 +37,6 @@ SECTIONS
 	}
 	__lbss = SIZEOF(.bss);
 	__lwbss = (__lbss + 1) / 2;
+
+	__sector_count = ((__edata - __stext) + 511) / 512;
 }

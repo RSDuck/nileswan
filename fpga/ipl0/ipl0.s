@@ -15,227 +15,226 @@
 
 %include "../common/swan.inc"
 
-	bits 16
-	cpu 186
+    bits 16
+    cpu 186
 
-IPL0Size	 equ 512
+    ; This allows us to access IRAM as 0x0000~0x3FFF on the CS segment.
+NILE_IPL0_SEG            equ 0xf400
+NILE_IPL0_TMP_RAM        equ 0xf800 ; 0000:3800
+NILE_IPL0_STACK          equ 0x0000 ; 0000:4000
+NILE_IPL0_SIZE           equ 512
+NILE_FLASH_ADDR_IPL1     equ 0x28000
+NILE_FLASH_ADDR_IPL1_ALT equ 0x2c000
 
-IPL1FlashAddr    equ 0x20000
-IPL1AltFlashAddr equ 0x24000
-IPL1SelftestFlashAddr equ 0x28000
-IPL1IRAMAddr	 equ 0x0060
+    ; == Initialization / Boot state preservation ==
 
-; assumption: at minimum 0x0600
-IPL1IRAMSize	 equ 0x3E00
+    ; 4000:0000 - boot ROM alternate boot location
+    org 0x0000
+    jmp 0xf400:start_entrypoint1
+start_entrypoint1:
+    cs mov byte [NILE_IPL0_TMP_RAM], 1
+    jmp	start_shared
+    times (16)-($-$$) db 0xFF
 
-NileIPLConsoleType	equ 0x59
-NileIPLConsoleTypeWS	equ 0
-NileIPLConsoleTypePCv2	equ 1
+    ; 4000:0010 - boot ROM alternate boot location (PCv2)
+    jmp 0xf400:start_entrypoint2
+start_entrypoint2:
+    cs mov byte [NILE_IPL0_TMP_RAM], 2
+    jmp	start_shared
 
-	org 0x0000
-; 4000:0000 - boot ROM alternate boot location
-	jmp 0xf000:start_pcv2
-	db 0, 0, 0, 'nileswan'
-; 4000:0010 - boot ROM alternate boot location (PCv2)
-; F000:0010 - IPL0 start location
-start_pcv2:
-; Initialize hardware
-	cli
-
-; Do some tricks to store the full register state on boot
-; in memory area 0x0040 - 0x0058
-
-; Store correct state of AX and DS in a screen LUT
-; We need to initialize DS to access RAM, but we want to preserve it
-        out     0x20, ax
-        mov     ax, ds
-        out     0x22, ax
-
-	mov	al, NileIPLConsoleTypePCv2
-	mov	[NileIPLConsoleType], al
-	jmp	start_shared
 start:
-; Initialize hardware
-	cli
+    cs mov byte [NILE_IPL0_TMP_RAM], 0
 
-; Do some tricks to store the full register state on boot
-; in memory area 0x0040 - 0x0058
-
-; Store correct state of AX and DS in a screen LUT
-; We need to initialize DS to access RAM, but we want to preserve it
-        out     0x20, ax
-        mov     ax, ds
-        out     0x22, ax
-
-	mov	al, NileIPLConsoleTypeWS
-	mov	[NileIPLConsoleType], al
 start_shared:
-        ; Initialize DS to 0x0000
-        mov     ax, 0x0000
-        mov     ds, ax
+    cs mov [NILE_IPL0_TMP_RAM + 18], ds
+    cs mov [NILE_IPL0_TMP_RAM + 2], ax
 
-        ; Preserve registers in RAM
-        in      ax, 0x20
-        mov     [0x40], ax ; AX
-        mov     [0x42], bx
-        mov     [0x44], cx
-        mov     [0x46], dx
-        mov     [0x48], sp
-        mov     [0x4A], bp
-        mov     [0x4C], si
-        mov     [0x4E], di
-        in      ax, 0x22
-        mov     [0x50], ax ; DS
-        mov     [0x52], es
-        mov     [0x54], ss
+    ; Initialize DS == CS
+    mov ax, NILE_IPL0_SEG 
+    mov ds, ax
+    mov [NILE_IPL0_TMP_RAM + 4], bx
+    mov [NILE_IPL0_TMP_RAM + 6], cx
+    mov [NILE_IPL0_TMP_RAM + 8], dx
+    mov [NILE_IPL0_TMP_RAM + 10], sp
+    mov [NILE_IPL0_TMP_RAM + 12], bp
+    mov [NILE_IPL0_TMP_RAM + 14], si
+    mov [NILE_IPL0_TMP_RAM + 16], di
+    mov [NILE_IPL0_TMP_RAM + 20], es
+    mov [NILE_IPL0_TMP_RAM + 22], ss
 
-        ; Init SS/SP here so we can PUSHF
-        mov     ax, ds ; assumption: DS == 0
-        mov     ss, ax
-	mov	si, ax ; also, zero SI for a later assumption
+    ; Initialize SS/SP
+    mov ss, ax
+    xor sp, sp
 
-        pushf
-        pop	di
-        mov     [0x56], di
+    ; Copy FLAGS
+    pushf
+    pop	di
+    mov [NILE_IPL0_TMP_RAM + 24], di
 
-; Prepare flash command write: read from address 0x03 onwards
-	mov di, ax ; assumption: AX == 0
-	mov ax, SRAMSeg
-	mov es, ax
-	mov ax, NILE_BANK_RAM_TX
-	out RAM_BANK_2003, ax
-	mov ax, NILE_BANK_ROM_RX
-	out ROM_BANK_0_2003, ax
+    ; Clear interrupts
+    cli
 
-; Vary IPL1 load location depending on a special keybind.
-	call keypadScan
-	mov bx, ax
-	and ax, (KEY_Y1 | KEY_B)
-	cmp ax, (KEY_Y1 | KEY_B)
-	je altFlashAddr
-	mov ax, bx
-	and ax, (KEY_X3 | KEY_B)
-	cmp ax, (KEY_X3 | KEY_B)
-	je selftestFlashAddr
-	mov bx, IPL1FlashAddr >> 8
-	jmp postFlashAddr
-selftestFlashAddr:
-	mov bx, IPL1SelftestFlashAddr >> 8
-	jmp postFlashAddr
+    ; Copy I/O port data
+    push cs
+    pop es
+    xor dx, dx
+    mov di, NILE_IPL0_TMP_RAM + 32
+    mov cx, (0xC0 >> 1)
+copyIoPortDataLoop:
+    insw
+    inc dx
+    inc dx
+    loop copyIoPortDataLoop
+
+    ; == IPL1 loader ==
+
+    ; Vary IPL1 load location depending on a special keybind.
+    call keypadScan
+    and ax, (KEY_X3 | KEY_B)
+    cmp ax, (KEY_X3 | KEY_B)
+    mov bx, NILE_FLASH_ADDR_IPL1 >> 8
+    jne postFlashAddr
 altFlashAddr:
-	mov bx, IPL1AltFlashAddr >> 8
+    add bx, (NILE_FLASH_ADDR_IPL1_ALT - NILE_FLASH_ADDR_IPL1) >> 8
 postFlashAddr:
+    call spiStartRead
 
-; Write 0x03, BH, BL, 0x00 to SPI TX buffer
-	mov ax, bx
-	mov al, 0x03
-	stosw
-	mov ax, bx
-	mov ah, 0x00
-	stosw
+    ; == IPL1 loader / Read loop ==
 
-; Initialize SPI write to flash device, flip buffer
-	mov ax, ((4 - 1) | SPI_MODE_WRITE | SPI_CNT_DEV_FLASH | SPI_CNT_BUFFER | SPI_CNT_BUSY)
-	out NILE_SPI_CNT, ax
-	call spiSpinwait
+    ; Initialize first SPI read (header) from flash device, flip buffer
+    mov ax, ((16 - 1) | SPI_MODE_READ | SPI_CNT_DEV_FLASH | SPI_CNT_BUSY)
+    out NILE_SPI_CNT, ax
 
-; Initialize first SPI read from flash device, flip buffer
-	mov ax, ((512 - 1) | SPI_MODE_READ | SPI_CNT_DEV_FLASH | SPI_CNT_BUSY)
-	out NILE_SPI_CNT, ax
+    ; DS = 0x2000, ES = 0x0000 (, CS/SS = NILE_IPL0_SEG)
+    mov ax, 0x2000
+    mov ds, ax
+    xor ax, ax
+    mov es, ax
 
-; Set up read loop, wait for SPI read to finish
-	mov cx, (IPL1IRAMSize >> 9) - 2
-	mov di, IPL1IRAMAddr
-	mov es, si ; assumption: SI == 0
-	mov ax, 0x2000
-	mov ds, ax
-	call spiSpinwait
+    ; Wait for SPI read to finish
+    call spiSpinwait
+
+    ; Initialize second SPI read (data) from flash device, flip buffer
+    in ax, NILE_SPI_CNT
+    and ax, SPI_CNT_BUFFER
+    xor ax, ((512 - 1) | SPI_MODE_READ | SPI_CNT_DEV_FLASH | SPI_CNT_BUFFER | SPI_CNT_BUSY)
+    out NILE_SPI_CNT, ax
+
+    ; DI = Start address (push)
+    mov di, [0x0000]
+    push 0x0000
+    push di
+
+    ; CX = Sector count
+    mov cx, [0x0002]
 
 readLoop:
-	in ax, NILE_SPI_CNT
-; Initialize SPI read from flash device, flip buffer
-	and ax, SPI_CNT_BUFFER
-	xor ax, ((512 - 1) | SPI_MODE_READ | SPI_CNT_DEV_FLASH | SPI_CNT_BUFFER | SPI_CNT_BUSY)
-	out NILE_SPI_CNT, ax
+    call spiSpinwait
 
-; Read 512 bytes from flipped buffer
-	mov dx, cx
-	mov cx, 0x100
-	rep movsw
-	mov cx, dx
+    ; Initialize SPI read from flash device, flip buffer
+    in ax, NILE_SPI_CNT
+    and ax, SPI_CNT_BUFFER
+    xor ax, ((512 - 1) | SPI_MODE_READ | SPI_CNT_DEV_FLASH | SPI_CNT_BUFFER | SPI_CNT_BUSY)
+    out NILE_SPI_CNT, ax
 
-; Wait for SPI read to finish, read next 512 bytes
-	call spiSpinwait
-	loop readLoop
+    ; Read 512 bytes from flipped buffer
+    push cx
+    mov cx, 0x100
+    rep movsw
+    pop cx
+
+    ; Read next 512 bytes
+    loop readLoop
 
 readComplete:
-; De-initialize SPI device, flip buffer
-	in ax, NILE_SPI_CNT
-	and ax, SPI_CNT_BUFFER
-	xor ax, SPI_CNT_BUFFER
-	out NILE_SPI_CNT, ax
+    ; De-initialize SPI device
+    xor ax, ax
+    out NILE_SPI_CNT, ax
 
-; Read final 512 bytes from flipped buffer
-	mov cx, 0x100
-	rep movsw
+    ; Jump to IPL1
+    retf
 
-; Jump to IPL1
-	jmp 0x0000:IPL1IRAMAddr
+    ; === Utility functions ===
 
-; === Utility functions ===
+    ; BX = address
+spiStartRead:
+    ; Prepare flash command write: read from address 0x03 onwards
+    xor si, si
+    mov di, ax
+    push SRAMSeg
+    pop es
+    mov ax, NILE_BANK_RAM_TX
+    out RAM_BANK_2003, ax
+    mov ax, NILE_BANK_ROM_RX
+    out ROM_BANK_0_2003, ax
 
-; Wait until SPI is no longer busy. Destroys AL.
+; Write 0x03, BH, BL, 0x00 to SPI TX buffer
+    mov ax, bx
+    mov al, 0x03
+    stosw
+    mov ax, bx
+    mov ah, 0x00
+    stosw
+
+; Initialize SPI write to flash device, flip buffer
+    mov ax, ((4 - 1) | SPI_MODE_WRITE | SPI_CNT_DEV_FLASH | SPI_CNT_BUFFER | SPI_CNT_BUSY)
+    out NILE_SPI_CNT, ax
+    ; jmp spiSpinwait ; fallthrough
+
+    ; Wait until SPI is no longer busy.
+    ; Clobber: AL
 spiSpinwait:
-	in al, NILE_SPI_CNT+1
-	test al, 0x80
-	jnz spiSpinwait
-	ret
+    in al, NILE_SPI_CNT+1
+    test al, 0x80
+    jnz spiSpinwait
+    ret
 
-; Scan keypad. Return result in AX
+    ; Scan keypad.
+    ; Output: AX = keypad data
 keypadScan:
-	push	cx
-	push	dx
+    push	cx
+    push	dx
 
-        mov     dx, 0x00B5
+    mov     dx, 0x00B5
 
-        mov     al, 0x10
-        out     dx, al
-        daa
-        in      al, dx
-        and     al, 0x0F
-        mov     ch, al
+    mov     al, 0x10
+    out     dx, al
+    daa
+    in      al, dx
+    and     al, 0x0F
+    mov     ch, al
 
-        mov     al, 0x20
-        out     dx, al
-        daa
-        in      al, dx
-        shl     al, 4
-        mov     cl, al
+    mov     al, 0x20
+    out     dx, al
+    daa
+    in      al, dx
+    shl     al, 4
+    mov     cl, al
 
-        mov     al, 0x40
-        out     dx, al
-        daa
-        in      al, dx
-        and     al, 0x0F
-        or      cl, al
+    mov     al, 0x40
+    out     dx, al
+    daa
+    in      al, dx
+    and     al, 0x0F
+    or      cl, al
 
-        mov     ax, cx
+    mov     ax, cx
 
-	pop	dx
-	pop	cx
-	ret
+    pop     dx
+    pop     cx
+    ret
 
-	times (IPL0Size-16)-($-$$) db 0xFF
+    times (NILE_IPL0_SIZE-16)-($-$$) db 0xFF
 
 ; 0xFFFF:0x0000 - boot ROM primary boot location + header
-	jmp 0xf000:start
+    jmp NILE_IPL0_SEG:start
 
-	db	0x00	; Maintenance
-	db	0x42	; Developer ID
-	db	0x01    ; Color
-	db	0x81	; Cart number + Disable IEEPROM write protect
-	db	0x00    ; Version
-	db	0x00    ; ROM size
-	db	0x05	; Save type
-	dw	0x0004  ; Flags
-	dw	0x0000	; Checksum
+    db	0x00	; Maintenance
+    db	0x42	; Developer ID
+    db	0x01    ; Color
+    db	0x81	; Cart number + Disable IEEPROM write protect
+    db	0x00    ; Version
+    db	0x00    ; ROM size
+    db	0x05	; Save type
+    dw	0x0004  ; Flags
+    dw	0x0000	; Checksum

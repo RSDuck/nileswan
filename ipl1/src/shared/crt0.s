@@ -24,6 +24,17 @@
 	.code16
 	.intel_syntax noprefix
 
+	.section .header, "ax"
+header:
+	.word _start
+	.word __sector_count
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+	.word 0
+
 	.section .start, "ax"
 	.global _start
 
