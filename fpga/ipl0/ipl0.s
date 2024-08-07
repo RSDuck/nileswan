@@ -78,7 +78,7 @@ start_shared:
     push cs
     pop es
     xor dx, dx
-    mov di, NILE_IPL0_TMP_RAM + 32
+    mov di, NILE_IPL0_TMP_RAM + 26
     mov cx, (0xC0 >> 1)
 copyIoPortDataLoop:
     insw
