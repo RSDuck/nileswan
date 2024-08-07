@@ -19,6 +19,7 @@
 #include <string.h>
 #include <ws.h>
 #include <nile.h>
+#include <wsx/zx0.h>
 #include "../../build/assets/tiles.h"
 #include "util.h"
 
@@ -257,7 +258,7 @@ void main(void) {
 		outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(0, 4, 0, 0));
 	}
 	outportb(IO_SCR_BASE, SCR1_BASE(SCREEN));
-	lzsa2_decompress_small((uint16_t*) 0x3200, gfx_tiles);
+	wsx_zx0_decompress((uint16_t*) 0x3200, gfx_tiles);
 	outportw(IO_SCR1_SCRL_X, (13 * 8) << 8);
 
 update_full_menu:

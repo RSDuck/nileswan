@@ -55,7 +55,8 @@ _start:
 	out	0xB2, al
 
 	// clear BSS
-	mov	di, offset "__edata"
+	// assumption: AX = 0
+	mov	di, offset "__sbss"
 	mov	cx, offset "__lwbss"
 	cld
 	rep	stosw

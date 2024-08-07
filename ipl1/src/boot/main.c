@@ -18,6 +18,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <ws.h>
+#include <wsx/zx0.h>
 #include <nile.h>
 #include <nilefs.h>
 #include "../../build/assets/tiles.h"
@@ -128,7 +129,7 @@ void main(void) {
     outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(0, 7, 2, 5));
     outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(0, 0, 0, 0));
     outportb(IO_SCR_BASE, SCR1_BASE(SCREEN));
-	lzsa2_decompress_small((uint16_t*) 0x3200, gfx_tiles);
+	wsx_zx0_decompress((uint16_t*) 0x3200, gfx_tiles);
 	_nmemset(SCREEN, 0x6, (32 * 19 - 4) * sizeof(uint16_t));
 
 	memcpy8to16(SCREEN + (8 * 32) + 12, swan_logo_map, 4, 0x100);

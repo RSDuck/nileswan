@@ -15,22 +15,20 @@ SECTIONS
 		*(.text ".text.*")
 		*(".fartext.*")
 		*(".farrodata.*")
+		*(.rodata ".rodata.*")
+		*(.data ".data.*")
+
+		/* Put packed data last so it can be overwritten by stack later */
+		*(.packed_data ".packed_data.*")
+
+		. = ALIGN (2);
 		__etext = .;
 	}
 
-	.data : {
-		. = ALIGN (2);
-		__sdata = .;
-		*(.rodata ".rodata.*")
-		*(.data ".data.*")
-		. = ALIGN (2);
-		__edata = .;
-	}
-	__ldata = SIZEOF(.data);
-	__lwdata = (__ldata + 1) / 2;
-
+	/* TODO: Place before .text so .packed_data works as intended */
 	.bss . (NOLOAD) :
 	{
+		__sbss = .;
 		*(.bss ".bss.*")
 		. = ALIGN (2);
 		__ebss = .;
@@ -38,5 +36,5 @@ SECTIONS
 	__lbss = SIZEOF(.bss);
 	__lwbss = (__lbss + 1) / 2;
 
-	__sector_count = ((__edata - __stext) + 511) / 512;
+	__sector_count = ((__etext - __stext) + 511) / 512;
 }

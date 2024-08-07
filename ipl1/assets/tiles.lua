@@ -1,5 +1,5 @@
 local process = require("wf.api.v1.process")
-local lzsa = require("wf.api.v1.process.tools.lzsa")
+local zx0 = require("wf.api.v1.process.tools.zx0")
 local superfamiconv = require("wf.api.v1.process.tools.superfamiconv")
 
 local tileset = superfamiconv.convert_tileset(
@@ -10,4 +10,4 @@ local tileset = superfamiconv.convert_tileset(
 		:no_discard():no_flip()
 )
 
-process.emit_symbol("gfx_tiles", lzsa.compress2(tileset.tiles))
+process.emit_symbol("gfx_tiles", zx0.compress(tileset.tiles))
