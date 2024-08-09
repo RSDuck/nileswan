@@ -21,8 +21,6 @@
 #include <stdint.h>
 #include <wonderful.h>
 
-// lzsa_decompress_small_v2.s
-uint16_t lzsa2_decompress_small(void __far* dest, const void __far* src);
 // util.s
 void memcpy8to16(void *dst, const void *src, uint16_t count, uint16_t fill_value);
 void print_hex_number(void *dst, uint16_t value);

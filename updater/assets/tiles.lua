@@ -1,6 +1,6 @@
 local process = require("wf.api.v1.process")
-local zx0 = require("wf.api.v1.process.tools.zx0")
 local superfamiconv = require("wf.api.v1.process.tools.superfamiconv")
+local zx0 = require("wf.api.v1.process.tools.zx0")
 
 local tileset = superfamiconv.convert_tileset(
 	"tiles.png",
@@ -10,4 +10,4 @@ local tileset = superfamiconv.convert_tileset(
 		:no_discard():no_flip()
 )
 
-process.emit_symbol("gfx_tiles", zx0.compress(tileset.tiles))
+process.emit_symbol("gfx_tiles", zx0.compress(tileset.tiles, zx0.config({verbose=true})))

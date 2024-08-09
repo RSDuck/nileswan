@@ -20,13 +20,14 @@ INCLUDEDIRS	:= src/boot src/selftest src/shared
 # Defines passed to all files
 # ---------------------------
 
-DEFINES		:= -DNILESWAN_IPL1
+DEFINES		:=
 
 # Libraries
 # ---------
 
-LIBS		:= -lwsx -lws
-LIBDIRS		:= $(WF_TARGET_DIR)
+LIBS		:= -lnilefs -lnile -lwsx -lws
+LIBDIRS		:= $(WF_TARGET_DIR) \
+		   ../libnile/dist/ipl1
 
 # Build artifacts
 # ---------------
