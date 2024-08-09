@@ -185,14 +185,14 @@ void run_mcu_test(void) {
 		addr += sizeof(flash_read_buffer);
 		flash_addr += sizeof(flash_read_buffer);
 	}
-	draw_pass_fail(6, result);
+	draw_pass_fail(4, result);
 
 	print_hex_number(SCREEN, *(uint16_t*)&flash_read_buffer[0]);
 	print_hex_number(SCREEN+4, *(uint16_t*)&flash_read_buffer2[0]);
 
-	DRAW_STRING(2, 7, "go", 0);
+	DRAW_STRING(2, 5, "go", 0);
 	result = nile_mcu_boot_jump(NILE_MCU_FLASH_START);
-	draw_pass_fail(7, result);
+	draw_pass_fail(5, result);
 
 	volatile uint32_t i = 0;
 	while (i < 1000ULL*100ULL) i++;
@@ -200,13 +200,13 @@ void run_mcu_test(void) {
 	uint8_t buffer[10] = {};
 	nile_spi_rx_sync_block(buffer, 10, NILE_SPI_MODE_READ);
 
-	draw_result_byte(8, buffer[0], true);
-	draw_result_byte(9, buffer[1], true);
-	draw_result_byte(10, buffer[2], true);
-	draw_result_byte(11, buffer[3], true);
-	draw_result_byte(12, buffer[4], true);
-	draw_result_byte(13, buffer[5], true);
-	draw_result_byte(14, buffer[6], true);
+	draw_result_byte(6, buffer[0], true);
+	draw_result_byte(7, buffer[1], true);
+	draw_result_byte(8, buffer[2], true);
+	draw_result_byte(9, buffer[3], true);
+	draw_result_byte(10, buffer[4], true);
+	draw_result_byte(11, buffer[5], true);
+	draw_result_byte(12, buffer[6], true);
 
 	wait_for_button();
 }
