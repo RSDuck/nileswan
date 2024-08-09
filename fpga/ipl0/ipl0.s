@@ -160,7 +160,7 @@ readComplete:
 spiStartRead:
     ; Prepare flash command write: read from address 0x03 onwards
     xor si, si
-    mov di, ax
+    mov di, si
     push SRAMSeg
     pop es
     mov ax, NILE_BANK_RAM_TX
