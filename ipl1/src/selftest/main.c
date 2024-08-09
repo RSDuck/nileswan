@@ -27,9 +27,9 @@
 #define MENU_OPTION_QUICK_TEST_8MB 1
 #define MENU_OPTION_MEMORY_TEST 2
 #define MENU_OPTION_RETENTION 3
-// #define MENU_OPTION_MCU 4
-#define MENU_OPTION_SRAM_SPEED 4
-#define MENU_OPTIONS_COUNT 5
+#define MENU_OPTION_MCU 4
+#define MENU_OPTION_SRAM_SPEED 5
+#define MENU_OPTIONS_COUNT 6
 
 #define SCREEN ((uint16_t*) (0x3800 + (13 * 32 * 2)))
 
@@ -37,8 +37,8 @@
 #define PSRAM_MAX_BANK_16MB 255
 #define SRAM_MAX_BANK 7
 
-/* uint8_t flash_read_buffer[128];
-uint8_t flash_read_buffer2[128]; */
+uint8_t flash_read_buffer[128];
+uint8_t flash_read_buffer2[128];
 
 /* === Test code in external files === */
 
@@ -149,55 +149,37 @@ void run_read_memory_test(void) {
 	wait_for_button();
 }
 
-/* #define MCU_EXE_SIZE 1024
+ #define MCU_EXE_SIZE 1024
 
 void run_mcu_test(void) {
-	outportw(IO_NILE_SPI_CNT, NILE_SPI_390KHZ);
-	uint8_t data[1];
-	nile_spi_rx_copy(data, 1, NILE_SPI_MODE_READ);
-	outportb(IO_NILE_POW_CNT, inportb(IO_NILE_POW_CNT)&~0x80);
-	ws_busywait(1000);
-	outportb(IO_NILE_POW_CNT, inportb(IO_NILE_POW_CNT)|0x80);
-
-	ws_busywait(1000*10);
+        nile_mcu_reset(true);
 
 	clear_screen();
 	DRAW_STRING_CENTERED(0, "testing MCU comm", 0);
-	DRAW_STRING(2, 2, "miauz", 0);
 
-	bool result = mcu_comm_start();
+	DRAW_STRING(2, 2, "version", 0);
+	uint8_t version = nile_mcu_boot_get_version();
+	draw_result_byte(2, version, version);
 
-	DRAW_STRING(2, 3, "comm init...", 0);
+	DRAW_STRING(2, 3, "erase", 0);
+	bool result = nile_mcu_boot_erase_memory(0, 1024/NILE_MCU_FLASH_PAGE_SIZE);
 	draw_pass_fail(3, result);
 
-	DRAW_STRING(2, 4, "version", 0);
-	uint8_t version;
-	result = mcu_comm_bootloader_version(&version);
-	draw_result_byte(4, version, result);
-
-	DRAW_STRING(2, 5, "erase", 0);
-	result = mcu_comm_bootloader_erase_memory(0, 1024/MCU_FLASH_PAGE_SIZE);
-	draw_pass_fail(5, result);
-
-	mcu_comm_stop();
-
-	DRAW_STRING(2, 6, "writing", 0);
+	DRAW_STRING(2, 4, "writing", 0);
 
 	result = true;
-	uint32_t addr = MCU_FLASH_START;
+	uint32_t addr = NILE_MCU_FLASH_START;
 	uint32_t flash_addr = 0x30000;
 	for (int i = 0; i < MCU_EXE_SIZE/sizeof(flash_read_buffer); i++)
 	{
 		outportb(IO_LCD_SEG, 1);
-		flash_read(flash_addr, sizeof(flash_read_buffer), flash_read_buffer);
+		nile_flash_read(flash_read_buffer, sizeof(flash_read_buffer), flash_addr);
 		outportb(IO_LCD_SEG, 2);
 
 		outportb(IO_LCD_SEG, 3);
-		mcu_comm_start();
-		result &= mcu_comm_bootloader_write_memory(addr, flash_read_buffer, sizeof(flash_read_buffer)-1);
-		//result &= mcu_comm_bootloader_read_memory(addr, flash_read_buffer2, sizeof(flash_read_buffer2)-1);
+		result &= nile_mcu_boot_write_memory(addr, flash_read_buffer, sizeof(flash_read_buffer)-1);
+		//result &= nile_mcu_boot_read_memory(addr, flash_read_buffer2, sizeof(flash_read_buffer2)-1);
 		//result &= memcmp(flash_read_buffer, flash_read_buffer2, sizeof(flash_read_buffer)) == 0;
-		mcu_comm_stop();
 		outportb(IO_LCD_SEG, 4);
 
 		addr += sizeof(flash_read_buffer);
@@ -208,16 +190,15 @@ void run_mcu_test(void) {
 	print_hex_number(SCREEN, *(uint16_t*)&flash_read_buffer[0]);
 	print_hex_number(SCREEN+4, *(uint16_t*)&flash_read_buffer2[0]);
 
-	mcu_comm_start();
 	DRAW_STRING(2, 7, "go", 0);
-	result = mcu_comm_bootloader_go(MCU_FLASH_START);
+	result = nile_mcu_boot_jump(NILE_MCU_FLASH_START);
 	draw_pass_fail(7, result);
 
 	volatile uint32_t i = 0;
 	while (i < 1000ULL*100ULL) i++;
 
 	uint8_t buffer[10] = {};
-	nile_spi_rx_copy(buffer, 10, NILE_SPI_MODE_READ);
+	nile_spi_rx_sync_block(buffer, 10, NILE_SPI_MODE_READ);
 
 	draw_result_byte(8, buffer[0], true);
 	draw_result_byte(9, buffer[1], true);
@@ -227,10 +208,8 @@ void run_mcu_test(void) {
 	draw_result_byte(13, buffer[5], true);
 	draw_result_byte(14, buffer[6], true);
 
-	mcu_comm_stop();
-
 	wait_for_button();
-} */
+}
 
 void main(void) {
 	// FIXME: deinitialize hardware
@@ -276,7 +255,7 @@ update_full_menu:
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_QUICK_TEST_8MB, "quick test (8 MB PSRAM)", 0);
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_MEMORY_TEST, "full memory test", 0);
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_RETENTION, "SRAM persistence read test", 0);
-	// DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_MCU, "MCU comm", 0);
+	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_MCU, "MCU comm", 0);
 
 	uint16_t keys_pressed = 0;
 	uint16_t keys_held = 0;
@@ -312,7 +291,7 @@ update_dynamic_options:
 			switch (test_pos) {
 			case MENU_OPTION_QUICK_TEST_16MB:
 			case MENU_OPTION_QUICK_TEST_8MB: {
-				run_quick_test(test_pos == 0 ? PSRAM_MAX_BANK_16MB : PSRAM_MAX_BANK_8MB);
+				run_quick_test(test_pos == MENU_OPTION_QUICK_TEST_16MB ? PSRAM_MAX_BANK_16MB : PSRAM_MAX_BANK_8MB);
 				goto update_full_menu;
 			} break;
 			case MENU_OPTION_MEMORY_TEST: {
@@ -332,10 +311,10 @@ update_dynamic_options:
 					}
 				}
 			} break;
-			/* case MENU_OPTION_MCU: {
+			case MENU_OPTION_MCU: {
 				run_mcu_test();
 				goto update_full_menu;
-			} break; */
+			} break;
 			}
 			last_test_pos = -1;
 		}

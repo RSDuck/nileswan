@@ -95,7 +95,7 @@ copyIoPortDataLoop:
     mov bx, NILE_FLASH_ADDR_IPL1 >> 8
     jne postFlashAddr
 altFlashAddr:
-    add bx, (NILE_FLASH_ADDR_IPL1_ALT - NILE_FLASH_ADDR_IPL1) >> 8
+    mov bx, NILE_FLASH_ADDR_IPL1_ALT >> 8
 postFlashAddr:
     call spiStartRead
 
@@ -106,7 +106,7 @@ postFlashAddr:
     out NILE_SPI_CNT, ax
 
     ; DS = 0x2000, ES = 0x0000 (, CS/SS = NILE_IPL0_SEG)
-    mov ax, 0x2000
+    mov ax, ROMSeg0
     mov ds, ax
     xor ax, ax
     mov es, ax
