@@ -46,7 +46,7 @@ __attribute__((noreturn))
 static void report_fatfs_error(uint8_t result) {
 	// deinitialize hardware
 	outportw(IO_NILE_SPI_CNT, NILE_SPI_CLOCK_CART);
-	outportb(IO_NILE_POW_CNT, 0);
+	outportb(IO_NILE_POW_CNT, NILE_POW_MCU_RESET);
 	
     outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(7, 0, 2, 5));
     outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(7, 7, 7, 7));
