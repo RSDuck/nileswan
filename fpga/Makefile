@@ -25,6 +25,9 @@ ipl0.ws: $(build_folder)/ipl0.bin $(build_folder)/fix
 #  Build
 ###############################################
 
+# allow overriding as a modified version of icepack is required
+ICEPACK ?= icepack
+
 project := nileswan
 pcf_file := io.pcf
 pcf_path := rtl/$(pcf_file)
@@ -46,7 +49,7 @@ $(build_folder)/$(project).inserted.asc: $(build_folder)/$(project).asc $(build_
 	icebram -v $(build_folder)/bram_init.asc $(build_folder)/ipl0.asc <$< >$@
 
 $(project).bin: $(build_folder)/$(project).inserted.asc
-	/usr/local/bin/icepack -Fh -s $< $@
+	$(ICEPACK) -Fh -s $< $@
 
 ###############################################
 #  Simulation
