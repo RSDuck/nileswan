@@ -147,9 +147,13 @@ readLoop:
     loop readLoop
 
 readComplete:
+    ; Finish SPI read
+    call spiSpinwait
+
     ; De-initialize SPI device
-    xor ax, ax
-    out NILE_SPI_CNT, ax
+    ; TODO: You cannot actually do this!
+    ; xor ax, ax
+    ; out NILE_SPI_CNT, ax
 
     ; Jump to IPL1
     retf
