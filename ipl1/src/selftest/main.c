@@ -18,14 +18,8 @@
 #include <stddef.h>
 #include <string.h>
 #include <ws.h>
-#include <ws/display.h>
-#include <ws/hardware.h>
-#include <ws/keypad.h>
-#include <ws/system.h>
-#include "fatfs/ff.h"
-#include "nileswan/nileswan.h"
-#include "nileswan/mcu_comm.h"
-#include "nileswan/flash_comm.h"
+#include <nile.h>
+#include <wsx/zx0.h>
 #include "../../build/assets/tiles.h"
 #include "util.h"
 
@@ -155,92 +149,71 @@ void run_read_memory_test(void) {
 	wait_for_button();
 }
 
-#define MCU_EXE_SIZE 1024
+ #define MCU_EXE_SIZE 1024
 
 void run_mcu_test(void) {
-	outportw(IO_NILE_SPI_CNT, NILE_SPI_390KHZ);
-	uint8_t data[1];
-	nile_spi_rx_copy(data, 1, NILE_SPI_MODE_READ);
-	outportb(IO_NILE_POW_CNT, inportb(IO_NILE_POW_CNT)&~0x80);
-	ws_busywait(1000);
-	outportb(IO_NILE_POW_CNT, inportb(IO_NILE_POW_CNT)|0x80);
-
-	ws_busywait(1000*10);
+        nile_mcu_reset(true);
 
 	clear_screen();
 	DRAW_STRING_CENTERED(0, "testing MCU comm", 0);
-	DRAW_STRING(2, 2, "miauz", 0);
 
-	bool result = mcu_comm_start();
+	DRAW_STRING(2, 2, "version", 0);
+	uint8_t version = nile_mcu_boot_get_version();
+	draw_result_byte(2, version, version);
 
-	DRAW_STRING(2, 3, "comm init...", 0);
+	DRAW_STRING(2, 3, "erase", 0);
+	bool result = nile_mcu_boot_erase_memory(0, 1024/NILE_MCU_FLASH_PAGE_SIZE);
 	draw_pass_fail(3, result);
 
-	DRAW_STRING(2, 4, "version", 0);
-	uint8_t version;
-	result = mcu_comm_bootloader_version(&version);
-	draw_result_byte(4, version, result);
-
-	DRAW_STRING(2, 5, "erase", 0);
-	result = mcu_comm_bootloader_erase_memory(0, 1024/MCU_FLASH_PAGE_SIZE);
-	draw_pass_fail(5, result);
-
-	mcu_comm_stop();
-
-	DRAW_STRING(2, 6, "writing", 0);
+	DRAW_STRING(2, 4, "writing", 0);
 
 	result = true;
-	uint32_t addr = MCU_FLASH_START;
+	uint32_t addr = NILE_MCU_FLASH_START;
 	uint32_t flash_addr = 0x30000;
 	for (int i = 0; i < MCU_EXE_SIZE/sizeof(flash_read_buffer); i++)
 	{
 		outportb(IO_LCD_SEG, 1);
-		flash_read(flash_addr, sizeof(flash_read_buffer), flash_read_buffer);
+		nile_flash_read(flash_read_buffer, sizeof(flash_read_buffer), flash_addr);
 		outportb(IO_LCD_SEG, 2);
 
 		outportb(IO_LCD_SEG, 3);
-		mcu_comm_start();
-		result &= mcu_comm_bootloader_write_memory(addr, flash_read_buffer, sizeof(flash_read_buffer)-1);
-		//result &= mcu_comm_bootloader_read_memory(addr, flash_read_buffer2, sizeof(flash_read_buffer2)-1);
+		result &= nile_mcu_boot_write_memory(addr, flash_read_buffer, sizeof(flash_read_buffer)-1);
+		//result &= nile_mcu_boot_read_memory(addr, flash_read_buffer2, sizeof(flash_read_buffer2)-1);
 		//result &= memcmp(flash_read_buffer, flash_read_buffer2, sizeof(flash_read_buffer)) == 0;
-		mcu_comm_stop();
 		outportb(IO_LCD_SEG, 4);
 
 		addr += sizeof(flash_read_buffer);
 		flash_addr += sizeof(flash_read_buffer);
 	}
-	draw_pass_fail(6, result);
+	draw_pass_fail(4, result);
 
 	print_hex_number(SCREEN, *(uint16_t*)&flash_read_buffer[0]);
 	print_hex_number(SCREEN+4, *(uint16_t*)&flash_read_buffer2[0]);
 
-	mcu_comm_start();
-	DRAW_STRING(2, 7, "go", 0);
-	result = mcu_comm_bootloader_go(MCU_FLASH_START);
-	draw_pass_fail(7, result);
+	DRAW_STRING(2, 5, "go", 0);
+	result = nile_mcu_boot_jump(NILE_MCU_FLASH_START);
+	draw_pass_fail(5, result);
 
 	volatile uint32_t i = 0;
 	while (i < 1000ULL*100ULL) i++;
 
 	uint8_t buffer[10] = {};
-	nile_spi_rx_copy(buffer, 10, NILE_SPI_MODE_READ);
+	nile_spi_rx_sync_block(buffer, 10, NILE_SPI_MODE_READ);
 
-	draw_result_byte(8, buffer[0], true);
-	draw_result_byte(9, buffer[1], true);
-	draw_result_byte(10, buffer[2], true);
-	draw_result_byte(11, buffer[3], true);
-	draw_result_byte(12, buffer[4], true);
-	draw_result_byte(13, buffer[5], true);
-	draw_result_byte(14, buffer[6], true);
-
-	mcu_comm_stop();
+	draw_result_byte(6, buffer[0], true);
+	draw_result_byte(7, buffer[1], true);
+	draw_result_byte(8, buffer[2], true);
+	draw_result_byte(9, buffer[3], true);
+	draw_result_byte(10, buffer[4], true);
+	draw_result_byte(11, buffer[5], true);
+	draw_result_byte(12, buffer[6], true);
 
 	wait_for_button();
 }
 
 void main(void) {
-	// deinitialize hardware
-	//outportw(IO_NILE_SPI_CNT, NILE_SPI_390KHZ);
+	// FIXME: deinitialize hardware
+	//outportw(IO_NILE_SPI_CNT, NILE_SPI_CLOCK_CART);
 	//outportb(IO_NILE_POW_CNT, 0);
 	bool sram_io_speed_limit = true;
 
@@ -264,7 +237,7 @@ void main(void) {
 		outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(0, 4, 0, 0));
 	}
 	outportb(IO_SCR_BASE, SCR1_BASE(SCREEN));
-	lzsa2_decompress_small((uint16_t*) 0x3200, gfx_tiles);
+	wsx_zx0_decompress((uint16_t*) 0x3200, gfx_tiles);
 	outportw(IO_SCR1_SCRL_X, (13 * 8) << 8);
 
 update_full_menu:
@@ -318,7 +291,7 @@ update_dynamic_options:
 			switch (test_pos) {
 			case MENU_OPTION_QUICK_TEST_16MB:
 			case MENU_OPTION_QUICK_TEST_8MB: {
-				run_quick_test(test_pos == 0 ? PSRAM_MAX_BANK_16MB : PSRAM_MAX_BANK_8MB);
+				run_quick_test(test_pos == MENU_OPTION_QUICK_TEST_16MB ? PSRAM_MAX_BANK_16MB : PSRAM_MAX_BANK_8MB);
 				goto update_full_menu;
 			} break;
 			case MENU_OPTION_MEMORY_TEST: {

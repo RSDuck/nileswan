@@ -46,7 +46,7 @@ $(build_folder)/$(project).inserted.asc: $(build_folder)/$(project).asc $(build_
 	icebram -v $(build_folder)/bram_init.asc $(build_folder)/ipl0.asc <$< >$@
 
 $(project).bin: $(build_folder)/$(project).inserted.asc
-	icepack -Fh -s $< $@
+	/usr/local/bin/icepack -Fh -s $< $@
 
 ###############################################
 #  Simulation

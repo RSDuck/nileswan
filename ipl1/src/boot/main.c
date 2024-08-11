@@ -15,12 +15,14 @@
  * with Nileswan IPL1. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <nile/hardware.h>
 #include <stddef.h>
 #include <string.h>
 #include <ws.h>
 #include <ws/hardware.h>
-#include "fatfs/ff.h"
-#include "nileswan/nileswan.h"
+#include <wsx/zx0.h>
+#include <nile.h>
+#include <nilefs.h>
 #include "../../build/assets/tiles.h"
 #include "util.h"
 
@@ -43,8 +45,8 @@ extern uint8_t diskio_detail_code;
 __attribute__((noreturn))
 static void report_fatfs_error(uint8_t result) {
 	// deinitialize hardware
-	outportw(IO_NILE_SPI_CNT, NILE_SPI_390KHZ);
-	outportb(IO_NILE_POW_CNT, 0);
+	outportw(IO_NILE_SPI_CNT, NILE_SPI_CLOCK_CART);
+	outportb(IO_NILE_POW_CNT, NILE_POW_MCU_RESET);
 	
     outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(7, 0, 2, 5));
     outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(7, 7, 7, 7));
@@ -122,15 +124,20 @@ static uint8_t load_menu(void) {
 const uint8_t swan_logo_map[] = {0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B};
 
 void main(void) {
-	nile_ipl_data->card_state = 0;
 	outportb(IO_SYSTEM_CTRL2, 0x00); // Disable SRAM/IO wait states
 
+	// Initialize IPC area
+	outportw(IO_BANK_2003_RAM, NILE_SEG_RAM_IPC);
+	memset(MEM_NILE_IPC, 0, 512);
+	MEM_NILE_IPC->boot_entrypoint = *((uint8_t*) 0x3800);
+	memcpy(&(MEM_NILE_IPC->boot_regs), (void*) 0x3802, 192 + 24);
+	
     ws_display_set_shade_lut(SHADE_LUT_DEFAULT);
     outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(0, 7, 2, 5));
     outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(0, 0, 0, 0));
     outportb(IO_SCR_BASE, SCR1_BASE(SCREEN));
-	lzsa2_decompress_small((uint16_t*) 0x3200, gfx_tiles);
-	_nmemset(SCREEN, 0x6, (32 * 19 - 4) * sizeof(uint16_t));
+	wsx_zx0_decompress((uint16_t*) 0x3200, gfx_tiles);
+	memset(SCREEN, 0x6, (32 * 19 - 4) * sizeof(uint16_t));
 
 	memcpy8to16(SCREEN + (8 * 32) + 12, swan_logo_map, 4, 0x100);
 	memcpy8to16(SCREEN + (9 * 32) + 12, swan_logo_map + 4, 4, 0x100);

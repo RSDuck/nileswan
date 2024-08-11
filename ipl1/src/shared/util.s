@@ -39,7 +39,7 @@ memcpy8to16:
 
     mov di, ax
     mov si, dx
-    mov ax, [bp + 10]
+    mov ax, [bp + WF_PLATFORM_CALL_STACK_OFFSET(8)]
     
     cld
 memcpy8to16_loop:
