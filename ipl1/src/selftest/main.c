@@ -151,9 +151,94 @@ void run_read_memory_test(void) {
 
  #define MCU_EXE_SIZE 1024
 
-void run_mcu_test(void) {
-        nile_mcu_reset(true);
+static uint8_t hex_to_int(uint8_t c) {
+	if (c >= '0' && c <= '9') {
+		return c-48;
+	} else if ((c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')) {
+		return (c & 0x07)+9;
+	} else {
+		return 0;
+	}
+}
 
+static uint8_t int_to_hex(uint8_t c) {
+	c &= 0x0F;
+	if (c < 10) {
+		return c+48;
+	} else {
+		return (c-10)+65;
+	}
+}
+
+void run_mcu_serial(void) {
+	clear_screen();
+	outportw(IO_NILE_SPI_CNT, NILE_SPI_DEV_MCU | NILE_SPI_CLOCK_CART);
+
+	char str[64];
+	int i = 0;
+	bool running = true;
+
+	ws_serial_open(SERIAL_BAUD_9600);
+	while (running) {
+		ws_serial_putc('>');
+		ws_serial_putc(' ');
+
+		while (true) {
+			uint8_t c = ws_serial_getc();
+			if (c == '\r' || c == '\n') {
+				if (i == 0) continue;
+				if (i < (sizeof(str)-1)) {
+					// process command
+					str[i++] = 0;
+
+					if (!strcmp(str, "exit")) {
+						running = false;
+					} else if (!strcmp(str, "reset")) {
+						outportw(IO_NILE_SPI_CNT, NILE_SPI_CLOCK_CART);
+						uint8_t data[1];
+						nile_spi_rx_sync_block(data, 1, NILE_SPI_MODE_READ);
+						outportb(IO_NILE_POW_CNT, inportb(IO_NILE_POW_CNT)&~0x80);
+						ws_busywait(150);
+						outportb(IO_NILE_POW_CNT, inportb(IO_NILE_POW_CNT)|0x80);
+
+						ws_busywait(1000*10);
+						
+						ws_serial_putc('\r');
+						ws_serial_putc('\n');
+						ws_serial_putc('O');
+						ws_serial_putc('K');
+
+						outportw(IO_NILE_SPI_CNT, NILE_SPI_DEV_MCU | NILE_SPI_CLOCK_CART);
+					} else {
+						uint8_t value;
+						value = hex_to_int(str[0]) << 4;
+						value |= hex_to_int(str[1]) & 0xF;
+						value = nile_spi_xch(value);
+						ws_serial_putc('\r');
+						ws_serial_putc('\n');
+						ws_serial_putc(int_to_hex(value >> 4));
+						ws_serial_putc(int_to_hex(value));
+					}
+				}
+				// reset
+				ws_serial_putc('\r');
+				ws_serial_putc('\n');
+				i = 0;
+				break;
+			} else if (c == 8) {
+				// backspace
+				if (i > 0) i--;
+			} else if (c >= 32 && c < 127) {
+				if (i >= (sizeof(str)-1)) continue;
+				ws_serial_putc(c);
+				str[i++] = c;
+			}
+		}
+	}
+	ws_serial_close();
+}
+
+void run_mcu_test(void) {
 	clear_screen();
 	DRAW_STRING_CENTERED(0, "testing MCU comm", 0);
 
@@ -214,7 +299,7 @@ void run_mcu_test(void) {
 void main(void) {
 	// FIXME: deinitialize hardware
 	//outportw(IO_NILE_SPI_CNT, NILE_SPI_CLOCK_CART);
-	//outportb(IO_NILE_POW_CNT, 0);
+	//outportb(IO_NILE_POW_CNT, 0x81);
 	bool sram_io_speed_limit = true;
 
 	if (ws_system_is_color()) {
@@ -312,6 +397,7 @@ update_dynamic_options:
 				}
 			} break;
 			case MENU_OPTION_MCU: {
+				// run_mcu_serial();
 				run_mcu_test();
 				goto update_full_menu;
 			} break;
