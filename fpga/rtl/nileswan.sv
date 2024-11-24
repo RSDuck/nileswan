@@ -27,7 +27,7 @@ module nileswan(
     output nFlashSel,
     output SPIClk,
     output SPIDo,
-    input SPIDi,
+    inout SPIDi,
 
     output nTFSel,
     output TFClk,
