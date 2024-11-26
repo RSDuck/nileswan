@@ -262,7 +262,7 @@ void run_mcu_test(void) {
 	for (int i = 0; i < MCU_EXE_SIZE/sizeof(flash_read_buffer); i++)
 	{
 		outportb(IO_LCD_SEG, 1);
-		nile_flash_read(flash_read_buffer, sizeof(flash_read_buffer), flash_addr);
+		nile_flash_read(flash_read_buffer, flash_addr, sizeof(flash_read_buffer));
 		outportb(IO_LCD_SEG, 2);
 
 		outportb(IO_LCD_SEG, 3);
