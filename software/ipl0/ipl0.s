@@ -13,7 +13,7 @@
 ; You should have received a copy of the GNU General Public License along
 ; with Nileswan IPL0. If not, see <https://www.gnu.org/licenses/>.
 
-%include "../common/swan.inc"
+%include "swan.inc"
 
     bits 16
     cpu 186

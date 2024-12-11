@@ -1,21 +1,27 @@
-all: stage0 programmer bitstream ipl1
+.PHONY: all clean program-fpga libnile libnile-ipl1 ipl0 ipl1 fpga
 
-stage0:
-	cd firmware/stage0 && make
+all: ipl0 ipl1 fpga
 
-programmer:
-	cd programmer && make
-
-bitstream:
-	cd rtl && make
-
-ipl1: libnile-ipl1
-	cd ipl1 && make
+libnile:
+	cd software/libnile && make TARGET=wswan/medium
 
 libnile-ipl1:
-	cd libnile && make TARGET=ipl1 install
+	cd software/libnile && make TARGET=ipl1
+
+ipl0:
+	cd software/ipl0 && make
+
+ipl1: libnile-ipl1
+	cd software/ipl1 && make
+
+fpga: ipl0
+	cd fpga && make
+
+program-fpga: fpga
+	cd fpga && make program
 
 clean:
-	cd firmware/stage0 && make clean
-	cd programmer && make clean
-	cd rtl && make clean
+	cd software/libnile && rm -rf build
+	cd software/ipl0 && make clean
+	cd software/ipl1 && make clean
+	cd fpga && make clean

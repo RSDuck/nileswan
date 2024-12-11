@@ -2,31 +2,17 @@
 # and https://github.com/pwmarcz/fpga-chip8/blob/master/Makefile
 
 build_folder := build
+ipl0_path := ../software/ipl0/ipl0.asc
+
+include ../config.mk
+
+.PHONY: all simulation build clean
 
 all: build
 
 ###############################################
-# IPL0
-###############################################
-
-$(build_folder)/fix: ipl0/fix.nim
-	nim c --outdir:$(build_folder) $<
-
-$(build_folder)/ipl0.bin: ipl0/ipl0.s
-	nasm $< -o $@
-
-$(build_folder)/ipl0.asc: $(build_folder)/ipl0.bin $(build_folder)/fix
-	$(build_folder)/fix fpga $@ $<
-
-ipl0.ws: $(build_folder)/ipl0.bin $(build_folder)/fix
-	$(build_folder)/fix fullrom $@ $<
-
-###############################################
 #  Build
 ###############################################
-
-# allow overriding as a modified version of icepack is required
-ICEPACK ?= icepack
 
 project := nileswan
 pcf_file := io.pcf
@@ -45,8 +31,8 @@ $(build_folder)/$(project).json: $(rtl_source_paths) $(build_folder)/bram_init.a
 $(build_folder)/$(project).asc: $(build_folder)/$(project).json $(pcf_path)
 	nextpnr-ice40 $(pnr_flags) --json $< --pcf $(pcf_path) --asc $@
 
-$(build_folder)/$(project).inserted.asc: $(build_folder)/$(project).asc $(build_folder)/bram_init.asc $(build_folder)/ipl0.asc
-	icebram -v $(build_folder)/bram_init.asc $(build_folder)/ipl0.asc <$< >$@
+$(build_folder)/$(project).inserted.asc: $(build_folder)/$(project).asc $(build_folder)/bram_init.asc $(ipl0_path)
+	icebram -v $(build_folder)/bram_init.asc $(ipl0_path) <$< >$@
 
 $(project).bin: $(build_folder)/$(project).inserted.asc
 	$(ICEPACK) -Fh -s $< $@
@@ -63,7 +49,7 @@ bench_fst_files := $(bench_out_files:.sv=.fst)
 
 
 // https://github.com/no2fpga/no2build/blob/master/core-rules.mk
-$(build_folder)/%.tb: rtl/benches/%.sv $(ICE40_LIBS) $(rtl_source_paths) $(build_folder)/ipl0.asc
+$(build_folder)/%.tb: rtl/benches/%.sv $(ICE40_LIBS) $(rtl_source_paths) $(ipl0_path)
 	iverilog -g 2012 -o $@ -I rtl/benches -I rtl -l $(ICE40_LIBS) $<
 
 %.fst: $(build_folder)/%.tb
@@ -75,12 +61,11 @@ simulation: $(bench_fst_files)
 #  Meta
 ###############################################
 
-build: $(project).bin ipl0.ws
+build: $(project).bin
 
 clean:
 	rm -r -f build
 	rm -f nileswan.bin
-	rm -f ipl0.ws
 
 	rm -f *.vcd
 

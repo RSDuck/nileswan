@@ -1,5 +1,5 @@
-[submodule "libnile"]
-	path = libnile
+[submodule "software/libnile"]
+	path = software/libnile
 	url = https://github.com/asiekierka/libnile
 [submodule "firmware/cmake"]
 	path = firmware/cmake
