@@ -105,7 +105,7 @@ DEPS		:= $(OBJS:.o=.d)
 
 .PHONY: all clean
 
-all: compile_commands.json
+all: $(ROM) compile_commands.json
 
 $(ROM) $(ELF): $(ELF_STAGE1)
 	@echo "  ROM     $@"
