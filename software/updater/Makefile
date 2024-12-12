@@ -15,7 +15,6 @@ PYTHON ?= python
 # --------
 
 NAME		:= updater
-MANIFEST	:= manifest.txt
 
 # Source code paths
 # -----------------
@@ -43,7 +42,6 @@ BUILDDIR	:= build
 ELF		:= build/$(NAME).elf
 ELF_STAGE1	:= build/$(NAME)_stage1.elf
 ROM		:= $(NAME)_base.ws
-FINAL_ROM	:= $(NAME).ws
 
 # Verbose flag
 # ------------
@@ -107,11 +105,7 @@ DEPS		:= $(OBJS:.o=.d)
 
 .PHONY: all clean
 
-all: $(FINAL_ROM) compile_commands.json
-
-$(FINAL_ROM): $(ROM) $(MANIFEST)
-	@echo "  M->R    $@"
-	$(_V)$(PYTHON) manifest_to_rom.py $(ROM) $(MANIFEST) $(FINAL_ROM)
+all: compile_commands.json
 
 $(ROM) $(ELF): $(ELF_STAGE1)
 	@echo "  ROM     $@"

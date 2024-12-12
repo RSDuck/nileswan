@@ -6,7 +6,7 @@ all: ipl0.asc
 
 $(BUILDDIR)/fix: fix.nim
 	@echo "  NIM     $<"
-	@$(MKDIR) -p $(@D)
+	@mkdir -p $(@D)
 	nim c --outdir:$(BUILDDIR) $<
 
 ipl0.bin: ipl0.s swan.inc
