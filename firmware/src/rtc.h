@@ -15,29 +15,29 @@
  * with Nileswan MCU. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#ifndef _RTC_H_
+#define _RTC_H_
+
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
 
-#include "mcu.h"
-#include "rtc.h"
-#include "spi.h"
-#include "tusb.h"
+#define S3511A_AMPM       0x80
+#define S3511A_POWER_LOST 0x80
+#define S3511A_1224       0x40
+#define S3511A_INTAE      0x20
+#define S3511A_INTME      0x08
+#define S3511A_INTFE      0x02
 
-int main(void) {
-    mcu_init();
+void mcu_rtc_init(void);
 
-    // mcu_rtc_init();
+void rtc_reset(void);
+void rtc_write_status(uint8_t value);
+uint8_t rtc_read_status(void);
+void rtc_write_datetime(const uint8_t *buffer, bool date);
+void rtc_read_datetime(uint8_t *buffer, bool date);
+void rtc_write_alarm(uint8_t hour, uint8_t minute);
 
-    mcu_spi_set_freq(MCU_SPI_FREQ_384KHZ);
-    mcu_spi_init(MCU_SPI_MODE_NATIVE);
+int rtc_start_command_rx(uint8_t cmd);
+int rtc_finish_command_rx(uint8_t *rx, uint8_t *tx);
 
-    while (true) {
-        mcu_usb_power_task();
-        if (mcu_usb_is_active()) {
-            tud_task();
-        } else {
-            __WFI();
-        }
-    }
-}
+#endif /* _RTC_H_ */

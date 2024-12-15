@@ -23,7 +23,7 @@
  *
  */
 
-#include <stm32l052xx.h>
+#include "mcu.h"
 #include "tusb.h"
 
 /* A combination of interfaces must have a unique product id, since PC will save device driver after the first plug.
@@ -38,6 +38,38 @@
 
 #define USB_VID   0xCafe
 #define USB_BCD   0x0200
+
+//--------------------------------------------------------------------+
+// HID Descriptors
+//--------------------------------------------------------------------+
+
+uint8_t const desc_hid_report[] =
+{
+  HID_USAGE_PAGE ( HID_USAGE_PAGE_DESKTOP     )                 ,\
+  HID_USAGE      ( HID_USAGE_DESKTOP_GAMEPAD  )                 ,\
+  HID_COLLECTION ( HID_COLLECTION_APPLICATION )                 ,\
+    /* Report ID if any */\
+    HID_REPORT_ID      ( 1 ) \
+    /* 11 bit Button Map */ \
+    HID_USAGE_PAGE     ( HID_USAGE_PAGE_BUTTON                  ) ,\
+    HID_USAGE_MIN      ( 1                                      ) ,\
+    HID_USAGE_MAX      ( 11                                     ) ,\
+    HID_LOGICAL_MIN    ( 0                                      ) ,\
+    HID_LOGICAL_MAX    ( 1                                      ) ,\
+    HID_REPORT_COUNT   ( 11                                     ) ,\
+    HID_REPORT_SIZE    ( 1                                      ) ,\
+    HID_INPUT          ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
+  HID_COLLECTION_END
+};
+
+// Invoked when received GET HID REPORT DESCRIPTOR
+// Application return pointer to descriptor
+// Descriptor contents must exist long enough for transfer to complete
+uint8_t const * tud_hid_descriptor_report_cb(uint8_t instance)
+{
+  (void) instance;
+  return desc_hid_report;
+}
 
 //--------------------------------------------------------------------+
 // Device Descriptors
@@ -80,6 +112,7 @@ enum
 {
   ITF_NUM_CDC_0 = 0,
   ITF_NUM_CDC_0_DATA,
+  ITF_NUM_HID,
   ITF_NUM_TOTAL
 };
 
@@ -88,14 +121,18 @@ enum
 #define EPNUM_CDC_0_NOTIF   0x81
 #define EPNUM_CDC_0_OUT     0x02
 #define EPNUM_CDC_0_IN      0x82
+#define EPNUM_HID           0x83
 
 uint8_t const desc_fs_configuration[] =
 {
   // Config number, interface count, string index, total length, attribute, power in mA
   TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
 
-  // 1st CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
+  // Interface number, string index, EP notification address and size, EP data address (out, in) and size.
   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 64),
+
+  // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
+  TUD_HID_DESCRIPTOR(ITF_NUM_HID, 5, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 5)
 };
 
 #if TUD_OPT_HIGH_SPEED
@@ -106,8 +143,11 @@ uint8_t const desc_hs_configuration[] =
   // Config number, interface count, string index, total length, attribute, power in mA
   TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
 
-  // 1st CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
+  // Interface number, string index, EP notification address and size, EP data address (out, in) and size.
   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 512),
+
+  // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
+  TUD_HID_DESCRIPTOR(ITF_NUM_HID, 5, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 5)
 };
 
 // device qualifier is mostly similar to device descriptor since we don't change configuration based on speed
@@ -201,7 +241,7 @@ enum {
   STRID_LANGID = 0,
   STRID_MANUFACTURER,
   STRID_PRODUCT,
-  STRID_SERIAL,
+  STRID_SERIAL
 };
 
 // array of pointer to string descriptors
@@ -212,6 +252,7 @@ char const *string_desc_arr[] =
   "nileswan Device",             // 2: Product
   NULL,                          // 3: Serials will use unique ID if possible
   "nileswan CDC",                // 4: CDC Interface
+  "nileswan HID",                // 5: HID Interface
 };
 
 static uint16_t _desc_str[32 + 1];

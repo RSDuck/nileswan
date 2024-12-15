@@ -15,29 +15,25 @@
  * with Nileswan MCU. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+#ifndef _EEPROM_H_
+#define _EEPROM_H_
 
 #include "mcu.h"
-#include "rtc.h"
-#include "spi.h"
-#include "tusb.h"
 
-int main(void) {
-    mcu_init();
+typedef enum {
+    EEPROM_NONE,
+    EEPROM_M93LC06,
+    EEPROM_M93LC46,
+    EEPROM_M93LC56,
+    EEPROM_M93LC66,
+    EEPROM_M93LC76,
+    EEPROM_M93LC86
+} eeprom_type_t;
 
-    // mcu_rtc_init();
+void eeprom_erase(void);
+void eeprom_read_data(void *buffer, uint32_t address, uint32_t length);
+void eeprom_write_data(const void *buffer, uint32_t address, uint32_t length);
+void eeprom_set_type(eeprom_type_t type);
+uint16_t eeprom_exch_word(uint16_t w);
 
-    mcu_spi_set_freq(MCU_SPI_FREQ_384KHZ);
-    mcu_spi_init(MCU_SPI_MODE_NATIVE);
-
-    while (true) {
-        mcu_usb_power_task();
-        if (mcu_usb_is_active()) {
-            tud_task();
-        } else {
-            __WFI();
-        }
-    }
-}
+#endif /* _EEPROM_H_ */

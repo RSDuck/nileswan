@@ -20,24 +20,12 @@
 #include <stdint.h>
 
 #include "mcu.h"
-#include "rtc.h"
-#include "spi.h"
 #include "tusb.h"
 
-int main(void) {
-    mcu_init();
+uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {
+  return 0;
+}
 
-    // mcu_rtc_init();
+void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
 
-    mcu_spi_set_freq(MCU_SPI_FREQ_384KHZ);
-    mcu_spi_init(MCU_SPI_MODE_NATIVE);
-
-    while (true) {
-        mcu_usb_power_task();
-        if (mcu_usb_is_active()) {
-            tud_task();
-        } else {
-            __WFI();
-        }
-    }
 }

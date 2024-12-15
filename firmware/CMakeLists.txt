@@ -11,11 +11,17 @@ stm32_fetch_cmsis(L0)
 stm32_fetch_hal(L0)
 
 find_package(CMSIS COMPONENTS STM32L052K8 REQUIRED)
-find_package(HAL COMPONENTS STM32L0 LL_RCC LL_EXTI LL_GPIO LL_SPI LL_UTILS REQUIRED)
+find_package(HAL COMPONENTS STM32L0 LL_RCC LL_EXTI LL_GPIO LL_RTC LL_SPI LL_UTILS REQUIRED)
 
 set(PROJECT_SOURCES
+    src/eeprom.c
+    src/hid.c
     src/main.c
     src/mcu.c
+    src/nanoprintf.c
+    src/rtc.c
+    src/spi.c
+    src/spi_cmd.c
     src/usb_descriptors.c
 
     # TinyUSB common
@@ -25,6 +31,7 @@ set(PROJECT_SOURCES
     tinyusb/src/device/usbd.c
     tinyusb/src/device/usbd_control.c
     tinyusb/src/class/cdc/cdc_device.c
+    tinyusb/src/class/hid/hid_device.c
     tinyusb/src/class/msc/msc_device.c
     tinyusb/src/class/net/ecm_rndis_device.c
     tinyusb/src/class/net/ncm_device.c
@@ -40,6 +47,7 @@ target_link_libraries(firmware
     HAL::STM32::L0::LL_RCC
     HAL::STM32::L0::LL_EXTI
     HAL::STM32::L0::LL_GPIO
+    HAL::STM32::L0::LL_RTC
     HAL::STM32::L0::LL_SPI
     HAL::STM32::L0::LL_UTILS
     CMSIS::STM32::L052K8

@@ -20,8 +20,8 @@
 
     ; This allows us to access IRAM as 0x0000~0x3FFF on the CS segment.
 NILE_IPL0_SEG            equ 0xf400
-NILE_IPL0_TMP_RAM        equ 0xf800 ; 0000:3800
-NILE_IPL0_STACK          equ 0x0000 ; 0000:4000
+NILE_IPL0_TMP_RAM        equ 0xf800 ; f400:f800 => 0000:3800
+NILE_IPL0_STACK          equ 0x0000 ; f400:0000 => 0000:4000
 NILE_IPL0_SIZE           equ 512
 NILE_FLASH_ADDR_IPL1     equ 0x28000
 NILE_FLASH_ADDR_IPL1_ALT equ 0x2c000
@@ -30,14 +30,14 @@ NILE_FLASH_ADDR_IPL1_ALT equ 0x2c000
 
     ; 4000:0000 - boot ROM alternate boot location
     org 0x0000
-    jmp 0xf400:start_entrypoint1
+    jmp NILE_IPL0_SEG:start_entrypoint1
 start_entrypoint1:
     cs mov byte [NILE_IPL0_TMP_RAM], 1
     jmp	start_shared
     times (16)-($-$$) db 0xFF
 
     ; 4000:0010 - boot ROM alternate boot location (PCv2)
-    jmp 0xf400:start_entrypoint2
+    jmp NILE_IPL0_SEG:start_entrypoint2
 start_entrypoint2:
     cs mov byte [NILE_IPL0_TMP_RAM], 2
     jmp	start_shared

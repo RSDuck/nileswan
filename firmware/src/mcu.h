@@ -32,40 +32,18 @@
 #include <stm32l0xx_ll_pwr.h>
 #include <stm32l0xx_ll_usb.h>
 #include <stm32l0xx_ll_crs.h>
+#include <stm32l0xx_ll_dma.h>
+#include <stm32l0xx_ll_rtc.h>
 
-// GPIO A
-#define MCU_PORT_SPI GPIOA
-#define MCU_PIN_MASK_SPI_NSS LL_GPIO_PIN_4
-#define MCU_PIN_MASK_SPI_SCK LL_GPIO_PIN_5
-#define MCU_PIN_MASK_SPI_POCI LL_GPIO_PIN_6
-#define MCU_PIN_MASK_SPI_PICO LL_GPIO_PIN_7
-#define MCU_PERIPH_SPI SPI1
-
-// GPIO B
-#define MCU_PIN_MASK_FPGA_IRQ LL_GPIO_PIN_6
-#define MCU_PIN_MASK_SRAM_POWER LL_GPIO_PIN_7
-#define MCU_PIN_MASK_USB_POWER LL_GPIO_PIN_8
-
-#define MCU_SPI_FREQ_384KHZ LL_GPIO_SPEED_FREQ_LOW
-#define MCU_SPI_FREQ_6MHZ   LL_GPIO_SPEED_FREQ_HIGH
-#define MCU_SPI_FREQ_25MHZ  LL_GPIO_SPEED_FREQ_VERY_HIGH
-void mcu_spi_set_freq(uint32_t freq);
+#include "config.h"
 
 void mcu_init(void);
 
 bool mcu_usb_is_active(void);
 void mcu_usb_power_task(void);
 
-static inline void mcu_spi_enable(void) {
-    LL_SPI_Enable(MCU_PERIPH_SPI);
-}
-
-static inline void mcu_spi_disable(void) {
-    LL_SPI_Disable(MCU_PERIPH_SPI);
-}
-
 static inline bool mcu_usb_is_power_connected(void) {
-    return LL_GPIO_IsInputPinSet(GPIOB, MCU_PIN_MASK_USB_POWER);
+    return LL_GPIO_IsInputPinSet(GPIOB, MCU_PIN_USB_POWER);
 }
 
 #endif /* _MCU_H_ */

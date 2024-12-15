@@ -15,29 +15,26 @@
  * with Nileswan MCU. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+#ifndef _SPI_CMD_H_
+#define _SPI_CMD_H_
 
-#include "mcu.h"
-#include "rtc.h"
 #include "spi.h"
-#include "tusb.h"
 
-int main(void) {
-    mcu_init();
+typedef enum {
+    MCU_SPI_CMD_ECHO = 0x00,
+    MCU_SPI_CMD_MODE = 0x01,
+    MCU_SPI_CMD_FREQ = 0x02,
+    MCU_SPI_CMD_EEPROM_MODE = 0x10,
+    MCU_SPI_CMD_EEPROM_ERASE = 0x11,
+    MCU_SPI_CMD_EEPROM_READ = 0x12,
+    MCU_SPI_CMD_EEPROM_WRITE = 0x13,
+    MCU_SPI_CMD_RTC_COMMAND = 0x14,
+    MCU_SPI_CMD_USB_CDC_READ = 0x40,
+    MCU_SPI_CMD_USB_CDC_WRITE = 0x41,
+    MCU_SPI_CMD_USB_HID_WRITE = 0x42,
+} mcu_spi_cmd_t;
 
-    // mcu_rtc_init();
+int spi_native_start_command_rx(uint16_t cmd);
+int spi_native_finish_command_rx(uint8_t *rx, uint8_t *tx);
 
-    mcu_spi_set_freq(MCU_SPI_FREQ_384KHZ);
-    mcu_spi_init(MCU_SPI_MODE_NATIVE);
-
-    while (true) {
-        mcu_usb_power_task();
-        if (mcu_usb_is_active()) {
-            tud_task();
-        } else {
-            __WFI();
-        }
-    }
-}
+#endif /* _SPI_CMD_H_ */
