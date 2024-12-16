@@ -130,7 +130,7 @@ void main(void) {
 	outportw(IO_BANK_2003_RAM, NILE_SEG_RAM_IPC);
 	if (MEM_NILE_IPC->magic != NILE_IPC_MAGIC) {
 		MEM_NILE_IPC->magic = NILE_IPC_MAGIC;
-		memset(MEM_NILE_IPC + 2, 0, 510);
+		memset(((uint8_t __far*) MEM_NILE_IPC) + 2, 0, sizeof(nile_ipc_t) - 2);
 
 		MEM_NILE_IPC->boot_entrypoint = *((uint8_t*) 0x3800);
 		memcpy(&(MEM_NILE_IPC->boot_regs), (void*) 0x3802, 184 + 24);
