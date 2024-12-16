@@ -20,10 +20,10 @@ help:
 	@echo "program          Build and program complete SPI flash contents"
 
 libnile:
-	cd software/libnile && make TARGET=wswan/medium
+	cd software/libnile && make TARGET=wswan/medium && make -j1 TARGET=wswan/medium install
 
 libnile-ipl1:
-	cd software/libnile && make TARGET=ipl1
+	cd software/libnile && make TARGET=ipl1 && make -j1 TARGET=ipl1 install
 
 ipl0:
 	cd software/ipl0 && make

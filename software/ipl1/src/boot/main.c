@@ -128,10 +128,14 @@ void main(void) {
 
 	// Initialize IPC area
 	outportw(IO_BANK_2003_RAM, NILE_SEG_RAM_IPC);
-	memset(MEM_NILE_IPC, 0, 512);
-	MEM_NILE_IPC->boot_entrypoint = *((uint8_t*) 0x3800);
-	memcpy(&(MEM_NILE_IPC->boot_regs), (void*) 0x3802, 192 + 24);
-	
+	if (MEM_NILE_IPC->magic != NILE_IPC_MAGIC) {
+		MEM_NILE_IPC->magic = NILE_IPC_MAGIC;
+		memset(MEM_NILE_IPC + 2, 0, 510);
+
+		MEM_NILE_IPC->boot_entrypoint = *((uint8_t*) 0x3800);
+		memcpy(&(MEM_NILE_IPC->boot_regs), (void*) 0x3802, 184 + 24);
+	}
+
     ws_display_set_shade_lut(SHADE_LUT_DEFAULT);
     outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(0, 7, 2, 5));
     outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(0, 0, 0, 0));

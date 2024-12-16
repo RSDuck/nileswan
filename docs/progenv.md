@@ -1,42 +1,15 @@
 # Programming environment
 
-## Register map
+## I/O port map
 
-| Addr | Width  | Name | Description  |
-|------|-|-----|----|
-| `0xE0` |2 | SPI_CNT | SPI control register |
-| `0xE2`|1 | POW_CNT | Power control |
-| `0xE3` |1| NILE_IRQ | Controls nileswan IRQ |
-| `0xE4`|2 | BANK_MASK | Mask for bank index |
+| Address|Width|    Name    | Description |
+|--------|-----|------------|-------------|
+| `0xE0` |  2  | SPI_CNT    | SPI control register |
+| `0xE2` |  1  | POW_CNT    | Power control |
+| `0xE3` |  1  | NILE_IRQ   | Controls nileswan IRQ |
+| `0xE4` |  2  | BANK_MASK  | Mask for bank index |
 
-## Banks
-
-**ROM**
-
-| Bank(s) | Description |
-|------------|-------------|
-| 0-127 | First PSRAM (8 MB) |
-| 128-255 | Second PSRAM (8 MB, optional) |
-| 256-509 | Unused (open bus) |
-| 500 | Bootrom mirror (Pocket Challange V2 boot location) |
-| 501-509 | Unused (open bus) |
-| 510 | SPI RX buffer (read only, 512 bytes mirrored) |
-| 511 | Bootrom (WonderSwan boot location)|
-
-**RAM**
-
-| Bank(s) | Description |
-|------------|-------------|
-| 0-7 | SRAM (512 KB) |
-| 8-13 | Unused (open bus) |
-| 14 | IPC buffer (512 bytes mirrored) |
-| 15 | SPI TX buffer (write only, 512 bytes mirrored) |
-
-SPI RX and TX buffer are double buffered with only one currently visible. This is controlable via `SPI_CNT`.
-
-The PSRAM is writeable by using the self flash mode, which maps ROM at the point in the address space at which RAM usually sits (`0x10000`-`0x1FFFF`). While it is technically possible to read the SPI RX buffer and bootrom in this state, the read values will be wrong. These memories only support 16-bit wide accesses.
-
-## Registers
+## I/O ports
 
 ### SPI
 
@@ -91,7 +64,7 @@ The μC reset line bit directly connects to the nRST pin of the microcontroller.
 
 If SPI IRQ generation is enabled an IRQ will be generated whenever the the busy bit of `SPI_CNT` changes from 1 to 0. It is signalled and acknowledgeable via the SPI IRQ status bit.
 
-### Banking control
+### Banking
 
 **`0xE4` - `BANK_MASK` (16 bit)**
 | Bit(s) | Description |
@@ -105,3 +78,71 @@ If SPI IRQ generation is enabled an IRQ will be generated whenever the the busy 
 To allow booting from bootrom the masks are initialised with all bits set.
 
 Bank mask is always applied to the extended ROM bank (starting from 0x40000).
+
+## Memory bank layout
+
+### ROM (ROM0, ROM1, ROML)
+
+| Bank(s) | Description |
+|---------|-------------|
+|  0-127  | First PSRAM (8 MB) |
+| 128-255 | Second PSRAM (8 MB, optional) |
+| 256-499 | Unused (open bus) |
+|   500   | Bootrom mirror (Pocket Challange V2 boot location) |
+| 501-509 | Unused (open bus) |
+|   510   | SPI RX buffer (read only, 512 bytes mirrored) |
+|   511   | Bootrom (WonderSwan boot location) |
+
+The PSRAM banks are writable by using the self flash mode (port 0xCE), which maps ROM at the point in the address space at which RAM usually sits (`0x10000`-`0x1FFFF`).
+
+Note that while it is technically possible to read the SPI RX buffer and bootrom in the RAM bank, the values read will be incorrect - the RAM bank only supports byte accesses, while these banks only support 16-bit wide word accesses.
+
+### RAM
+
+|Bank(s)| Description |
+|-------|-------------|
+| 0-7   | SRAM (512 KB) |
+| 8-13  | Unused (open bus) |
+| 14    | IPC buffer (512 bytes mirrored) |
+| 15    | SPI TX buffer (write only, 512 bytes mirrored) |
+
+## Memory banks
+
+### RAM bank 14: IPC
+
+This area is used for inter-process communication by software that targets the nileswan.
+
+|Address| Size | Description |
+|-------|------|-------------|
+| 0x000 |    2 | 0xAA55 if area valid |
+| 0x002 |    1 | Cold boot entrypoint |
+| 0x003 |    1 | TF card status |
+| 0x004 |    4 | Reserved |
+| 0x008 |   24 | Cold boot register backup: AX, BX, CX, DX, SP, BP, SI, DI, DS, ES, SS, FLAGS |
+| 0x020 |  184 | Cold boot I/O port backup: 0x00 ~ 0xB7 |
+| 0x0D8 |    8 | Reserved |
+| 0x0E0 |  288 | Free to use for programs |
+
+#### Cold boot entrypoint
+
+* 0 - FFFF:0000 (standard - WS/WSC)
+* 1 - 4000:0000 (alternate #1)
+* 2 - 4000:0010 (alternate #2 - PCv2)
+
+#### TF card status
+
+    7  bit  0
+    ---- ----
+    bttt tttt
+    |||| ||||
+    |+++-++++- TF card type
+    |          - 0: no card
+    |          - 1: MMCv3
+    |          - 2: MMCv4 (> 2 GB)
+    |          - 3: TF
+    |          - 4: TF (> 2 GB)
+    +--------- Card uses block instead of byte addressing
+
+### ROM bank 510, RAM bank 15: SPI buffers
+
+The SPI RX and TX buffer are double-buffered. This means one buffer is visible to the console, while the other is used by the FPGA for facilitating an ongoing SPI transfer. These buffers can be swapped using `SPI_CNT`.
