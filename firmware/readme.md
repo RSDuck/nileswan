@@ -40,6 +40,10 @@ The parameter is the maximum frequency to set:
 
 The response is 1 on success, 0 on failure.
 
+#### 0x03 - MCU: Get unique ID
+
+The response is the unique ID of the chip.
+
 #### 0x10 - EEPROM: Set emulation mode
 
 Set the size of the emulated EEPROM:

@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "mcu.h"
 #include "spi_cmd.h"
 #include "eeprom.h"
 #include "rtc.h"
@@ -60,6 +61,9 @@ int spi_native_finish_command_rx(uint8_t *rx, uint8_t *tx) {
         mcu_spi_set_freq(arg);
         tx[0] = 1;
         return 1;
+    case MCU_SPI_CMD_ID:
+        memcpy(tx, (void*) UID_BASE, MCU_UID_LENGTH);
+        return MCU_UID_LENGTH;
     case MCU_SPI_CMD_EEPROM_MODE:
         eeprom_set_type(arg);
         tx[0] = 1;

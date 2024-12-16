@@ -32,6 +32,8 @@
 
 // MCU configuration
 
+#define MCU_UID_LENGTH 12
+
 // GPIO A
 #define MCU_PORT_SPI GPIOA
 #define MCU_PIN_SPI_NSS LL_GPIO_PIN_4
