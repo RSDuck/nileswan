@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "mcu.h"
+#include "cdc.h"
 #include "spi_cmd.h"
 #include "eeprom.h"
 #include "rtc.h"
@@ -50,6 +51,7 @@ int spi_native_start_command_rx(uint16_t cmd) {
 
 int spi_native_finish_command_rx(uint8_t *rx, uint8_t *tx) {
     uint16_t arg = SPI_NATIVE_ARG(spi_cmd);
+    cdc_debug("spi/native: received command %02X %04X", SPI_NATIVE_CMD(spi_cmd), arg);
     switch (SPI_NATIVE_CMD(spi_cmd)) {
     case MCU_SPI_CMD_ECHO:
         memcpy(tx, rx, arg_to_len(arg));

@@ -21,10 +21,10 @@
 #include <stm32l052xx.h>
 #include <stm32l0xx_ll_spi.h>
 
-#include "nanoprintf.h"
 #include "tusb.h"
 
 #include "spi.h"
+#include "cdc.h"
 #include "config.h"
 #include "eeprom.h"
 #include "rtc.h"
@@ -73,6 +73,7 @@ static void mcu_spi_dma_finish(void) {
         LL_SPI_EnableIT_TXE(MCU_PERIPH_SPI);
        
         int len = spi_native_finish_command_rx(spi_rx_buffer, spi_tx_buffer + 2);
+        cdc_debug(", returning %d bytes\r\n", len);
         spi_tx_buffer[0] = (len << 1) & 0xFF;
         spi_tx_buffer[1] = (len << 1) >> 8;
 
@@ -91,6 +92,14 @@ static void mcu_spi_dma_finish(void) {
 
 static uint8_t spi_native_idx = 0;
 static uint8_t spi_native_byte = 0;
+
+void mcu_spi_task(void) {
+    if (spi_native_idx == 2) {
+        spi_native_idx = 0;
+        mcu_spi_dma_finish();
+    }
+}
+
 void DMA1_Channel2_3_IRQHandler(void) {
     if (LL_DMA_IsActiveFlag_TC3(DMA1)) {
         LL_DMA_ClearFlag_TC3(DMA1);
@@ -104,7 +113,7 @@ void DMA1_Channel2_3_IRQHandler(void) {
         LL_DMA_ClearFlag_TC2(DMA1);
 
         mcu_spi_disable_dma_rx();
-        mcu_spi_dma_finish();
+        spi_native_idx = 2;
     }
 }
 

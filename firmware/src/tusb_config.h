@@ -26,6 +26,8 @@
 #ifndef _TUSB_CONFIG_H_
 #define _TUSB_CONFIG_H_
 
+#include "config.h"
+
 #ifdef __cplusplus
  extern "C" {
 #endif
@@ -91,7 +93,11 @@
 #endif
 
 //------------- CLASS -------------//
+#ifdef CONFIG_ENABLE_CDC_DEBUG_PORT
+#define CFG_TUD_CDC               2
+#else
 #define CFG_TUD_CDC               1
+#endif
 #define CFG_TUD_MSC               0
 #define CFG_TUD_HID               1
 #define CFG_TUD_MIDI              0

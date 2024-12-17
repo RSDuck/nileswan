@@ -14,6 +14,7 @@ find_package(CMSIS COMPONENTS STM32L052K8 REQUIRED)
 find_package(HAL COMPONENTS STM32L0 LL_RCC LL_EXTI LL_GPIO LL_RTC LL_SPI LL_UTILS REQUIRED)
 
 set(PROJECT_SOURCES
+    src/cdc.c
     src/eeprom.c
     src/hid.c
     src/main.c

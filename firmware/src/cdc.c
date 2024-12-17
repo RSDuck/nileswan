@@ -15,30 +15,20 @@
  * with Nileswan MCU. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+#include <stdarg.h>
+#include "nanoprintf.h"
 
 #include "mcu.h"
-#include "rtc.h"
-#include "spi.h"
 #include "tusb.h"
 
-int main(void) {
-    mcu_init();
-
-    // mcu_rtc_init();
-
-    mcu_spi_set_freq(MCU_SPI_FREQ_384KHZ);
-    mcu_spi_init(MCU_SPI_MODE_NATIVE);
-
-    while (true) {
-        mcu_usb_power_task();
-        if (mcu_usb_is_active()) {
-            tud_task();
-        } else {
-            __WFI();
-        }
-        mcu_spi_task();
-    }
+#ifdef CONFIG_ENABLE_CDC_DEBUG_PORT
+void cdc_debug(const char *format, ...) {
+    char buf[96];
+    va_list val;
+    va_start(val, format);
+    npf_vsnprintf(buf, sizeof(buf), format, val);
+    tud_cdc_n_write_str(1, buf);
+    tud_cdc_n_write_flush(1);
+    va_end(val);
 }
+#endif

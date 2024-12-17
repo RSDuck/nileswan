@@ -38,6 +38,7 @@ void mcu_spi_disable_dma_tx(void);
 void mcu_spi_disable_dma_rx(void);
 void mcu_spi_enable_dma_tx(const void *address, uint32_t length);
 void mcu_spi_enable_dma_rx(void *address, uint32_t length);
+void mcu_spi_task(void);
 
 static inline void mcu_spi_enable(void) {
     LL_SPI_Enable(MCU_PERIPH_SPI);
