@@ -202,14 +202,15 @@ void mcu_spi_init(mcu_spi_mode_t mode) {
         LL_SPI_SetDataWidth(MCU_PERIPH_SPI, LL_SPI_DATAWIDTH_8BIT);
     }
     LL_SPI_EnableIT_RXNE(MCU_PERIPH_SPI);
+    LL_DMA_ClearFlag_TC2(DMA1);
+    LL_DMA_ClearFlag_TC3(DMA1);
+    LL_DMA_EnableIT_TC(DMA1, MCU_DMA_CHANNEL_SPI_RX);
+    LL_DMA_EnableIT_TC(DMA1, MCU_DMA_CHANNEL_SPI_TX);
 
     NVIC_SetPriority(SPI1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
     NVIC_EnableIRQ(SPI1_IRQn);
     NVIC_SetPriority(DMA1_Channel2_3_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
     NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
-
-    LL_DMA_EnableIT_TC(DMA1, MCU_DMA_CHANNEL_SPI_RX);
-    LL_DMA_EnableIT_TC(DMA1, MCU_DMA_CHANNEL_SPI_TX);
 
     mcu_spi_disable_dma_tx();
 
