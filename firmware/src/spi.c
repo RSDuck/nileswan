@@ -70,10 +70,8 @@ void mcu_spi_enable_dma_rx(void *address, uint32_t length) {
 
 static void mcu_spi_dma_finish(void) {
     if (spi_mode == MCU_SPI_MODE_NATIVE) {
-        LL_SPI_EnableIT_TXE(MCU_PERIPH_SPI);
-       
         int len = spi_native_finish_command_rx(spi_rx_buffer, spi_tx_buffer + 2);
-        cdc_debug(", returning %d bytes\r\n", len);
+        // cdc_debug(", returning %d bytes\r\n", len);
         spi_tx_buffer[0] = (len << 1) & 0xFF;
         spi_tx_buffer[1] = (len << 1) >> 8;
 
@@ -91,7 +89,6 @@ static void mcu_spi_dma_finish(void) {
 }
 
 static uint8_t spi_native_idx = 0;
-static uint8_t spi_native_byte = 0;
 
 void mcu_spi_task(void) {
     if (spi_native_idx == 2) {
@@ -113,6 +110,7 @@ void DMA1_Channel2_3_IRQHandler(void) {
         LL_DMA_ClearFlag_TC2(DMA1);
 
         mcu_spi_disable_dma_rx();
+        LL_SPI_EnableIT_TXE(MCU_PERIPH_SPI);
         spi_native_idx = 2;
     }
 }
@@ -126,22 +124,27 @@ void SPI1_IRQHandler(void) {
     if (LL_SPI_IsActiveFlag_RXNE(SPI1)) {
         if (spi_mode == MCU_SPI_MODE_NATIVE) {
             uint8_t byte = LL_SPI_ReceiveData8(MCU_PERIPH_SPI);
-            if (spi_native_idx == 0) {
-                if (byte != 0xFF) {
-                    spi_native_byte = byte;
-                    spi_native_idx = 1;
+            if (byte == 0xFF) {
+                return;
+            }
+            int timeout = 2500;
+            while (timeout--) {
+                if (LL_SPI_IsActiveFlag_RXNE(SPI1)) {
+                    break;
                 }
+            }
+            if (!timeout) {
+                return;
+            }
+            uint8_t byte2 = LL_SPI_ReceiveData8(MCU_PERIPH_SPI);
+            uint16_t cmd = (byte) | (byte2 << 8);
+            LL_SPI_DisableIT_RXNE(MCU_PERIPH_SPI);
+            int rx_length = spi_native_start_command_rx(cmd);
+            if (rx_length) {
+                mcu_spi_enable_dma_rx(spi_rx_buffer, rx_length);
             } else {
-                uint16_t cmd = (spi_native_byte) | (byte << 8);
-
-                spi_native_idx = 0;
-                LL_SPI_DisableIT_RXNE(MCU_PERIPH_SPI);
-                int rx_length = spi_native_start_command_rx(cmd);
-                if (rx_length) {
-                    mcu_spi_enable_dma_rx(spi_rx_buffer, rx_length);
-                } else {
-                    mcu_spi_dma_finish();
-                }
+                LL_SPI_EnableIT_TXE(MCU_PERIPH_SPI);
+                spi_native_idx = 2;
             }
         } else if (spi_mode == MCU_SPI_MODE_EEPROM) {
             LL_GPIO_ResetOutputPin(GPIOB, MCU_PIN_FPGA_READY);

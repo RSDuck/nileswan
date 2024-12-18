@@ -39,6 +39,7 @@
 #define USB_VID   0xCafe
 #define USB_BCD   0x0200
 
+#if CFG_TUD_HID
 //--------------------------------------------------------------------+
 // HID Descriptors
 //--------------------------------------------------------------------+
@@ -70,6 +71,7 @@ uint8_t const * tud_hid_descriptor_report_cb(uint8_t instance)
   (void) instance;
   return desc_hid_report;
 }
+#endif
 
 //--------------------------------------------------------------------+
 // Device Descriptors
@@ -116,7 +118,9 @@ enum
   ITF_NUM_CDC_1,
   ITF_NUM_CDC_1_DATA,
 #endif
+#if CFG_TUD_HID
   ITF_NUM_HID,
+#endif
   ITF_NUM_TOTAL
 };
 
@@ -128,7 +132,9 @@ enum
 #define EPNUM_CDC_1_NOTIF   0x83
 #define EPNUM_CDC_1_OUT     0x04
 #define EPNUM_CDC_1_IN      0x84
+#if CFG_TUD_HID
 #define EPNUM_HID           0x85
+#endif
 
 uint8_t const desc_fs_configuration[] =
 {
@@ -144,7 +150,9 @@ uint8_t const desc_fs_configuration[] =
 #endif
 
   // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
+#if CFG_TUD_HID
   TUD_HID_DESCRIPTOR(ITF_NUM_HID, 5, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 5)
+#endif
 };
 
 #if TUD_OPT_HIGH_SPEED
@@ -163,8 +171,10 @@ uint8_t const desc_hs_configuration[] =
   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 4, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 512),
 #endif
 
+#if CFG_TUD_HID
   // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
   TUD_HID_DESCRIPTOR(ITF_NUM_HID, 5, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 5)
+#endif
 };
 
 // device qualifier is mostly similar to device descriptor since we don't change configuration based on speed

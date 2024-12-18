@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "class/cdc/cdc_device.h"
 #include "mcu.h"
 #include "cdc.h"
 #include "spi_cmd.h"
@@ -51,7 +52,7 @@ int spi_native_start_command_rx(uint16_t cmd) {
 
 int spi_native_finish_command_rx(uint8_t *rx, uint8_t *tx) {
     uint16_t arg = SPI_NATIVE_ARG(spi_cmd);
-    cdc_debug("spi/native: received command %02X %04X", SPI_NATIVE_CMD(spi_cmd), arg);
+    // cdc_debug("spi/native: received command %02X %04X", SPI_NATIVE_CMD(spi_cmd), arg);
     switch (SPI_NATIVE_CMD(spi_cmd)) {
     case MCU_SPI_CMD_ECHO:
         memcpy(tx, rx, arg_to_len(arg));
@@ -82,10 +83,21 @@ int spi_native_finish_command_rx(uint8_t *rx, uint8_t *tx) {
             tx[0] = 0;
             tx[1] = 0;
         } else {
-            int cdc_write_len = tud_cdc_write(rx, arg_to_len(arg));
-            tx[0] = cdc_write_len;
-            tx[1] = cdc_write_len >> 8;
+            uint16_t v16 = tud_cdc_write(rx, arg_to_len(arg));
+            tx[0] = v16;
+            tx[1] = v16 >> 8;
             tud_cdc_write_flush();
+        }
+        return 2;
+    }
+    case MCU_SPI_CMD_USB_CDC_AVAILABLE: {
+        if (!mcu_usb_is_active()) {
+            tx[0] = 0;
+            tx[1] = 0;
+        } else {
+            uint16_t v16 = tud_cdc_available();
+            tx[0] = v16;
+            tx[1] = v16 >> 8;
         }
         return 2;
     }
@@ -93,3 +105,11 @@ int spi_native_finish_command_rx(uint8_t *rx, uint8_t *tx) {
         return 0;
     }
 }
+
+#if 0
+void tud_cdc_rx_cb(uint8_t itf) {
+    if (itf == 0 && tud_cdc_n_available(itf)) {
+        cdc_debug("available: %d\n", tud_cdc_n_available(itf));
+    }
+}
+#endif

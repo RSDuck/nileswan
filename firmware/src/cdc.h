@@ -21,7 +21,7 @@
 #include "mcu.h"
 
 #ifdef CONFIG_ENABLE_CDC_DEBUG_PORT
-void cdc_debug(const char *format, ...);
+int cdc_debug(const char *format, ...);
 #else
 #define cdc_debug(...)
 #endif

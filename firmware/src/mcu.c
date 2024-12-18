@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stm32l0xx_ll_utils.h>
 
 #include "mcu.h"
 #include "config.h"
@@ -95,6 +96,10 @@ void mcu_init(void) {
     LL_GPIO_SetPinPull(GPIOB, MCU_PIN_USB_POWER, LL_GPIO_PULL_DOWN);
     LL_GPIO_SetPinSpeed(GPIOB, MCU_PIN_USB_POWER, LL_GPIO_SPEED_FREQ_LOW);
     LL_GPIO_SetPinMode(GPIOB, MCU_PIN_USB_POWER, LL_GPIO_MODE_INPUT);
+
+    LL_mDelay(1);
+    __mcu_usb_on_power_change();
+
     LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTB, LL_SYSCFG_EXTI_LINE8);
     LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_8);
     LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_8);

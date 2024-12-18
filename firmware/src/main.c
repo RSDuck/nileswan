@@ -23,6 +23,7 @@
 #include "rtc.h"
 #include "spi.h"
 #include "tusb.h"
+#include "cdc.h"
 
 int main(void) {
     mcu_init();
@@ -36,8 +37,6 @@ int main(void) {
         mcu_usb_power_task();
         if (mcu_usb_is_active()) {
             tud_task();
-        } else {
-            __WFI();
         }
         mcu_spi_task();
     }

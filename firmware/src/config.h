@@ -29,8 +29,8 @@
 // Firmware configuration
 
 #define MCU_SPI_MAX_PACKET_SIZE 512
-#define MCU_SPI_RX_BUFFER_SIZE 512
-#define MCU_SPI_TX_BUFFER_SIZE 514
+#define MCU_SPI_RX_BUFFER_SIZE (MCU_SPI_MAX_PACKET_SIZE)
+#define MCU_SPI_TX_BUFFER_SIZE ((MCU_SPI_MAX_PACKET_SIZE) + 2)
 
 // MCU configuration
 

@@ -22,13 +22,14 @@
 #include "tusb.h"
 
 #ifdef CONFIG_ENABLE_CDC_DEBUG_PORT
-void cdc_debug(const char *format, ...) {
+int cdc_debug(const char *format, ...) {
     char buf[96];
     va_list val;
     va_start(val, format);
-    npf_vsnprintf(buf, sizeof(buf), format, val);
+    int n = npf_vsnprintf(buf, sizeof(buf), format, val);
     tud_cdc_n_write_str(1, buf);
     tud_cdc_n_write_flush(1);
     va_end(val);
+    return n;
 }
 #endif
