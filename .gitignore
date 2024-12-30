@@ -18,3 +18,5 @@ compile_commands.json
 *.FCBak
 
 *.kicad_sch.lck
+
+*.asc
