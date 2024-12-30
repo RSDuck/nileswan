@@ -177,6 +177,7 @@ void main(void) {
 
 	ws_system_model_t model = ws_system_get_model();
 
+	nile_io_unlock();
 	nile_clear_seg_mask();
 	outportw(IO_BANK_2003_RAM, 0);
 
