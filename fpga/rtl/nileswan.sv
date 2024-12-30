@@ -170,6 +170,7 @@ module nileswan(
     localparam SPI_CNT_HI = 8'hE1;
 
     localparam POW_CNT = 8'hE2;
+    localparam EMU_CNT = 8'hE6;
 
     `define read2003Reg(value) \
         begin \
@@ -190,13 +191,15 @@ module nileswan(
         end
 
     wire[7:0] PowCnt = {nmcu_reset,
-                eeprom_size,
+                2'h0,
                 enable_bandai2003_ex,
                 enable_bandai2001_ex,
                 enable_nileswan_ex,
                 enable_tf_power,
                 enable_fastclk};
-
+    
+    wire[7:0] EmuCnt = {6'h0,
+                eeprom_size};
 
     always_comb begin
         reg_ack = 1;
@@ -245,6 +248,7 @@ module nileswan(
         SPI_CNT_HI: `readExternalReg(spi_cnt[15:8], write_spi_cnt_hi, enable_nileswan_ex)
 
         POW_CNT: `readNileReg(PowCnt)
+        EMU_CNT: `readNileReg(EmuCnt)
         default: reg_ack = 0;
         endcase
     end
@@ -286,9 +290,13 @@ module nileswan(
                     enable_bandai2001_ex <= Data[3];
                     enable_bandai2003_ex <= Data[4];*/
 
-                    eeprom_size <= Data[6:5];
-
                     nmcu_reset <= Data[7];
+                end
+            end
+
+            EMU_CNT: begin
+                if (enable_nileswan_ex) begin
+                    eeprom_size <= Data[1:0];
                 end
             end
 
