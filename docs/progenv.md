@@ -34,24 +34,26 @@ All values besides the transfer abort are read only while a transfer is in progr
 
 The selected clock will also be used for EEPROM and RTC serial transactions.
 
-### Power
+### Power/system control
 
 **`0xE2` - `POW_CNT` (8 bit)**
 | Bit(s) | Description |
 |------|------|
 |0|Enable 24 MHz high frequency clock. (0=off, 1=on (default))|
 |1|Enable TF power (0=off (default), 1=on)|
-|2|Enable nileswan I/O registers (0=off, 1=on (default))|
-|3|Enable Bandai 2003 banking (0=off, 1=on (default))|
-|4|Emulated serial device mode (0=RTC (default), 1=EEPROM)|
-|5-6|Unused/0|
+|2|Enable nileswan exclusive I/O registers (0=off, 1=on (default))|
+|3|Enable Bandai 2001 exclusive I/O registers (0=off, 1=on (default))|
+|4|Enable Bandai 2003 exclusive I/O registers (0=off, 1=on (default))|
+|5-6|EEPROM emulation size (0=128B, 1=1KB, 2=2KB, 3=reserved)|
 |7|μC reset line|
 
-Once the nileswan I/O registers are disabled, they can only be brought back via hardware reset.
+If `0xFD` is written to `POW_CNT` it will reset the entire register even if nileswan registers are disabled. This way the nileswan registers can be brought back after disabling them.
 
-Depending on the selected serial device mode the appropriate I/O registers for RTC (`RTC_CTRL` and `RTC_DATA`) or EEPROM (`CART_SERIAL_DATA`, `CART_SERIAL_COM` and `CART_SERIAL_CTRL`) become valid or invalid.
+Disabling a range of I/O registers only changes the visibility. E.g. the upper banking bits of the Bandai 2003 mapper continue to apply even if the registers used to change them are not accessible anymore.
 
 The μC reset line bit directly connects to the nRST pin of the microcontroller.
+
+See section on EEPROM for details on EEPROM size.
 
 ### Interrupts
 
@@ -78,6 +80,18 @@ If SPI IRQ generation is enabled an IRQ will be generated whenever the the busy 
 To allow booting from bootrom the masks are initialised with all bits set.
 
 Bank mask is always applied to the extended ROM bank (starting from 0x40000).
+
+As a special case if the RAM bank mask is set to 0 and masking is applied for RAM area no memory is selected. This way proper open bus behaviour can be achieved.
+
+## EEPROM
+
+If Bandai 2001 registers are enabled in `POW_CNT`, the registers associated with EEPROM (`0xC4`-`0xC8`) are accessible and writeable. The FPGA emulates the entire EEPROM including keeping its content of up to 2 KB in internal RAM.
+
+This is necessary as the interface does not provide an reliable way to tell when a read is done and thus typically software only relies on waiting for a fixed amount. The μC is unable to respond with such low latency.
+
+EEPROMs of different sizes have small differences in command scheme and mask addresses to their respective size. `POW_CNT` can be used to set the size of the emulated EEPROM.
+
+To store save data across power cycles write commands are additionally output as-is via SPI to the μC.
 
 ## Memory bank layout
 

@@ -13,13 +13,14 @@ module spi_bench ();
     end
 
     reg spi_di = 0;
+    wire SPIDiInOut;
+    assign SPIDiInOut = spi_di;
     wire spi_do, spi_cs, spi_clk, spi_mcu_cs;
 
     reg tf_di = 0;
     wire tf_do, tf_cs, tf_clk;
 
     reg[8:0] buf_addr;
-    reg[7:0] write_data;
 
     wire[15:0] rx_bufdata;
 
@@ -50,7 +51,7 @@ module spi_bench ();
         .TFPow(tf_pow),
 
         .SPIDo(spi_do),
-        .SPIDi(spi_di),
+        .SPIDi(SPIDiInOut),
         .SPIClk(spi_clk),
         .nFlashSel(spi_cs),
         .nMCUSel(spi_mcu_cs),

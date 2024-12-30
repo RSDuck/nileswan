@@ -15,9 +15,9 @@ module nileswan_bench ();
     reg[8:0] addrLo = 0;
     reg[3:0] addrHi = 0;
 
-    reg[15:0] write_data = 16'hZZZZ;
+    reg[15:0] full_write_data = 16'hZZZZ;
     wire[15:0] read_data;
-    assign read_data = write_data;
+    assign read_data = full_write_data;
 
     wire[6:0] addrExt;
 
@@ -55,8 +55,6 @@ module nileswan_bench ();
         .MBC(MBC),
         .SClk(sclk),
 
-        .Debug(debug),
-
         .FastClk(clk),
         .FastClkEnable(fastClkEnable),
 
@@ -91,13 +89,13 @@ module nileswan_bench ();
         #(swan_clock_period/2);
         nIO = 0;
         nWE = 0;
-        write_data = 2;
+        full_write_data = 2;
         #(swan_clock_period);
         nWE = 1;
 
         #(swan_clock_period/2);
         nIO = 1;
-        write_data = 16'hZZZZ;
+        full_write_data = 16'hZZZZ;
         #(swan_clock_period/2);
         nIO = 0;
         nOE = 0;

@@ -14,7 +14,7 @@ module BootROM (
 `ifdef YOSYS
         $readmemh("build/bram_init.asc", memory);
 `else
-        $readmemh("build/ipl0.asc", memory);
+        $readmemh("../software/ipl0/ipl0.asc", memory);
 `endif
     end
 

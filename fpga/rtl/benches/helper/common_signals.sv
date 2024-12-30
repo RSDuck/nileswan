@@ -14,6 +14,8 @@ localparam swan_clock_period = 1000 / 6;
 
 reg nOE = 1, nWE = 1, nIO = 1;
 
+reg[7:0] write_data;
+
 task writeReg(input[7:0] data);
     write_data = data;
     #(swan_clock_period/2);

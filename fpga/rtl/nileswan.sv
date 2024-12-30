@@ -2,6 +2,7 @@
 `include "bootrom.sv"
 `include "spi.sv"
 `include "ipcram.sv"
+`include "eeprom.sv"
 
 module nileswan(
     input nSel, input nOE, input nWE,
@@ -38,12 +39,18 @@ module nileswan(
     
     output nMCUReset);
 
+    // POW_CNT
     reg enable_fastclk = 1'b1;
     assign FastClkEnable = ~enable_fastclk;
     reg enable_tf_power = 1'b0;
     assign TFPow = enable_tf_power;
     reg nmcu_reset = 1'b1;
     assign nMCUReset = nmcu_reset;
+    reg enable_nileswan_ex = 1'b1;
+    reg enable_bandai2001_ex = 1'b1;
+    reg enable_bandai2003_ex = 1'b1;
+
+    reg[1:0] eeprom_size = 2'h2;
 
     assign nMem_OE = nOE;
     assign nMem_WE = nWE;
@@ -91,6 +98,33 @@ module nileswan(
         .TFClk(TFClk),
         .nTFSel(nTFSel));
 
+    reg sel_serial_ctrl;
+    reg sel_serial_com_lo, sel_serial_com_hi;
+    reg sel_serial_data_lo, sel_serial_data_hi;
+
+    wire[7:0] serial_ctrl;
+    wire[15:0] serial_com, serial_data;
+
+    EEPROM eeprom (
+        .SClk(SClk),
+        .nWE(nWE),
+        .nOE(nOE),
+
+        .EEPROMSize(eeprom_size),
+
+        .WriteData(Data[7:0]),
+
+        .SelSerialCtrl(sel_serial_ctrl),
+        .SelSerialComLo(sel_serial_com_lo),
+        .SelSerialComHi(sel_serial_com_hi),
+        .SelSerialDataLo(sel_serial_data_lo),
+        .SelSerialDataHi(sel_serial_data_hi),
+
+        .SerialCtrl(serial_ctrl),
+        .SerialCom(serial_com),
+        .SerialData(serial_data)
+    );
+
     reg[9:0] ram_addr_ext = 10'h3FF;
     reg[9:0] rom0_addr_ext = 10'h3FF;
     reg[9:0] rom1_addr_ext = 10'h3FF;
@@ -100,18 +134,24 @@ module nileswan(
 
     reg[8:0] rom_bank_mask = 9'h1FF;
     reg[3:0] ram_bank_mask = 8'hF;
-    reg bank_mask_apply_rom_0 = 1;
-    reg bank_mask_apply_rom_1 = 1;
-    reg bank_mask_apply_ram = 1;
+    reg bank_mask_apply_rom_0 = 1'b1;
+    reg bank_mask_apply_rom_1 = 1'b1;
+    reg bank_mask_apply_ram = 1'b1;
 
     reg[7:0] reg_out = 0;
-    reg reg_ack = 0;
+    reg reg_ack;
 
     // Bandai 2001 chip
     localparam LINEAR_ADDR_OFF = 8'hC0;
     localparam RAM_BANK = 8'hC1;
     localparam ROM_BANK_0 = 8'hC2;
     localparam ROM_BANK_1 = 8'hC3;
+
+    localparam CART_SERIAL_DATA_L = 8'hC4;
+    localparam CART_SERIAL_DATA_H = 8'hC5;
+    localparam CART_SERIAL_COM_L = 8'hC6;
+    localparam CART_SERIAL_COM_H = 8'hC7;
+    localparam CART_SERIAL_CTRL = 8'hC8;
 
     // Bandai 2003
     localparam MEMORY_CTRL = 8'hCE;
@@ -131,6 +171,33 @@ module nileswan(
 
     localparam POW_CNT = 8'hE2;
 
+    `define read2003Reg(value) \
+        begin \
+            reg_out = ``value``; \
+            reg_ack = 1; \
+        end
+    `define readNileReg(value) \
+        begin \
+            reg_out = ``value``; \
+            reg_ack = 1; \
+        end
+    
+    `define readExternalReg(value, ext, enable) \
+        begin \
+            reg_out = ``value``; \
+            ``ext`` = 1; \
+            reg_ack = 1; \
+        end
+
+    wire[7:0] PowCnt = {nmcu_reset,
+                eeprom_size,
+                enable_bandai2003_ex,
+                enable_bandai2001_ex,
+                enable_nileswan_ex,
+                enable_tf_power,
+                enable_fastclk};
+
+
     always_comb begin
         reg_ack = 1;
         reg_out = 0;
@@ -138,32 +205,46 @@ module nileswan(
         write_spi_cnt_lo = 0;
         write_spi_cnt_hi = 0;
 
+        sel_serial_ctrl = 0;
+        sel_serial_com_lo = 0;
+        sel_serial_com_hi = 0;
+        sel_serial_data_lo = 0;
+        sel_serial_data_hi = 0;
+
         case (RegAddr)
         LINEAR_ADDR_OFF: reg_out = rom_linear_addr_ext;
-        RAM_BANK, RAM_BANK_L: reg_out = ram_addr_ext[7:0];
-        ROM_BANK_0, ROM_BANK_0_L: reg_out = rom0_addr_ext[7:0];
-        ROM_BANK_1, ROM_BANK_1_L: reg_out = rom1_addr_ext[7:0];
-        RAM_BANK_H: reg_out = {6'h0, ram_addr_ext[9:8]};
-        ROM_BANK_0_H: reg_out = {6'h0, rom0_addr_ext[9:8]};
-        ROM_BANK_1_H: reg_out = {6'h0, rom1_addr_ext[9:8]};
-        MEMORY_CTRL: reg_out = {7'h0, self_flash};
+        RAM_BANK: reg_out = ram_addr_ext[7:0];
+        ROM_BANK_0: reg_out = rom0_addr_ext[7:0];
+        ROM_BANK_1: reg_out = rom1_addr_ext[7:0];
+        
+        RAM_BANK_L: `read2003Reg(ram_addr_ext[7:0])
+        ROM_BANK_0_L: `read2003Reg(rom0_addr_ext[7:0])
+        RAM_BANK_H: `read2003Reg({6'h0, ram_addr_ext[9:8]})
+        ROM_BANK_0_H: `read2003Reg({6'h0, rom0_addr_ext[9:8]})
+        ROM_BANK_1_H: `read2003Reg({6'h0, rom1_addr_ext[9:8]})
+        MEMORY_CTRL: `read2003Reg({7'h0, self_flash})
 
-        BANK_MASK_LO: reg_out = rom_bank_mask[7:0];
-        BANK_MASK_HI: reg_out = {ram_bank_mask,
+        CART_SERIAL_DATA_L:
+            `readExternalReg(serial_data[7:0], sel_serial_data_lo, enable_bandai2001_ex)
+        CART_SERIAL_DATA_H:
+            `readExternalReg(serial_data[15:8], sel_serial_data_hi, enable_bandai2001_ex)
+        CART_SERIAL_COM_L:
+            `readExternalReg(serial_com[7:0], sel_serial_com_lo, enable_bandai2001_ex)
+        CART_SERIAL_COM_H:
+            `readExternalReg(serial_com[15:8], sel_serial_com_hi, enable_bandai2001_ex)
+        CART_SERIAL_CTRL:
+            `readExternalReg(serial_ctrl, sel_serial_ctrl, enable_bandai2001_ex)
+
+        BANK_MASK_LO: `readNileReg(rom_bank_mask[7:0])
+        BANK_MASK_HI: `readNileReg({ram_bank_mask,
             bank_mask_apply_ram,
             bank_mask_apply_rom_1,
             bank_mask_apply_rom_0,
-            rom_bank_mask[8]};
-        SPI_CNT_LO: begin
-            reg_out = spi_cnt[7:0];
-            write_spi_cnt_lo = 1;
-        end
-        SPI_CNT_HI: begin
-            reg_out = spi_cnt[15:8];
-            write_spi_cnt_hi = 1;
-        end
+            rom_bank_mask[8]})
+        SPI_CNT_LO: `readExternalReg(spi_cnt[7:0], write_spi_cnt_lo, enable_nileswan_ex)
+        SPI_CNT_HI: `readExternalReg(spi_cnt[15:8], write_spi_cnt_hi, enable_nileswan_ex)
 
-        POW_CNT: reg_out = {nmcu_reset, 5'h0, enable_tf_power, enable_fastclk};
+        POW_CNT: `readNileReg(PowCnt)
         default: reg_ack = 0;
         endcase
     end
@@ -172,28 +253,43 @@ module nileswan(
         if (IOWrite) begin
             case (RegAddr)
             LINEAR_ADDR_OFF: rom_linear_addr_ext <= Data;
-            RAM_BANK, RAM_BANK_L: ram_addr_ext <= Data;
-            ROM_BANK_0, ROM_BANK_0_L: rom0_addr_ext[7:0] <= Data;
-            ROM_BANK_1, ROM_BANK_1_L: rom1_addr_ext[7:0] <= Data;
-            RAM_BANK_H: ram_addr_ext[9:8] <= Data[1:0];
-            ROM_BANK_0_H: rom0_addr_ext[9:8] <= Data[1:0];
-            ROM_BANK_1_H: rom1_addr_ext[9:8] <= Data[1:0];
-            MEMORY_CTRL: self_flash <= Data[0];
+            RAM_BANK: ram_addr_ext[7:0] <= Data;
+            ROM_BANK_0: rom0_addr_ext[7:0] <= Data;
+            ROM_BANK_1: rom1_addr_ext[7:0] <= Data;
 
-            BANK_MASK_LO: rom_bank_mask[7:0] <= Data;
+            RAM_BANK_L: if (enable_bandai2003_ex) ram_addr_ext[7:0] <= Data;
+            ROM_BANK_0_L: if (enable_bandai2003_ex) rom0_addr_ext[7:0] <= Data;
+            ROM_BANK_1_L: if (enable_bandai2003_ex) rom1_addr_ext[7:0] <= Data;
+            RAM_BANK_H: if (enable_bandai2003_ex) ram_addr_ext[9:8] <= Data[1:0];
+            ROM_BANK_0_H: if (enable_bandai2003_ex) rom0_addr_ext[9:8] <= Data[1:0];
+            ROM_BANK_1_H: if (enable_bandai2003_ex) rom1_addr_ext[9:8] <= Data[1:0];
+            MEMORY_CTRL: if (enable_bandai2003_ex) self_flash <= Data[0];
+
+            BANK_MASK_LO: if (enable_nileswan_ex) rom_bank_mask[7:0] <= Data;
             BANK_MASK_HI: begin
-                rom_bank_mask[8] <= Data[0];
-                bank_mask_apply_rom_0 = Data[1];
-                bank_mask_apply_rom_1 = Data[2];
-                bank_mask_apply_ram = Data[3];
-                ram_bank_mask <= Data[7:4];
+                if (enable_nileswan_ex) begin
+                    rom_bank_mask[8] <= Data[0];
+                    bank_mask_apply_rom_0 = Data[1];
+                    bank_mask_apply_rom_1 = Data[2];
+                    bank_mask_apply_ram = Data[3];
+                    ram_bank_mask <= Data[7:4];
+                end
             end
 
             POW_CNT: begin
-                enable_fastclk <= Data[0];
-                enable_tf_power <= Data[1];
+                if (enable_nileswan_ex || Data[7:0] == 8'hFD) begin
+                    enable_fastclk <= Data[0];
+                    enable_tf_power <= Data[1];
 
-                nmcu_reset <= Data[7];
+                    // disabled until it is ensured software handles then correctly
+                    /*enable_nileswan_ex <= Data[2];
+                    enable_bandai2001_ex <= Data[3];
+                    enable_bandai2003_ex <= Data[4];*/
+
+                    eeprom_size <= Data[6:5];
+
+                    nmcu_reset <= Data[7];
+                end
             end
 
             default: begin end
@@ -206,7 +302,7 @@ module nileswan(
     reg access_in_ram_area;
     reg apply_bank_mask;
     always_comb begin
-        rom_addr_ext_fin = 0;
+        rom_addr_ext_fin = 9'hXX;
         sel_rom_space = 0;
         sel_ram_space = 0;
         access_in_ram_area = 0;
@@ -215,7 +311,8 @@ module nileswan(
             4'h0: begin end
             4'h1: begin
                 sel_rom_space = self_flash;
-                sel_ram_space = ~self_flash;
+                // if the RAM mask is 0 and mask is applied to SRAM
+                sel_ram_space = ~self_flash & (ram_bank_mask != 4'h0) & bank_mask_apply_ram;
                 rom_addr_ext_fin = ram_addr_ext[8:0];
                 access_in_ram_area = 1;
                 apply_bank_mask = bank_mask_apply_ram;
@@ -313,4 +410,37 @@ module nileswan(
 
     assign Data[7:0] = enable_output_lo ? output_data_lo : 8'hZZ;
     assign Data[15:8] = enable_output_hi ? output_data_hi : 8'hZZ;
+    /*wire enable_output_lo_on_oe = (output_io_out | output_bootrom | output_ipcbuf | output_rxbuf);
+    wire enable_output_lo_on_we = psram_hi_read;
+    wire enable_output_hi = (sel_oe & (output_bootrom | output_rxbuf)) | psram_hi_write;
+
+    // to prevent e.g. address changes from causing glitches
+    // which end in enabling output for a moment
+    // guard outputs with an explicit final LE where
+    // the other inputs /SEL, /OE, /WE do not fluctuate
+    // thus the output should be stable
+
+    wire guarded_output_enable_1_lo, guarded_output_enable_2_lo, guarded_output_enable_hi;
+    // ~I0 & ~I1 & I2
+    SB_LUT4 #(.LUT_INIT(16'b0001000000010000)) output_lo_on_we_guard (
+        .I0(nSel),
+        .I1(nWE),
+        .I3(enable_output_lo_on_we),
+        .O(guarded_output_enable_1_lo));
+    // (~I0 & ~I1 & I2) | I3
+    SB_LUT4 #(.LUT_INIT(16'b1111111100010000)) output_lo_on_oe_guard (
+        .I0(nSel),
+        .I1(nOE),
+        .I2(enable_output_lo_on_oe),
+        .I3(guarded_output_enable_1_lo),
+        .O(guarded_output_enable_2_lo));
+    // ~I0 & ~I1 & I2
+    SB_LUT4 #(.LUT_INIT(16'b0001000000010000)) output_hi_guard (
+        .I0(nSel),
+        .I1(nOE),
+        .I2(enable_output_hi),
+        .O(guarded_output_enable_hi));
+
+    assign Data[7:0] = guarded_output_enable_2_lo ? output_data_lo : 8'hZZ;
+    assign Data[15:8] = guarded_output_enable_hi ? output_data_hi : 8'hZZ;*/
 endmodule
