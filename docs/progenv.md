@@ -8,6 +8,7 @@
 | `0xE2` |  1  | POW_CNT    | Power control |
 | `0xE3` |  1  | NILE_IRQ   | Controls nileswan IRQ |
 | `0xE4` |  2  | BANK_MASK  | Mask for bank index |
+| `0xE5` |  1  | EMU_CNT  | Controls EEPROM size |
 
 ## I/O ports
 
@@ -44,7 +45,7 @@ The selected clock will also be used for EEPROM and RTC serial transactions.
 |2|Enable nileswan exclusive I/O registers (0=off, 1=on (default))|
 |3|Enable Bandai 2001 exclusive I/O registers (0=off, 1=on (default))|
 |4|Enable Bandai 2003 exclusive I/O registers (0=off, 1=on (default))|
-|5-6|EEPROM emulation size (0=128B, 1=1KB, 2=2KB, 3=reserved)|
+|5-6|Unused/0|
 |7|μC reset line|
 
 If `0xFD` is written to `POW_CNT` it will reset the entire register even if nileswan registers are disabled. This way the nileswan registers can be brought back after disabling them.
@@ -52,6 +53,13 @@ If `0xFD` is written to `POW_CNT` it will reset the entire register even if nile
 Disabling a range of I/O registers only changes the visibility. E.g. the upper banking bits of the Bandai 2003 mapper continue to apply even if the registers used to change them are not accessible anymore.
 
 The μC reset line bit directly connects to the nRST pin of the microcontroller.
+
+**`0xE5` - `EMU_CNT`
+
+| Bit(s) | Description |
+|------|------|
+|0-1|Emulated EEPROM size (0=128B, 1=1KB, 2=2KB, 3=reserved)|
+|2-7|Unused/0|
 
 See section on EEPROM for details on EEPROM size.
 
