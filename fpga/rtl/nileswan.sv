@@ -132,6 +132,8 @@ module nileswan(
 
     reg self_flash = 1'h0;
 
+    reg enable_sram = 1'b1;
+
     reg[8:0] rom_bank_mask = 9'h1FF;
     reg[3:0] ram_bank_mask = 8'hF;
     reg bank_mask_apply_rom_0 = 1'b1;
@@ -289,6 +291,7 @@ module nileswan(
                     /*enable_nileswan_ex <= Data[2];
                     enable_bandai2001_ex <= Data[3];
                     enable_bandai2003_ex <= Data[4];*/
+                    enable_sram <= Data[6];
 
                     nmcu_reset <= Data[7];
                 end
@@ -319,8 +322,7 @@ module nileswan(
             4'h0: begin end
             4'h1: begin
                 sel_rom_space = self_flash;
-                // if the RAM mask is 0 and mask is applied to SRAM
-                sel_ram_space = ~self_flash & (ram_bank_mask != 4'h0) & bank_mask_apply_ram;
+                sel_ram_space = ~self_flash;
                 rom_addr_ext_fin = ram_addr_ext[8:0];
                 access_in_ram_area = 1;
                 apply_bank_mask = bank_mask_apply_ram;
@@ -352,7 +354,7 @@ module nileswan(
     wire rxbuf_addr = sel_rom_space && addr_ext_masked_rom == 9'h1FE;
     wire bootrom_addr = sel_rom_space && (addr_ext_masked_rom == 9'h1FF || addr_ext_masked_rom == 9'h1F4);
     
-    wire sram_addr = sel_ram_space && addr_ext_masked_ram[3] == 1'h0;
+    wire sram_addr = sel_ram_space && addr_ext_masked_ram[3] == 1'h0 && enable_sram;
     wire ipcbuf_addr = sel_ram_space && addr_ext_masked_ram == 4'hE;
     wire txbuf_addr = sel_ram_space && addr_ext_masked_ram == 4'hF;
 

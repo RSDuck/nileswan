@@ -8,7 +8,7 @@
 | `0xE2` |  1  | POW_CNT    | Power control |
 | `0xE3` |  1  | NILE_IRQ   | Controls nileswan IRQ |
 | `0xE4` |  2  | BANK_MASK  | Mask for bank index |
-| `0xE5` |  1  | EMU_CNT  | Controls EEPROM size |
+| `0xE6` |  1  | EMU_CNT  | Controls EEPROM size |
 
 ## I/O ports
 
@@ -45,7 +45,8 @@ The selected clock will also be used for EEPROM and RTC serial transactions.
 |2|Enable nileswan exclusive I/O registers (0=off, 1=on (default))|
 |3|Enable Bandai 2001 exclusive I/O registers (0=off, 1=on (default))|
 |4|Enable Bandai 2003 exclusive I/O registers (0=off, 1=on (default))|
-|5-6|Unused/0|
+|5|Unused/0|
+|6|Enable SRAM (0=off, 1=on (default))|
 |7|μC reset line|
 
 If `0xFD` is written to `POW_CNT` it will reset the entire register even if nileswan registers are disabled. This way the nileswan registers can be brought back after disabling them.
@@ -54,7 +55,9 @@ Disabling a range of I/O registers only changes the visibility. E.g. the upper b
 
 The μC reset line bit directly connects to the nRST pin of the microcontroller.
 
-**`0xE5` - `EMU_CNT`
+If SRAM is enabled SRAM (banks 0-7) may be selected when accessing the RAM area.
+
+**`0xE6` - `EMU_CNT`
 
 | Bit(s) | Description |
 |------|------|
@@ -88,8 +91,6 @@ If SPI IRQ generation is enabled an IRQ will be generated whenever the the busy 
 To allow booting from bootrom the masks are initialised with all bits set.
 
 Bank mask is always applied to the extended ROM bank (starting from 0x40000).
-
-As a special case if the RAM bank mask is set to 0 and masking is applied for RAM area no memory is selected. This way proper open bus behaviour can be achieved.
 
 ## EEPROM
 
