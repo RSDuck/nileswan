@@ -193,7 +193,8 @@ module nileswan(
         end
 
     wire[7:0] PowCnt = {nmcu_reset,
-                2'h0,
+                enable_sram,
+                1'h0,
                 enable_bandai2003_ex,
                 enable_bandai2001_ex,
                 enable_nileswan_ex,
