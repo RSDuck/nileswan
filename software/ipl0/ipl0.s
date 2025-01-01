@@ -23,8 +23,9 @@ NILE_IPL0_SEG            equ 0xf400
 NILE_IPL0_TMP_RAM        equ 0xf800 ; f400:f800 => 0000:3800
 NILE_IPL0_STACK          equ 0x0000 ; f400:0000 => 0000:4000
 NILE_IPL0_SIZE           equ 512
-NILE_FLASH_ADDR_IPL1     equ 0x28000
-NILE_FLASH_ADDR_IPL1_ALT equ 0x2c000
+NILE_FLASH_ADDR_IPL1_ORIG equ 0x08000
+NILE_FLASH_ADDR_IPL1_SAFE equ 0x0c000
+NILE_FLASH_ADDR_IPL1      equ 0x40000
 
     ; == Initialization / Boot state preservation ==
 
@@ -95,7 +96,7 @@ copyIoPortDataLoop:
     mov bx, NILE_FLASH_ADDR_IPL1 >> 8
     jne postFlashAddr
 altFlashAddr:
-    mov bx, NILE_FLASH_ADDR_IPL1_ALT >> 8
+    mov bx, NILE_FLASH_ADDR_IPL1_SAFE >> 8
 postFlashAddr:
     call spiStartRead
 
