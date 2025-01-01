@@ -152,21 +152,53 @@ void run_read_memory_test(void) {
 	wait_for_button();
 }
 
-bool load_spi_flash(uint32_t offset, uint16_t banks) {
+bool load_spi_flash(uint32_t _offset, uint16_t banks) {
+	uint8_t buffer[256];
+	uint32_t offset;
+
 	outportb(IO_CART_FLASH, 1);
-	nile_flash_wake(); 
+	nile_flash_wake();
+
+	offset = _offset;
+	// Quickly load all data from SPI flash to PSRAM
+	DRAW_STRING(1, 1, "writing bank ", 0);
 	for (uint16_t bank = PSRAM_MAX_BANK + 1 - banks; bank <= PSRAM_MAX_BANK; bank++) {
 		outportw(IO_BANK_2003_RAM, bank);
+		print_hex_number(SCREEN + (1 * 32) + 14, bank);
 
-		if (!nile_flash_read(MK_FP(0x1000, 0x0000), offset, 0x8000)) {
-			return false;
+		for (int i = 0; i < 2; i++) {
+			if (!nile_flash_read(MK_FP(0x1000, i << 15), offset, 0x8000)) {
+				DRAW_STRING(1, 2, "flash read error", 0);
+				print_hex_number(SCREEN + (3 * 32) + 1, offset >> 16);
+				print_hex_number(SCREEN + (3 * 32) + 5, offset);
+				return false;
+			}
+			offset += 0x8000;
 		}
-		offset += 0x8000;
+	}
 
-		if (!nile_flash_read(MK_FP(0x1000, 0x8000), offset, 0x8000)) {
-			return false;
+	offset = _offset;
+	// Verify data was loaded correctly (in case PSRAM is damaged)
+	DRAW_STRING(1, 2, "verifying bank ", 0);
+	for (uint16_t bank = PSRAM_MAX_BANK + 1 - banks; bank <= PSRAM_MAX_BANK; bank++) {
+		outportw(IO_BANK_2003_RAM, bank);
+		print_hex_number(SCREEN + (2 * 32) + 16, bank);
+
+		for (int i = 0; i < (65536 / sizeof(buffer)); i++) {
+			if (!nile_flash_read(buffer, offset, sizeof(buffer))) {
+				DRAW_STRING(1, 3, "flash read error", 0);
+				print_hex_number(SCREEN + (4 * 32) + 1, offset >> 16);
+				print_hex_number(SCREEN + (4 * 32) + 5, offset);
+				return false;
+			}
+			if (memcmp(MK_FP(0x1000, i * sizeof(buffer)), buffer, sizeof(buffer))) {
+				DRAW_STRING(1, 3, "PSRAM write error", 0);
+				print_hex_number(SCREEN + (4 * 32) + 1, offset >> 16);
+				print_hex_number(SCREEN + (4 * 32) + 5, offset);
+				return false;
+			}
+			offset += sizeof(buffer);
 		}
-		offset += 0x8000;
 	}
 
 	return true;
@@ -278,14 +310,20 @@ update_dynamic_options:
 			} break;
 			case MENU_OPTION_BOOT_RECOVERY_FACTORY: {
 				clear_screen();
-				load_spi_flash(0x10000, 3);
-				try_boot_rom();
+				if (load_spi_flash(0x10000, 3)) {
+					try_boot_rom();
+				} else {
+					wait_for_button();
+				}
 				goto update_full_menu;
 			} break;
 			case MENU_OPTION_BOOT_RECOVERY_CURRENT: {
 				clear_screen();
-				load_spi_flash(0x40000, 4);
-				try_boot_rom();
+				if (load_spi_flash(0x40000, 4)) {
+					try_boot_rom();
+				} else {
+					wait_for_button();
+				}
 				goto update_full_menu;
 			} break;
 			case MENU_OPTION_SRAM_SPEED: {
