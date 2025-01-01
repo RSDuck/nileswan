@@ -40,8 +40,11 @@ with open(args.manifest, 'r') as rules:
             data = None
             with open(rule_map[rule_name], 'rb') as file:
                 data = file.read()
-            write_at[int(rule_map['AT'])] = data
-            max_size = max(max_size, int(rule_map['AT']) + len(data))
+            pos = int(rule_map['AT'])
+            if pos < 0:
+                pos = (-pos) - len(data)
+            write_at[pos] = data
+            max_size = max(max_size, pos + len(data))
 
 with open(args.output_bin, 'wb') as fo:
     fo.write(b'\xFF' * max_size)

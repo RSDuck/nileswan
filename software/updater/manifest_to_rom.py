@@ -74,10 +74,14 @@ with open(args.manifest, 'r') as rules:
             subprocess.run(["rm", "temp.bin"])
 
             file_position = file_position - ((len(data) + 15) >> 4)
+            flash_position = int(rule_map['AT'])
+            if flash_position < 0:
+                flash_position = (-flash_position) - len(data)
 
             data_at_position[file_position] = data
+
             rule_data += bytearray(struct.pack("<BHHIH",
-                0x02, file_position, len(unpacked_data), int(rule_map['AT']), crc16.checksum(unpacked_data)))
+                0x02, file_position, len(unpacked_data), flash_position, crc16.checksum(unpacked_data)))
         elif rule_name == 'VERSION':
             version[0] = int(rule_map['VERSION'])
             version[1] = int(rule_map['MINOR'])

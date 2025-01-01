@@ -28,8 +28,10 @@ typedef enum {
 	MENU_OPTION_QUICK_TEST_16MB,
 	MENU_OPTION_QUICK_TEST_8MB,
 	MENU_OPTION_MEMORY_TEST,
-	MENU_OPTION_SRAM_SPEED,
 	MENU_OPTION_RETENTION,
+	MENU_OPTION_BOOT_RECOVERY_CURRENT,
+	MENU_OPTION_BOOT_RECOVERY_FACTORY,
+	MENU_OPTION_SRAM_SPEED,
 	MENU_OPTIONS_COUNT
 } menu_option_t;
 
@@ -37,6 +39,7 @@ typedef enum {
 
 #define PSRAM_MAX_BANK_8MB 127
 #define PSRAM_MAX_BANK_16MB 255
+#define PSRAM_MAX_BANK PSRAM_MAX_BANK_8MB
 #define SRAM_MAX_BANK 7
 
 /* === Test code in external files === */
@@ -149,12 +152,44 @@ void run_read_memory_test(void) {
 	wait_for_button();
 }
 
+bool load_spi_flash(uint32_t offset, uint16_t banks) {
+	outportb(IO_CART_FLASH, 1);
+	nile_flash_wake(); 
+	for (uint16_t bank = PSRAM_MAX_BANK + 1 - banks; bank <= PSRAM_MAX_BANK; bank++) {
+		outportw(IO_BANK_2003_RAM, bank);
+
+		if (!nile_flash_read(MK_FP(0x1000, 0x0000), offset, 0x8000)) {
+			return false;
+		}
+		offset += 0x8000;
+
+		if (!nile_flash_read(MK_FP(0x1000, 0x8000), offset, 0x8000)) {
+			return false;
+		}
+		offset += 0x8000;
+	}
+
+	return true;
+}
+
+void try_boot_rom(void) {
+	outportb(IO_CART_FLASH, 0);
+	outportw(IO_BANK_2003_ROM0, PSRAM_MAX_BANK - 13);
+	outportw(IO_BANK_2003_ROM1, PSRAM_MAX_BANK - 12);
+	outportw(IO_BANK_2003_RAM, 0);
+	outportw(IO_BANK_ROM_LINEAR, PSRAM_MAX_BANK >> 4);
+
+	uint8_t __far* header = MK_FP(0xFFFF, 0x0000);
+	if (header[0] != 0xEA) return;
+
+	outportb(IO_DISPLAY_CTRL, 0);
+	outportb(IO_SCR1_SCRL_Y, 0);
+	asm volatile("ljmp $0xFFFF, $0x0000");
+}
+
 void main(void) {
 	ipc_init();
 
-	// FIXME: deinitialize hardware
-	//outportw(IO_NILE_SPI_CNT, NILE_SPI_CLOCK_CART);
-	//outportb(IO_NILE_POW_CNT, 0x81);
 	bool sram_io_speed_limit = true;
 
 	if (ws_system_is_color()) {
@@ -194,6 +229,8 @@ update_full_menu:
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_QUICK_TEST_8MB, "quick memory test (8MB)", 0);
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_MEMORY_TEST, "full memory test", 0);
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_RETENTION, "test SRAM after reboot", 0);
+	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_BOOT_RECOVERY_CURRENT, "boot recovery", 0);
+	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_BOOT_RECOVERY_FACTORY, "boot factory recovery", 0);
 
 	uint16_t keys_pressed = 0;
 	uint16_t keys_held = 0;
@@ -237,6 +274,18 @@ update_dynamic_options:
 			} break;
 			case MENU_OPTION_RETENTION: {
 				run_read_memory_test();
+				goto update_full_menu;
+			} break;
+			case MENU_OPTION_BOOT_RECOVERY_FACTORY: {
+				clear_screen();
+				load_spi_flash(0x10000, 3);
+				try_boot_rom();
+				goto update_full_menu;
+			} break;
+			case MENU_OPTION_BOOT_RECOVERY_CURRENT: {
+				clear_screen();
+				load_spi_flash(0x40000, 4);
+				try_boot_rom();
 				goto update_full_menu;
 			} break;
 			case MENU_OPTION_SRAM_SPEED: {

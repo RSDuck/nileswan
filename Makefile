@@ -6,9 +6,9 @@ MANIFEST ?= manifest/full_update.txt
 UPDATEWS := $(DISTDIR)/fwupdate.ws
 FLASHBIN := $(MFGDIR)/spi.bin
 
-.PHONY: all clean help program-fpga program libnile libnile-ipl1 ipl0 ipl1 updater fpga
+.PHONY: all clean help program-fpga program libnile libnile-ipl1 ipl0 ipl1 recovery updater fpga
 
-all: ipl0 ipl1 fpga $(UPDATEWS) $(FLASHBIN)
+all: ipl0 ipl1 recovery fpga $(UPDATEWS) $(FLASHBIN)
 
 help:
 	@echo "nileswan build system"
@@ -31,14 +31,17 @@ ipl0:
 ipl1: libnile-ipl1
 	cd software/ipl1 && make
 
+recovery: libnile
+	cd software/recovery && make
+
 updater: libnile
 	cd software/updater && make
 
-$(FLASHBIN): fpga ipl1 $(MANIFEST) software/updater/manifest_to_bin.py
+$(FLASHBIN): fpga ipl1 recovery $(MANIFEST) software/updater/manifest_to_bin.py
 	@mkdir -p $(@D)
 	python3 software/updater/manifest_to_bin.py $(MANIFEST) $@
 
-$(UPDATEWS): fpga ipl1 updater $(MANIFEST) software/updater/manifest_to_rom.py
+$(UPDATEWS): fpga ipl1 recovery updater $(MANIFEST) software/updater/manifest_to_rom.py
 	@mkdir -p $(@D)
 	python3 software/updater/manifest_to_rom.py software/updater/updater_base.ws $(MANIFEST) $@
 
@@ -56,5 +59,6 @@ clean:
 	cd software/libnile && rm -rf build
 	cd software/ipl0 && make clean
 	cd software/ipl1 && make clean
+	cd software/recovery && make clean
 	cd software/updater && make clean
 	cd fpga && make clean

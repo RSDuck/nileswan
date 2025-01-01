@@ -126,6 +126,7 @@ const uint8_t swan_logo_map[] = {0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
 
 void main(void) {
 	outportb(IO_SYSTEM_CTRL2, 0x00); // Disable SRAM/IO wait states
+	nile_flash_sleep(); // Put flash chip to sleep
 	ipc_init();
 
     ws_display_set_shade_lut(SHADE_LUT_DEFAULT);
