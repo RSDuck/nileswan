@@ -24,6 +24,7 @@
 #include <nile.h>
 #include <nilefs.h>
 #include "../../build/assets/tiles.h"
+#include "ipc.h"
 #include "util.h"
 
 #define SCREEN ((uint16_t*) (0x3800 + (13 * 32 * 2)))
@@ -50,7 +51,7 @@ static void report_fatfs_error(uint8_t result) {
 	
     outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(7, 0, 2, 5));
     outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(7, 7, 7, 7));
-	memcpy8to16(SCREEN + (3 * 32) + 1, fatfs_error_header, sizeof(fatfs_error_header) - 1, 0x0100);
+	mem_expand_8_16(SCREEN + (3 * 32) + 1, fatfs_error_header, sizeof(fatfs_error_header) - 1, 0x0100);
 	print_hex_number(SCREEN + (3 * 32) + 22, (diskio_detail_code << 8) | result);
 
 	const char *error_detail = NULL;
@@ -62,7 +63,7 @@ static void report_fatfs_error(uint8_t result) {
 		case FR_NO_FILESYSTEM: error_detail = "FAT filesystem not found"; break;
 	}
 	if (error_detail != NULL) {
-		memcpy8to16(SCREEN + ((17 - 2) * 32) + ((28 - strlen(error_detail)) >> 1), error_detail, strlen(error_detail), 0x0100);
+		mem_expand_8_16(SCREEN + ((17 - 2) * 32) + ((28 - strlen(error_detail)) >> 1), error_detail, strlen(error_detail), 0x0100);
 	}
 
 	while(1);
@@ -125,16 +126,7 @@ const uint8_t swan_logo_map[] = {0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
 
 void main(void) {
 	outportb(IO_SYSTEM_CTRL2, 0x00); // Disable SRAM/IO wait states
-
-	// Initialize IPC area
-	outportw(IO_BANK_2003_RAM, NILE_SEG_RAM_IPC);
-	if (MEM_NILE_IPC->magic != NILE_IPC_MAGIC) {
-		MEM_NILE_IPC->magic = NILE_IPC_MAGIC;
-		memset(((uint8_t __far*) MEM_NILE_IPC) + 2, 0, sizeof(nile_ipc_t) - 2);
-
-		MEM_NILE_IPC->boot_entrypoint = *((uint8_t*) 0x3800);
-		memcpy(&(MEM_NILE_IPC->boot_regs), (void*) 0x3802, 184 + 24);
-	}
+	ipc_init();
 
     ws_display_set_shade_lut(SHADE_LUT_DEFAULT);
     outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(0, 7, 2, 5));
@@ -143,9 +135,9 @@ void main(void) {
 	wsx_zx0_decompress((uint16_t*) 0x3200, gfx_tiles);
 	memset(SCREEN, 0x6, (32 * 19 - 4) * sizeof(uint16_t));
 
-	memcpy8to16(SCREEN + (8 * 32) + 12, swan_logo_map, 4, 0x100);
-	memcpy8to16(SCREEN + (9 * 32) + 12, swan_logo_map + 4, 4, 0x100);
-	memcpy8to16(SCREEN + (10 * 32) + 12, swan_logo_map + 8, 4, 0x100);
+	mem_expand_8_16(SCREEN + (8 * 32) + 12, swan_logo_map, 4, 0x100);
+	mem_expand_8_16(SCREEN + (9 * 32) + 12, swan_logo_map + 4, 4, 0x100);
+	mem_expand_8_16(SCREEN + (10 * 32) + 12, swan_logo_map + 8, 4, 0x100);
 	outportw(IO_SCR1_SCRL_X, (14 * 8 - 4) << 8);
 
     outportb(IO_DISPLAY_CTRL, DISPLAY_SCR1_ENABLE);

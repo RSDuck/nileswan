@@ -15,21 +15,18 @@
  * with Nileswan IPL1. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <stdint.h>
-#include "util.h"
+#include <string.h>
+#include <ws.h>
+#include <nile.h>
+#include "ipc.h"
 
-const uint8_t hexchars[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+void ipc_init(void) {
+	outportw(IO_BANK_2003_RAM, NILE_SEG_RAM_IPC);
+	if (MEM_NILE_IPC->magic != NILE_IPC_MAGIC) {
+		MEM_NILE_IPC->magic = NILE_IPC_MAGIC;
+		memset(((uint8_t __far*) MEM_NILE_IPC) + 2, 0, sizeof(nile_ipc_t) - 2);
 
-uint8_t hex_to_int(uint8_t c) {
-	if (c >= '0' && c <= '9') {
-		return c-48;
-	} else if ((c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')) {
-		return (c & 0x07)+9;
-	} else {
-		return 0;
+		MEM_NILE_IPC->boot_entrypoint = *((uint8_t*) 0x3800);
+		memcpy(&(MEM_NILE_IPC->boot_regs), (void*) 0x3802, 184 + 24);
 	}
-}
-
-uint8_t int_to_hex(uint8_t c) {
-	return hexchars[c & 0x0F];
 }

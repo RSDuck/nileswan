@@ -27,8 +27,8 @@
     // dx = source
     // cx = count
     // stack = fill value
-	.global memcpy8to16
-memcpy8to16:
+	.global mem_expand_8_16
+mem_expand_8_16:
     push es
     push ds
     pop es
@@ -42,16 +42,16 @@ memcpy8to16:
     mov ax, [bp + WF_PLATFORM_CALL_STACK_OFFSET(8)]
     
     cld
-memcpy8to16_loop:
+mem_expand_8_16_loop:
     lodsb
     stosw
-    loop memcpy8to16_loop
+    loop mem_expand_8_16_loop
 
     pop bp
     pop di
     pop si
     pop es
-    ASM_PLATFORM_RET 0x2
+    WF_PLATFORM_RET 0x2
 
     .global print_hex_number
 print_hex_number:

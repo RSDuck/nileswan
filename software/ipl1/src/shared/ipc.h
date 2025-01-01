@@ -15,21 +15,9 @@
  * with Nileswan IPL1. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <stdint.h>
-#include "util.h"
+#ifndef _IPC_H_
+#define _IPC_H_
 
-const uint8_t hexchars[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+void ipc_init(void);
 
-uint8_t hex_to_int(uint8_t c) {
-	if (c >= '0' && c <= '9') {
-		return c-48;
-	} else if ((c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')) {
-		return (c & 0x07)+9;
-	} else {
-		return 0;
-	}
-}
-
-uint8_t int_to_hex(uint8_t c) {
-	return hexchars[c & 0x0F];
-}
+#endif /* _IPC_H_ */

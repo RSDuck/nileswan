@@ -21,6 +21,7 @@
 #include <nile.h>
 #include <wsx/zx0.h>
 #include "../../build/assets/tiles.h"
+#include "ipc.h"
 #include "util.h"
 
 typedef enum {
@@ -61,15 +62,15 @@ static void clear_screen(void) {
 	ws_screen_fill_tiles(SCREEN, 0x120, 0, 0, 28, 18);
 }
 
-#define DRAW_STRING(x, y, s, pal) memcpy8to16(SCREEN + ((y) * 32) + (x), (s), sizeof(s) - 1, 0x100 | pal);
+#define DRAW_STRING(x, y, s, pal) mem_expand_8_16(SCREEN + ((y) * 32) + (x), (s), sizeof(s) - 1, 0x100 | pal);
 #define DRAW_STRING_CENTERED(y, s, pal) DRAW_STRING(((29 - sizeof(s)) >> 1), y, s, pal)
-#define DRAW_STRING_DYNAMIC(x, y, s, pal) memcpy8to16(SCREEN + ((y) * 32) + (x), (s), strlen(s), 0x100 | pal);
+#define DRAW_STRING_DYNAMIC(x, y, s, pal) mem_expand_8_16(SCREEN + ((y) * 32) + (x), (s), strlen(s), 0x100 | pal);
 #define DRAW_STRING_CENTERED_DYNAMIC(y, s, pal) DRAW_STRING_DYNAMIC(((30 - strlen(s)) >> 1), y, s, pal)
 
 /* === Memory test === */
 
 static void draw_pass_fail(uint8_t y, bool result) {
-	memcpy8to16(SCREEN + ((y * 32)) + 22, result ? "PASS" : "FAIL", 4, SCR_ENTRY_PALETTE(result ? 3 : 2) | 0x100);
+	mem_expand_8_16(SCREEN + ((y * 32)) + 22, result ? "PASS" : "FAIL", 4, SCR_ENTRY_PALETTE(result ? 3 : 2) | 0x100);
 }
 
 static void draw_result_byte(uint8_t y, uint8_t value, bool result) {
@@ -77,7 +78,7 @@ static void draw_result_byte(uint8_t y, uint8_t value, bool result) {
 	if (result)
 		print_hex_number(dst, value);
 	else
-		memcpy8to16(dst, "FAIL", 4, SCR_ENTRY_PALETTE(result ? 3 : 2) | 0x100);
+		mem_expand_8_16(dst, "FAIL", 4, SCR_ENTRY_PALETTE(result ? 3 : 2) | 0x100);
 }
 
 static void wait_for_button(void) {
@@ -86,7 +87,7 @@ static void wait_for_button(void) {
 	while(ws_keypad_scan());
 }
 
-static bool tiny_ipc_check() {
+static bool ipc_buf_test() {
 	outportw(IO_BANK_2003_RAM, 14);
 	__far uint16_t* ipc_buf = MK_FP(0x1000, 0);
 
@@ -115,7 +116,7 @@ void run_quick_test(int psram_max_bank) {
 	draw_pass_fail(3, ram_fault_test_bool(SRAM_MAX_BANK + 1));
 
 	DRAW_STRING(2, 4, "IPC buf write/read", 0);
-	draw_pass_fail(4, tiny_ipc_check());
+	draw_pass_fail(4, ipc_buf_test());
 
 	ws_screen_fill_tiles(SCREEN, 0x120, 0, 0, 28, 1);
 	DRAW_STRING_CENTERED(0, "quick test complete", 0);
@@ -148,26 +149,9 @@ void run_read_memory_test(void) {
 	wait_for_button();
 }
 
-static uint8_t hex_to_int(uint8_t c) {
-	if (c >= '0' && c <= '9') {
-		return c-48;
-	} else if ((c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')) {
-		return (c & 0x07)+9;
-	} else {
-		return 0;
-	}
-}
-
-static uint8_t int_to_hex(uint8_t c) {
-	c &= 0x0F;
-	if (c < 10) {
-		return c+48;
-	} else {
-		return (c-10)+65;
-	}
-}
-
 void main(void) {
+	ipc_init();
+
 	// FIXME: deinitialize hardware
 	//outportw(IO_NILE_SPI_CNT, NILE_SPI_CLOCK_CART);
 	//outportb(IO_NILE_POW_CNT, 0x81);
