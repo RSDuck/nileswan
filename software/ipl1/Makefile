@@ -10,12 +10,12 @@ include $(WONDERFUL_TOOLCHAIN)/target/$(TARGET)/makedefs.mk
 # --------
 
 NAME_BOOT	:= ipl1
-NAME_SELFTEST	:= ipl1_selftest
+NAME_SAFE	:= ipl1_safe
 
 # Source code paths
 # -----------------
 
-INCLUDEDIRS	:= src/boot src/selftest src/shared
+INCLUDEDIRS	:= src/boot src/safe src/shared
 
 # Defines passed to all files
 # ---------------------------
@@ -36,9 +36,9 @@ BUILDDIR	:= build
 ELF_BOOT	:= build/$(NAME_BOOT).elf
 MAP_BOOT	:= build/$(NAME_BOOT).map
 EXE_BOOT	:= $(NAME_BOOT).bin
-ELF_SELFTEST	:= build/$(NAME_SELFTEST).elf
-MAP_SELFTEST	:= build/$(NAME_SELFTEST).map
-EXE_SELFTEST	:= $(NAME_SELFTEST).bin
+ELF_SAFE	:= build/$(NAME_SAFE).elf
+MAP_SAFE	:= build/$(NAME_SAFE).map
+EXE_SAFE	:= $(NAME_SAFE).bin
 
 # Verbose flag
 # ------------
@@ -63,9 +63,9 @@ SOURCES_BOOT		:= \
 	$(shell find -L src/boot -name "*.s") \
 	$(shell find -L src/boot -name "*.c")
 	
-SOURCES_SELFTEST	:= \
-	$(shell find -L src/selftest -name "*.s") \
-	$(shell find -L src/selftest -name "*.c")
+SOURCES_SAFE	:= \
+	$(shell find -L src/safe -name "*.s") \
+	$(shell find -L src/safe -name "*.c")
 
 # Compiler and linker flags
 # -------------------------
@@ -94,8 +94,8 @@ OBJS_ASSETS	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_CBIN))) \
 
 OBJS_SHARED	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_SHARED)))
 OBJS_BOOT	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_BOOT)))
-OBJS_SELFTEST	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_SELFTEST)))
-OBJS		:= $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_BOOT) $(OBJS_SELFTEST)
+OBJS_SAFE	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_SAFE)))
+OBJS		:= $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_BOOT) $(OBJS_SAFE)
 
 DEPS		:= $(OBJS:.o=.d)
 
@@ -104,17 +104,17 @@ DEPS		:= $(OBJS:.o=.d)
 
 .PHONY: all clean
 
-all: $(EXE_BOOT) $(EXE_SELFTEST) compile_commands.json
+all: $(EXE_BOOT) $(EXE_SAFE) compile_commands.json
 
-program: $(EXE_BOOT) $(EXE_SELFTEST)
+program: $(EXE_BOOT) $(EXE_SAFE)
 	iceprog -i 4 -o 160k $(EXE_BOOT)
-	iceprog -i 4 -o 176k $(EXE_SELFTEST)
+	iceprog -i 4 -o 176k $(EXE_SAFE)
 
 $(EXE_BOOT): $(ELF_BOOT)
 	@echo "  OBJCOPY $@"
 	$(_V)$(OBJCOPY) -O binary $< $@
 
-$(EXE_SELFTEST): $(ELF_SELFTEST)
+$(EXE_SAFE): $(ELF_SAFE)
 	@echo "  OBJCOPY $@"
 	$(_V)$(OBJCOPY) -O binary $< $@
 
@@ -122,13 +122,13 @@ $(ELF_BOOT): $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_BOOT) link.ld
 	@echo "  LD      $@"
 	$(_V)$(CC) -o $(ELF_BOOT) $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_BOOT) $(LDFLAGS) -Wl,-Map,$(MAP_BOOT)
 
-$(ELF_SELFTEST): $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_SELFTEST) link.ld
+$(ELF_SAFE): $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_SAFE) link.ld
 	@echo "  LD      $@"
-	$(_V)$(CC) -o $(ELF_SELFTEST) $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_SELFTEST) $(LDFLAGS) -Wl,-Map,$(MAP_SELFTEST) 
+	$(_V)$(CC) -o $(ELF_SAFE) $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_SAFE) $(LDFLAGS) -Wl,-Map,$(MAP_SAFE) 
 
 clean:
 	@echo "  CLEAN"
-	$(_V)$(RM) $(EXE_BOOT) $(ELF_BOOT) $(EXE_SELFTEST) $(ELF_SELFTEST) $(BUILDDIR) compile_commands.json
+	$(_V)$(RM) $(EXE_BOOT) $(ELF_BOOT) $(EXE_SAFE) $(ELF_SAFE) $(BUILDDIR) compile_commands.json
 
 compile_commands.json: $(OBJS) | Makefile
 	@echo "  MERGE   compile_commands.json"

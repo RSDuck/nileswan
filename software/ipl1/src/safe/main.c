@@ -23,22 +23,20 @@
 #include "../../build/assets/tiles.h"
 #include "util.h"
 
-#define MENU_OPTION_QUICK_TEST_16MB 0
-#define MENU_OPTION_QUICK_TEST_8MB 1
-#define MENU_OPTION_MEMORY_TEST 2
-#define MENU_OPTION_RETENTION 3
-#define MENU_OPTION_MCU 4
-#define MENU_OPTION_SRAM_SPEED 5
-#define MENU_OPTIONS_COUNT 6
+typedef enum {
+	MENU_OPTION_QUICK_TEST_16MB,
+	MENU_OPTION_QUICK_TEST_8MB,
+	MENU_OPTION_MEMORY_TEST,
+	MENU_OPTION_SRAM_SPEED,
+	MENU_OPTION_RETENTION,
+	MENU_OPTIONS_COUNT
+} menu_option_t;
 
 #define SCREEN ((uint16_t*) (0x3800 + (13 * 32 * 2)))
 
 #define PSRAM_MAX_BANK_8MB 127
 #define PSRAM_MAX_BANK_16MB 255
 #define SRAM_MAX_BANK 7
-
-uint8_t flash_read_buffer[128];
-uint8_t flash_read_buffer2[128];
 
 /* === Test code in external files === */
 
@@ -73,7 +71,8 @@ static void clear_screen(void) {
 static void draw_pass_fail(uint8_t y, bool result) {
 	memcpy8to16(SCREEN + ((y * 32)) + 22, result ? "PASS" : "FAIL", 4, SCR_ENTRY_PALETTE(result ? 3 : 2) | 0x100);
 }
-static void draw_result_byte(uint8_t y, uint8_t value, bool result) {	
+
+static void draw_result_byte(uint8_t y, uint8_t value, bool result) {
 	uint16_t* dst = SCREEN + ((y * 32)) + 22;
 	if (result)
 		print_hex_number(dst, value);
@@ -91,13 +90,13 @@ static bool tiny_ipc_check() {
 	outportw(IO_BANK_2003_RAM, 14);
 	__far uint16_t* ipc_buf = MK_FP(0x1000, 0);
 
-	for (uint16_t i = 0; i < 256; i++)
-		*(ipc_buf++) = i;
+	for (uint16_t i = 0; i < sizeof(nile_ipc_t); i+=2)
+		*(ipc_buf++) = i ^ (i >> 8);
 
 	// IPC buffer should mirror
-	for (uint16_t i = 0; i < 256; i++)
+	for (uint16_t i = 0; i < sizeof(nile_ipc_t); i+=2)
 	{
-		if (*(ipc_buf++) != i)
+		if (*(ipc_buf++) != (i ^ (i >> 8)))
 			return false;
 	}
 
@@ -149,8 +148,6 @@ void run_read_memory_test(void) {
 	wait_for_button();
 }
 
- #define MCU_EXE_SIZE 1024
-
 static uint8_t hex_to_int(uint8_t c) {
 	if (c >= '0' && c <= '9') {
 		return c-48;
@@ -168,136 +165,6 @@ static uint8_t int_to_hex(uint8_t c) {
 	} else {
 		return (c-10)+65;
 	}
-}
-
-void run_mcu_serial(void) {
-	clear_screen();
-	outportw(IO_NILE_SPI_CNT, NILE_SPI_DEV_MCU | NILE_SPI_CLOCK_CART);
-
-	char str[64];
-	int i = 0;
-	bool running = true;
-
-	ws_serial_open(SERIAL_BAUD_9600);
-	while (running) {
-		ws_serial_putc('>');
-		ws_serial_putc(' ');
-
-		while (true) {
-			uint8_t c = ws_serial_getc();
-			if (c == '\r' || c == '\n') {
-				if (i == 0) continue;
-				if (i < (sizeof(str)-1)) {
-					// process command
-					str[i++] = 0;
-
-					if (!strcmp(str, "exit")) {
-						running = false;
-					} else if (!strcmp(str, "reset")) {
-						outportw(IO_NILE_SPI_CNT, NILE_SPI_CLOCK_CART);
-						uint8_t data[1];
-						nile_spi_rx_sync_block(data, 1, NILE_SPI_MODE_READ);
-						outportb(IO_NILE_POW_CNT, inportb(IO_NILE_POW_CNT)&~0x80);
-						ws_busywait(150);
-						outportb(IO_NILE_POW_CNT, inportb(IO_NILE_POW_CNT)|0x80);
-
-						ws_busywait(1000*10);
-
-						ws_serial_putc('\r');
-						ws_serial_putc('\n');
-						ws_serial_putc('O');
-						ws_serial_putc('K');
-
-						outportw(IO_NILE_SPI_CNT, NILE_SPI_DEV_MCU | NILE_SPI_CLOCK_CART);
-					} else {
-						uint8_t value;
-						value = hex_to_int(str[0]) << 4;
-						value |= hex_to_int(str[1]) & 0xF;
-						value = nile_spi_xch(value);
-						ws_serial_putc('\r');
-						ws_serial_putc('\n');
-						ws_serial_putc(int_to_hex(value >> 4));
-						ws_serial_putc(int_to_hex(value));
-					}
-				}
-				// reset
-				ws_serial_putc('\r');
-				ws_serial_putc('\n');
-				i = 0;
-				break;
-			} else if (c == 8) {
-				// backspace
-				if (i > 0) i--;
-			} else if (c >= 32 && c < 127) {
-				if (i >= (sizeof(str)-1)) continue;
-				ws_serial_putc(c);
-				str[i++] = c;
-			}
-		}
-	}
-	ws_serial_close();
-}
-
-void run_mcu_test(void) {
-	clear_screen();
-	DRAW_STRING_CENTERED(0, "testing MCU comm", 0);
-
-	DRAW_STRING(2, 2, "reset", 0);
-	bool result = nile_mcu_reset(true);
-	draw_pass_fail(2, result);
-
-	DRAW_STRING(2, 3, "version", 0);
-	uint8_t version = nile_mcu_boot_get_version();
-	draw_result_byte(3, version, version);
-
-	DRAW_STRING(2, 4, "erase", 0);
-	result = nile_mcu_boot_erase_memory(0, 1024/NILE_MCU_FLASH_PAGE_SIZE);
-	draw_pass_fail(4, result);
-
-	DRAW_STRING(2, 5, "writing", 0);
-
-	result = true;
-	uint32_t addr = NILE_MCU_FLASH_START;
-	uint32_t flash_addr = 0x30000;
-	for (int i = 0; i < MCU_EXE_SIZE/sizeof(flash_read_buffer); i++)
-	{
-		outportb(IO_LCD_SEG, 1);
-		nile_flash_read(flash_read_buffer, flash_addr, sizeof(flash_read_buffer));
-		outportb(IO_LCD_SEG, 2);
-
-		outportb(IO_LCD_SEG, 3);
-		result &= nile_mcu_boot_write_memory(addr, flash_read_buffer, sizeof(flash_read_buffer));
-		//result &= nile_mcu_boot_read_memory(addr, flash_read_buffer2, sizeof(flash_read_buffer2));
-		//result &= memcmp(flash_read_buffer, flash_read_buffer2, sizeof(flash_read_buffer)) == 0;
-		outportb(IO_LCD_SEG, 4);
-
-		addr += sizeof(flash_read_buffer);
-		flash_addr += sizeof(flash_read_buffer);
-	}
-	draw_pass_fail(5, result);
-
-	print_hex_number(SCREEN, *(uint16_t*)&flash_read_buffer[0]);
-	print_hex_number(SCREEN+4, *(uint16_t*)&flash_read_buffer2[0]);
-
-	DRAW_STRING(2, 6, "go", 0);
-	result = nile_mcu_boot_jump(NILE_MCU_FLASH_START);
-	draw_pass_fail(6, result);
-
-	volatile uint32_t i = 0;
-	while (i < 1000ULL*100ULL) i++;
-
-	uint8_t buffer[10] = {};
-	nile_spi_rx_sync_block(buffer, 10, NILE_SPI_MODE_READ);
-
-	draw_result_byte(7, buffer[0], true);
-	draw_result_byte(8, buffer[1], true);
-	draw_result_byte(9, buffer[2], true);
-	draw_result_byte(10, buffer[3], true);
-	draw_result_byte(11, buffer[4], true);
-	draw_result_byte(12, buffer[5], true);
-	draw_result_byte(13, buffer[6], true);
-
-	wait_for_button();
 }
 
 void main(void) {
@@ -333,18 +200,16 @@ update_full_menu:
 	clear_screen();
     outportb(IO_DISPLAY_CTRL, DISPLAY_SCR1_ENABLE);
 
-	DRAW_STRING_CENTERED(0, "nileswan self-test 0.1", 0);
-	DRAW_STRING_CENTERED(17, "copyright (c) 2024", 0);
+	DRAW_STRING_CENTERED(0, "nileswan safe ipl1   0.1.0", 0);
+	DRAW_STRING_CENTERED(17, "copyright (c) 2024-2025", 0);
 
 	int test_pos = 0;
 	int test_menu_y = (18 - MENU_OPTIONS_COUNT) >> 1;
 
-
-	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_QUICK_TEST_16MB, "quick test (16 MB PSRAM)", 0);
-	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_QUICK_TEST_8MB, "quick test (8 MB PSRAM)", 0);
+	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_QUICK_TEST_16MB, "quick memory test (16MB)", 0);
+	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_QUICK_TEST_8MB, "quick memory test (8MB)", 0);
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_MEMORY_TEST, "full memory test", 0);
-	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_RETENTION, "SRAM persistence read test", 0);
-	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_MCU, "MCU comm", 0);
+	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_RETENTION, "test SRAM after reboot", 0);
 
 	uint16_t keys_pressed = 0;
 	uint16_t keys_held = 0;
@@ -399,11 +264,6 @@ update_dynamic_options:
 						outportb(IO_SYSTEM_CTRL2, WS_MODE_COLOR);
 					}
 				}
-			} break;
-			case MENU_OPTION_MCU: {
-				// run_mcu_serial();
-				run_mcu_test();
-				goto update_full_menu;
 			} break;
 			}
 			last_test_pos = -1;
