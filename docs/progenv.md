@@ -33,7 +33,7 @@ During transfer the data in the TX buffer currently not mapped into the address 
 
 All values besides the transfer abort are read only while a transfer is in progress.
 
-The selected clock will also be used for EEPROM and RTC serial transactions.
+For EEPROM or RTC SPI communication to work the cartridge serial clock has to be selected.
 
 ### Power/system control
 
@@ -61,7 +61,7 @@ If SRAM is enabled SRAM (banks 0-7) may be selected when accessing the RAM area.
 
 | Bit(s) | Description |
 |------|------|
-|0-1|Emulated EEPROM size (0=128B, 1=1KB, 2=2KB, 3=reserved)|
+|0-1|Emulated EEPROM size (0=128B, 1=1KB, 2=2KB, 3=no EEPROM connected)|
 |2-7|Unused/0|
 
 See section on EEPROM for details on EEPROM size.
@@ -98,9 +98,13 @@ If Bandai 2001 registers are enabled in `POW_CNT`, the registers associated with
 
 This is necessary as the interface does not provide an reliable way to tell when a read is done and thus typically software only relies on waiting for a fixed amount. The μC is unable to respond with such low latency.
 
-EEPROMs of different sizes have small differences in command scheme and mask addresses to their respective size. `POW_CNT` can be used to set the size of the emulated EEPROM.
+EEPROMs of different sizes have small differences in command scheme and mask addresses to their respective size. `EMU_CNT` can be used to set the size of the emulated EEPROM. Alternatively `EMU_CNT` can be configured to emulate the absence of an EEPROM chip.
 
-To store save data across power cycles write commands are additionally output as-is via SPI to the μC.
+To store save data across power cycles write and erase commands are additionally output as-is via SPI to the μC. First the contents of `CART_SERIAL_COM` is output from the highest to lowest bit, for write commands `CART_SERIAL_DATA` is output from highest to lowest bit too.
+
+## RTC
+
+Whenever Bandai 2003 registers are enabled via `POW_CNT` RTC registers can be accessed (`0xCA` and `0xCB`). It performs like a real Bandai 2003 and provides a serial interfaces specifically made for the S-3511A RTC chip. It is connected to the μC which emulates the S-3511A.
 
 ## Memory bank layout
 

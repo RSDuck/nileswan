@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 
 `include "../spi.sv"
+`include "../spimux.sv"
+`include "../clockmux.sv"
 
 module spi_bench ();
 
@@ -15,10 +17,10 @@ module spi_bench ();
     reg spi_di = 0;
     wire SPIDiInOut;
     assign SPIDiInOut = spi_di;
-    wire spi_do, spi_cs, spi_clk, spi_mcu_cs;
+    wire spi_next_do, spi_do, spi_cs, spi_clk;
 
     reg tf_di = 0;
-    wire tf_do, tf_cs, tf_clk;
+    wire tf_do, tf_cs, tf_clk, spi_clk_running;
 
     reg[8:0] buf_addr;
 
@@ -32,9 +34,18 @@ module spi_bench ();
 
     wire[15:0] spi_cnt;
 
+    wire transfer_clk, use_slow_clk;
+
+    ClockMux clock_mux (
+        .ClkA(clk),
+        .ClkB(sclk),
+
+        .ClkSel(use_slow_clk),
+
+        .OutClk(transfer_clk));
+
     SPI spi (
-        .FastClk(clk),
-        .SClk(sclk),
+        .TransferClk(transfer_clk),
         .nWE(nWE), .nOE(nOE),
 
         .BufAddr(buf_addr),
@@ -48,13 +59,14 @@ module spi_bench ();
         .WriteSPICntLo(write_spicnt_lo),
         .WriteSPICntHi(write_spicnt_hi),
 
+        .UseSlowClk(use_slow_clk),
+
         .TFPow(tf_pow),
 
-        .SPIDo(spi_do),
+        .SPIDo(spi_next_do),
         .SPIDi(SPIDiInOut),
-        .SPIClk(spi_clk),
+        .SPIClkRunning(spi_clk_running),
         .nFlashSel(spi_cs),
-        .nMCUSel(spi_mcu_cs),
 
         .TFDo(tf_do),
         .TFDi(tf_di),
@@ -62,9 +74,20 @@ module spi_bench ();
         .nTFSel(tf_cs)
     );
 
+    SPIMux #(.SIZE(1)) spi_mux (
+        .Clk(transfer_clk),
+        
+        .ClockRunning(spi_clk_running),
+        .ClockStretch(1'b0),
+        .InSPIDo(spi_next_do),
+        .InSPISel(spi_cs),
+
+        .OutSPIDo(spi_do),
+        .OutSPIClk(spi_clk));
+
     integer i;
 
-    `make_spi_dev(testdev, TestDev, spi_cs&spi_mcu_cs, spi_clk, spi_di, spi_do)
+    `make_spi_dev(testdev, TestDev, spi_cs, spi_clk, spi_di, spi_do)
     `make_spi_dev(testtf, TestTF, tf_cs, tf_clk, tf_di, tf_do)
 
     task readRXBuf(input[8:0] addr, output[15:0] data);

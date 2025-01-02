@@ -1,10 +1,8 @@
-`include "clockmux.sv"
 `include "blockram_16rn_8w.sv"
 `include "blockram_8r_8w.sv"
 
 module SPI (
-    input FastClk,
-    input SClk,
+    input TransferClk,
     input nWE, input nOE,
 
     input[8:0] BufAddr,
@@ -14,13 +12,15 @@ module SPI (
     output[15:0] RXBufData,
     output[15:0] SPICnt,
 
+    output UseSlowClk,
+
     input WriteTXBuffer,
     input WriteSPICntLo,
     input WriteSPICntHi,
 
+    output SPIClkRunning,
     output SPIDo,
     inout SPIDi,
-    output SPIClk,
     output nFlashSel,
     output nMCUSel,
 
@@ -67,14 +67,7 @@ module SPI (
         channel_cs == channelCS_SelMCU) ? SPIDi : TFDi};
 
     reg use_slow_clk = 0;
-
-    wire transfer_clk;
-    ClockMux clk_mux (
-        .ClkA(FastClk),
-        .ClkB(SClk),
-        .ClkSel(use_slow_clk),
-        .OutClk(transfer_clk)
-    );
+    assign UseSlowClk = use_slow_clk;
 
     typedef enum reg[1:0] {
         mode_Write,
@@ -99,7 +92,7 @@ module SPI (
         .ReadAddr({~bus_mapped_buffer, BufAddr[8:1]}),
         .ReadData(rx_read),
 
-        .WriteClk(transfer_clk),
+        .WriteClk(TransferClk),
         .WriteEnable(StoreShiftReg),
         .WriteAddr({bus_mapped_buffer, byte_position}),
         .WriteData(ShiftRegNext)
@@ -108,7 +101,7 @@ module SPI (
 
     wire[7:0] tx_read;
     BlockRAM8R_8W tx_buffer (
-        .ReadClk(transfer_clk),
+        .ReadClk(TransferClk),
         .ReadEnable(1'b1),
         .ReadAddr({~bus_mapped_buffer, NextBytePosition}),
         .ReadData(tx_read),
@@ -119,13 +112,13 @@ module SPI (
         .WriteData(WriteData)
     );
 
-    always @(posedge transfer_clk)
+    always @(posedge TransferClk)
         start_transfer_clk <= {start_transfer_clk[1:0], start_async};
 
     wire FillerOver = (seen_non_filler || ShiftRegHasZeroBit);
     wire LastPeriod = (byte_position == transfer_len) && bit_position == 7 && FillerOver;
 
-    always @(posedge transfer_clk) begin
+    always @(posedge TransferClk) begin
         if (Start)
             running <= 1;
         else if (LastPeriod)
@@ -134,7 +127,7 @@ module SPI (
 
     reg last_period_delay;
 
-    always @(posedge transfer_clk) begin
+    always @(posedge TransferClk) begin
         if (LastPeriod)
             last_period_delay <= 1;
         if (last_period_delay) begin
@@ -143,41 +136,32 @@ module SPI (
         end
     end
 
-    always @(posedge transfer_clk) begin
+    always @(posedge TransferClk) begin
         if (Start)
             seen_non_filler <= mode != mode_WaitAndRead;
         else if (bit_position == 7 && ShiftRegHasZeroBit)
             seen_non_filler <= 1;
     end
 
-    always @(posedge transfer_clk) begin
+    always @(posedge TransferClk) begin
         if (Start || (bit_position == 7 && FillerOver))
             byte_position <= NextBytePosition;
         else if (~running) // reset position so that the TX buffer will read
             byte_position <= 9'h1FF;
     end
 
-    always @(posedge transfer_clk) begin
+    always @(posedge TransferClk) begin
         if (Start || running)
             shiftreg <= (bit_position == 7 || Start) ? tx_read : ShiftRegNext;
     end
 
-    always @(posedge transfer_clk) begin
+    always @(posedge TransferClk) begin
         if (running)
             bit_position <= bit_position + 1;
     end
 
-    SB_IO #(
-        .PIN_TYPE(6'b010001), // PIN_OUTPUT_DDR
-        .IO_STANDARD("SB_LVCMOS")
-    ) spi_clk_iob (
-        .PACKAGE_PIN(SPIClk),
-        .D_OUT_0(running),
-        .D_OUT_1(1'b0),
-        .OUTPUT_CLK(transfer_clk),
-        .OUTPUT_ENABLE(1'b1),
-        .CLOCK_ENABLE(1'b1)
-    );
+    assign SPIClkRunning = running;
+
     SB_IO #(
         .PIN_TYPE(6'b100000), // PIN_OUTPUT_DDR_ENABLE
         .IO_STANDARD("SB_LVCMOS")
@@ -185,7 +169,7 @@ module SPI (
         .PACKAGE_PIN(TFClk),
         .D_OUT_0(running),
         .D_OUT_1(1'b0),
-        .OUTPUT_CLK(transfer_clk),
+        .OUTPUT_CLK(TransferClk),
         .OUTPUT_ENABLE(TFPow),
         .CLOCK_ENABLE(1'b1)
     );
@@ -211,17 +195,8 @@ module SPI (
 
     wire outbit = (mode == mode_Write || mode == mode_Exchange) ? shiftreg[7] : 1;
 
-    SB_IO #(
-        .PIN_TYPE(6'b010001), // PIN_OUTPUT_DDR
-        .IO_STANDARD("SB_LVCMOS")
-    ) spi_do_iob (
-        .PACKAGE_PIN(SPIDo),
-        .D_OUT_0(outbit),
-        .D_OUT_1(outbit),
-        .OUTPUT_CLK(transfer_clk),
-        .OUTPUT_ENABLE(1'b1),
-        .CLOCK_ENABLE(1'b1)
-    );
+    assign SPIDo = outbit;
+
     SB_IO #(
         .PIN_TYPE(6'b100000), // PIN_OUTPUT_DDR_ENABLE
         .IO_STANDARD("SB_LVCMOS")
@@ -229,7 +204,7 @@ module SPI (
         .PACKAGE_PIN(TFDo),
         .D_OUT_0(outbit),
         .D_OUT_1(outbit),
-        .OUTPUT_CLK(transfer_clk),
+        .OUTPUT_CLK(TransferClk),
         .OUTPUT_ENABLE(TFPow),
         .CLOCK_ENABLE(1'b1)
     );

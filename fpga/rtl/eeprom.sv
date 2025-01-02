@@ -15,10 +15,11 @@ module EEPROM (
 
     output[7:0] SerialCtrl,
     output[15:0] SerialCom,
-    output[15:0] SerialData
-    /*output SPSel,
+    output[15:0] SerialData,
+
     output SPIDo,
-    output SPIClkEnable*/);
+    output SPISel,
+    output SPIClkRunning);
 
     (* blockram *)
     reg[15:0] memory[1024];
@@ -26,8 +27,9 @@ module EEPROM (
     typedef enum reg[1:0] {
         eepromSize_128B,
         eepromSize_1KB,
-        eepromSize_2KB
-    } EEPROMSizee;
+        eepromSize_2KB,
+        eepromSize_NoEEPROM
+    } EEPROMSizeTypes;
 
     typedef enum reg[1:0] {
         cmd_Write,
@@ -68,19 +70,27 @@ module EEPROM (
     Cmd cmd = cmd_Write;
 
     reg[9:0] write_counter = 0;
-    wire WriteCounterLastValue = (write_counter & addr_mask) == addr_mask;
+
+    reg WriteCounterLastValue;
+    always_comb begin
+        if (cmd == cmd_Write)
+            WriteCounterLastValue = write_counter == 10'h21;
+        else if (cmd == cmd_EraseAll)
+            WriteCounterLastValue = write_counter == 10'h11;
+        else
+            WriteCounterLastValue = (write_counter & addr_mask) == addr_mask;
+    end
 
     always @(posedge SClk) begin
-        if (InternalWriteBusy) begin
-            //interal_write_restart_done <= internal_write_restart;
+        if (InternalWriteBusy)
+            write_counter <= write_counter + 1;
+        else
+            write_counter <= 0;
+    end
 
-            case (cmd)
-            cmd_Write, cmd_Erase: internal_write_done <= internal_write_start;
-            cmd_WriteAll, cmd_EraseAll: begin
-                if (WriteCounterLastValue)
-                    internal_write_done <= internal_write_start;
-            end
-            endcase
+    always @(posedge SClk) begin
+        if (InternalWriteBusy && WriteCounterLastValue) begin
+            internal_write_done <= internal_write_start;
         end
     end
 
@@ -101,15 +111,71 @@ module EEPROM (
     end
 
     always @(posedge SClk) begin
-        if (InternalWriteBusy && (cmd == cmd_EraseAll || cmd == cmd_WriteAll)/* && ~NeedRestart*/)
-            write_counter <= write_counter + 1;
-        else
-            write_counter <= 0;
+        if (InternalWriteBusy && EEPROMSize != eepromSize_NoEEPROM)
+            memory[write_addr] <= write_data;
     end
 
+    reg spi_clk_enable = 0;
+    reg spi_sel = 1;
+    assign SPIClkRunning = spi_clk_enable;
+    assign SPISel = spi_sel;
+
     always @(posedge SClk) begin
-        if (InternalWriteBusy)
-            memory[write_addr] <= write_data;
+        case (write_counter)
+        10'h1: begin
+            spi_clk_enable <= 1;
+            spi_sel <= 0;
+        end
+        10'h11: if (cmd == cmd_Erase || cmd == cmd_EraseAll) begin
+            spi_clk_enable <= 0;
+        end
+        10'h12: if (cmd == cmd_Erase || cmd == cmd_EraseAll) begin
+            spi_sel <= 1;
+        end
+        10'h21: spi_clk_enable <= 0;
+        10'h22: spi_sel <= 1;
+        default: begin end
+        endcase
+    end
+
+    reg spi_out;
+    assign SPIDo = spi_out;
+    always_comb begin
+        case (write_counter)
+        10'h2: spi_out = command[15];
+        10'h3: spi_out = command[14];
+        10'h4: spi_out = command[13];
+        10'h5: spi_out = command[12];
+        10'h6: spi_out = command[11];
+        10'h7: spi_out = command[10];
+        10'h8: spi_out = command[9];
+        10'h9: spi_out = command[8];
+        10'hA: spi_out = command[7];
+        10'hB: spi_out = command[6];
+        10'hC: spi_out = command[5];
+        10'hD: spi_out = command[4];
+        10'hE: spi_out = command[3];
+        10'hF: spi_out = command[2];
+        10'h10: spi_out = command[1];
+        10'h11: spi_out = command[0];
+        10'h12: spi_out = serial_data_out[15];
+        10'h13: spi_out = serial_data_out[14];
+        10'h14: spi_out = serial_data_out[13];
+        10'h15: spi_out = serial_data_out[12];
+        10'h16: spi_out = serial_data_out[11];
+        10'h17: spi_out = serial_data_out[10];
+        10'h18: spi_out = serial_data_out[9];
+        10'h19: spi_out = serial_data_out[8];
+        10'h1A: spi_out = serial_data_out[7];
+        10'h1B: spi_out = serial_data_out[6];
+        10'h1C: spi_out = serial_data_out[5];
+        10'h1D: spi_out = serial_data_out[4];
+        10'h1E: spi_out = serial_data_out[3];
+        10'h1F: spi_out = serial_data_out[2];
+        10'h20: spi_out = serial_data_out[1];
+        10'h21: spi_out = serial_data_out[0];
+        default: spi_out = 1'bX;
+        endcase
     end
 
     // handle it separately so that we can do the block ram read
@@ -126,7 +192,7 @@ module EEPROM (
 
     always @(posedge nWE) begin
         if (DoRead)
-            invalid_serial_read <= ~op[4];
+            invalid_serial_read <= ~op[4] || EEPROMSize == eepromSize_NoEEPROM;
     end
 
     reg bugged_done_bit = 0;

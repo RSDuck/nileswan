@@ -1,8 +1,11 @@
+`include "clockmux.sv"
 `include "dance.sv"
 `include "bootrom.sv"
 `include "spi.sv"
 `include "ipcram.sv"
 `include "eeprom.sv"
+`include "rtc.sv"
+`include "spimux.sv"
 
 module nileswan(
     input nSel, input nOE, input nWE,
@@ -66,13 +69,25 @@ module nileswan(
     wire IOWrite = ~nSel & ~nIO;
     wire[7:0] RegAddr = {AddrHi, AddrLo[3:0]};
 
+    wire transfer_clk;
+    wire use_slow_clk;
+    ClockMux clk_mux (
+        .ClkA(FastClk),
+        .ClkB(SClk),
+        .ClkSel(use_slow_clk),
+        .OutClk(transfer_clk));
+
+    wire[2:0] spi_clk_running;
+    wire[2:0] spi_clk_stretch;
+    wire[2:0] spi_do;
+    wire[2:0] nMCU_sel;
+
     wire write_txbuf;
     wire[15:0] rxbuf_read;
     wire[15:0] spi_cnt;
     reg write_spi_cnt_lo, write_spi_cnt_hi;
     SPI spi (
-        .FastClk(FastClk),
-        .SClk(SClk),
+        .TransferClk(transfer_clk),
         .nWE(nWE), .nOE(nOE),
         
         .BufAddr(AddrLo),
@@ -80,16 +95,18 @@ module nileswan(
         
         .RXBufData(rxbuf_read),
         .SPICnt(spi_cnt),
-        
+
+        .UseSlowClk(use_slow_clk),
+
         .WriteSPICntLo(write_spi_cnt_lo & IOWrite),
         .WriteSPICntHi(write_spi_cnt_hi & IOWrite),
         .WriteTXBuffer(write_txbuf),
 
-        .SPIDo(SPIDo),
+        .SPIClkRunning(spi_clk_running[0]),
+        .SPIDo(spi_do[0]),
         .SPIDi(SPIDi),
-        .SPIClk(SPIClk),
         .nFlashSel(nFlashSel),
-        .nMCUSel(nMCUSel),
+        .nMCUSel(nMCU_sel[0]),
 
         .TFPow(enable_tf_power),
 
@@ -97,6 +114,7 @@ module nileswan(
         .TFDi(TFDi),
         .TFClk(TFClk),
         .nTFSel(nTFSel));
+    assign spi_clk_stretch[0] = 1'b0;
 
     reg sel_serial_ctrl;
     reg sel_serial_com_lo, sel_serial_com_hi;
@@ -104,7 +122,6 @@ module nileswan(
 
     wire[7:0] serial_ctrl;
     wire[15:0] serial_com, serial_data;
-
     EEPROM eeprom (
         .SClk(SClk),
         .nWE(nWE),
@@ -122,8 +139,46 @@ module nileswan(
 
         .SerialCtrl(serial_ctrl),
         .SerialCom(serial_com),
-        .SerialData(serial_data)
+        .SerialData(serial_data),
+
+        .SPIDo(spi_do[1]),
+        .SPISel(nMCU_sel[1]),
+        .SPIClkRunning(spi_clk_running[1])
     );
+    assign spi_clk_stretch[1] = 1'b0;
+
+    reg sel_rtc_ctrl, sel_rtc_data;
+    wire[7:0] rtc_ctrl, rtc_data;
+    RTC rtc (
+        .SClk(SClk),
+        .nWE(nWE),
+        .nOE(nOE),
+        .WriteData(Data[7:0]),
+
+        .SelRTCData(sel_rtc_data),
+        .SelRTCCtrl(sel_rtc_ctrl),
+
+        .RTCCtrl(rtc_ctrl),
+        .RTCData(rtc_data),
+
+        .SPIDi(SPIDi),
+        .SPIDo(spi_do[2]),
+        .SPIClkRunning(spi_clk_running[2]),
+        .SPIClkStretch(spi_clk_stretch[2]),
+        .nMCUSel(nMCU_sel[2])
+    );
+
+    SPIMux #(.SIZE(3)) spimux (
+        .Clk(transfer_clk),
+
+        .ClockRunning(spi_clk_running),
+        .ClockStretch(spi_clk_stretch),
+        .InSPIDo(spi_do),
+        .InSPISel({nMCU_sel[2:1], nMCU_sel[0]&nFlashSel}),
+
+        .OutSPIDo(SPIDo),
+        .OutSPIClk(SPIClk));
+    assign nMCUSel = &nMCU_sel;
 
     reg[9:0] ram_addr_ext = 10'h3FF;
     reg[9:0] rom0_addr_ext = 10'h3FF;
@@ -163,6 +218,8 @@ module nileswan(
     localparam ROM_BANK_0_H = 8'hD3;
     localparam ROM_BANK_1_L = 8'hD4;
     localparam ROM_BANK_1_H = 8'hD5;
+    localparam RTC_CTRL = 8'hCA;
+    localparam RTC_DATA = 8'hCB;
 
     // nileswan extension
     localparam BANK_MASK_LO = 8'hE4;
@@ -217,6 +274,9 @@ module nileswan(
         sel_serial_data_lo = 0;
         sel_serial_data_hi = 0;
 
+        sel_rtc_ctrl = 0;
+        sel_rtc_data = 0;
+
         case (RegAddr)
         LINEAR_ADDR_OFF: reg_out = rom_linear_addr_ext;
         RAM_BANK: reg_out = ram_addr_ext[7:0];
@@ -240,6 +300,11 @@ module nileswan(
             `readExternalReg(serial_com[15:8], sel_serial_com_hi, enable_bandai2001_ex)
         CART_SERIAL_CTRL:
             `readExternalReg(serial_ctrl, sel_serial_ctrl, enable_bandai2001_ex)
+
+        RTC_CTRL:
+            `readExternalReg(rtc_ctrl, sel_rtc_ctrl, enable_bandai2003_ex)
+        RTC_DATA:
+            `readExternalReg(rtc_data, sel_rtc_data, enable_bandai2003_ex)
 
         BANK_MASK_LO: `readNileReg(rom_bank_mask[7:0])
         BANK_MASK_HI: `readNileReg({ram_bank_mask,
