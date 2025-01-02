@@ -43,9 +43,8 @@ module RTC(
     reg[1:0] start_rtc_write = 2'h0;
     reg[1:0] start_rtc_read = 2'h0;
 
-    reg[15:0] eeprom_cmd = 16'h0;
-    reg[15:0] data_rx = 16'h0;
-    reg[15:0] data_tx = 16'h0;
+    reg[7:0] data_rx = 8'h0;
+    reg[7:0] data_tx = 8'h0;
 
     typedef enum reg[6:0] {
         state_Idle,
@@ -84,9 +83,6 @@ module RTC(
         cmd_RTCData4W: cmd_final_state = state_Byte3Bit0+7;
         cmd_RTCMiscRegR,
         cmd_RTCMiscRegW: cmd_final_state = state_Byte2Bit0+7;
-        /*cmd_EEPROM_Erase: cmd_final_state = state_Byte1Bit0+7;
-        cmd_EEPROM_Write: cmd_final_state = state_Byte3Bit0+7;
-        cmd_EEPROM_Read: cmd_final_state = state_Byte3Bit0+7;*/
         default: cmd_final_state = 6'hXX;
         endcase
     end
@@ -137,7 +133,7 @@ module RTC(
             shiftreg <= {4'hF, cmd[3:0]};
         end else if (Shifting) begin
             if (spi_state[2:0] == 7)
-                shiftreg <= data_tx[7:0];
+                shiftreg <= data_tx;
             else
                 shiftreg <= ShiftRegNext;
         end
@@ -145,11 +141,11 @@ module RTC(
 
     always @(posedge SClk) begin
        if (spi_state[2:0] == 7) begin
-            data_rx[7:0] <= ShiftRegNext;
+            data_rx <= ShiftRegNext;
         end
     end
 
-    assign RTCData = data_rx[7:0];
+    assign RTCData = data_rx;
     assign RTCCtrl = {rtc_data_req&~(StartRTCRead|StartRTCWrite), 2'b00, Start|(spi_state != state_Idle), cmd[3:0]};
 
     reg cs = 1;
@@ -180,7 +176,7 @@ module RTC(
 
     always @(posedge nWE) begin
         if (SelRTCData && RTCCtrl[7]) begin
-            data_tx[7:0] <= WriteData;
+            data_tx <= WriteData;
             start_rtc_write[0] <= start_rtc_write[0] ^ 1;
         end
     end
