@@ -59,9 +59,13 @@ with open(args.manifest, 'r') as rules:
 
             file_position = file_position - ((len(data) + 15) >> 4)
 
+            flash_position = int(rule_map['AT'])
+            if flash_position < 0:
+                flash_position = (-flash_position) - len(data)
+
             data_at_position[file_position] = data
             rule_data += bytearray(struct.pack("<BHHIH",
-                0x01, file_position, len(data), int(rule_map['FLASH']), crc16.checksum(data)))
+                0x01, file_position, len(data), flash_position, crc16.checksum(data)))
         elif rule_name == 'PACKED_FLASH':
             subprocess.run(["rm", "temp.bin"])
             subprocess.run(["wf-zx0-salvador", "-v", rule[1], "temp.bin"])
