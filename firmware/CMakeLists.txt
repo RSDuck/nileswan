@@ -20,6 +20,7 @@ set(PROJECT_SOURCES
     src/main.c
     src/mcu.c
     src/nanoprintf.c
+    src/nvram.c
     src/rtc.c
     src/spi.c
     src/spi_cmd.c
@@ -51,8 +52,9 @@ target_link_libraries(firmware
     HAL::STM32::L0::LL_RTC
     HAL::STM32::L0::LL_SPI
     HAL::STM32::L0::LL_UTILS
-    CMSIS::STM32::L052K8
-    STM32::NoSys
+    CMSIS::STM32::L052xx
+    STM32::Nano
 )
+stm32_add_linker_script(firmware PRIVATE src/link_L052K8.ld)
 stm32_print_size_of_target(firmware)
 stm32_generate_binary_file(firmware)

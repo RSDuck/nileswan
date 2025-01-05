@@ -17,9 +17,9 @@
 
 #include <string.h>
 #include "mcu.h"
+#include "nvram.h"
 #include "eeprom.h"
 
-static uint16_t eeprom_data[1024];
 static uint16_t address_mask;
 static uint8_t command_bits;
 #ifdef CONFIG_FULL_EEPROM_EMULATION
@@ -27,7 +27,12 @@ static bool write_enabled;
 #endif
 static uint16_t write_command;
 
+eeprom_type_t eeprom_get_type(void) {
+    return nvram.eeprom_type;
+}
+
 void eeprom_set_type(eeprom_type_t type) {
+    nvram.eeprom_type = type;
     write_command = 0;
 #ifdef CONFIG_FULL_EEPROM_EMULATION
     write_enabled = false;
@@ -66,15 +71,15 @@ void eeprom_set_type(eeprom_type_t type) {
 }
 
 void eeprom_erase(void) {
-    memset(eeprom_data, 0xFF, 2048);
+    memset(nvram.eeprom_data, 0xFF, sizeof(nvram.eeprom_data));
 }
 
 void eeprom_read_data(void *buffer, uint32_t address, uint32_t length) {
-    memcpy(buffer, eeprom_data + address, length << 1);
+    memcpy(buffer, nvram.eeprom_data + address, length << 1);
 }
 
 void eeprom_write_data(const void *buffer, uint32_t address, uint32_t length) {
-    memcpy(eeprom_data + address, buffer, length << 1);
+    memcpy(nvram.eeprom_data + address, buffer, length << 1);
 }
 
 uint16_t eeprom_exch_word(uint16_t w) {
@@ -87,9 +92,9 @@ uint16_t eeprom_exch_word(uint16_t w) {
             if (cmd == 0x11) {
                 // WRAL
                 for (int i = 0; i <= address_mask; i++)
-                    eeprom_data[i] = w;
+                    nvram.eeprom_data[i] = w;
             } else {
-                eeprom_data[write_command & address_mask] = w;
+                nvram.eeprom_data[write_command & address_mask] = w;
             }
         }
         write_command = 0;
@@ -105,7 +110,7 @@ uint16_t eeprom_exch_word(uint16_t w) {
 #endif
     case 0x12: // ERAL
         for (int i = 0; i <= address_mask; i++)
-            eeprom_data[i] = 0xFFFF;
+            nvram.eeprom_data[i] = 0xFFFF;
         return 0xFFFF;
 #ifdef CONFIG_FULL_EEPROM_EMULATION
     case 0x13: // WEN
@@ -124,7 +129,7 @@ uint16_t eeprom_exch_word(uint16_t w) {
     case 0x19:
     case 0x1A:
     case 0x1B: // READ
-        return eeprom_data[w & address_mask];
+        return nvram.eeprom_data[w & address_mask];
 #endif
     case 0x1C:
     case 0x1D:
@@ -133,7 +138,7 @@ uint16_t eeprom_exch_word(uint16_t w) {
 #ifdef CONFIG_FULL_EEPROM_EMULATION
         if (write_enabled)
 #endif
-            eeprom_data[w & address_mask] = 0xFFFF;
+            nvram.eeprom_data[w & address_mask] = 0xFFFF;
     default:
         return 0xFFFF;
     }

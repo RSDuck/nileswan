@@ -43,6 +43,10 @@ int spi_native_start_command_rx(uint16_t cmd) {
     case MCU_SPI_CMD_ECHO:
     case MCU_SPI_CMD_USB_CDC_WRITE:
         return arg_to_len(arg);
+    case MCU_SPI_CMD_EEPROM_WRITE:
+        return (arg_to_len(arg) << 1) + 2;
+    case MCU_SPI_CMD_EEPROM_READ:
+        return 2;
     case MCU_SPI_CMD_RTC_COMMAND:
         return rtc_start_command_rx(arg);
     default:
@@ -52,14 +56,16 @@ int spi_native_start_command_rx(uint16_t cmd) {
 
 int spi_native_finish_command_rx(uint8_t *rx, uint8_t *tx) {
     uint16_t arg = SPI_NATIVE_ARG(spi_cmd);
-    // cdc_debug("spi/native: received command %02X %04X", SPI_NATIVE_CMD(spi_cmd), arg);
+#ifdef CONFIG_DEBUG_SPI_NATIVE_CMD
+    cdc_debug("spi/native: received command %02X %04X", SPI_NATIVE_CMD(spi_cmd), arg);
+#endif
     switch (SPI_NATIVE_CMD(spi_cmd)) {
     case MCU_SPI_CMD_ECHO:
         memcpy(tx, rx, arg_to_len(arg));
         return arg_to_len(arg);
     case MCU_SPI_CMD_MODE:
         mcu_spi_init(arg);
-        return 0;
+        return -1;
     case MCU_SPI_CMD_FREQ:
         mcu_spi_set_freq(arg);
         tx[0] = 1;
@@ -71,8 +77,20 @@ int spi_native_finish_command_rx(uint8_t *rx, uint8_t *tx) {
         eeprom_set_type(arg);
         tx[0] = 1;
         return 1;
+    case MCU_SPI_CMD_EEPROM_ERASE:
+        eeprom_erase();
+        return 0;
+    case MCU_SPI_CMD_EEPROM_WRITE:
+        eeprom_write_data(rx + 2, *((uint16_t*) rx), arg_to_len(arg) << 1);
+        return 0;
+    case MCU_SPI_CMD_EEPROM_READ:
+        eeprom_read_data(tx, *((uint16_t*) rx), arg_to_len(arg) << 1);
+        return arg_to_len(arg) << 1;
     case MCU_SPI_CMD_RTC_COMMAND:
         return rtc_finish_command_rx(rx, tx);
+    case MCU_SPI_CMD_EEPROM_GET_MODE:
+        tx[0] = eeprom_get_type();
+        return 1;
     case MCU_SPI_CMD_USB_CDC_READ:
         if (!mcu_usb_is_active()) {
             return 0;

@@ -16,7 +16,7 @@ The MCU is connected on the same SPI bus as the SPI flash.
 
 To initiate a transaction, send two bytes declaring the command ID (bits 0-6) and parameter (bits 7-15, values 0-511).
 
-Each packet has a response. The response always consists of the length (two bytes) and the data.
+Each packet, except "Switch to mode", has a response. The response always consists of the length (two bytes) and the data.
 
 #### 0x00 - Echo
 
@@ -64,13 +64,13 @@ The response is empty.
 
 #### 0x12 - EEPROM: Read data
 
-The parameter is the number of bytes to read; the following word is the offset.
+The parameter is the number of words to read; the following word is the offset.
 
 The response is the bytes read.
 
 #### 0x13 - EEPROM: Write data
 
-The parameter is the number of bytes to write; the following word is the offset, then the bytes to write.
+The parameter is the number of words to write; the following word is the offset, then the words to write.
 
 The response is empty.
 
@@ -79,6 +79,10 @@ The response is empty.
 The parameter is the packet type to send to the emulated S-3511A, followed by the relevant bytes.
 
 The response is the data returned by the emulated S-3511A.
+
+#### 0x15 - EEPROM: Get emulation mode
+
+The response is 1 byte - the EEPROM emulation mode.
 
 #### 0x40 - USB: CDC: Read
 

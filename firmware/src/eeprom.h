@@ -33,6 +33,7 @@ typedef enum {
 void eeprom_erase(void);
 void eeprom_read_data(void *buffer, uint32_t address, uint32_t length);
 void eeprom_write_data(const void *buffer, uint32_t address, uint32_t length);
+eeprom_type_t eeprom_get_type(void);
 void eeprom_set_type(eeprom_type_t type);
 uint16_t eeprom_exch_word(uint16_t w);
 

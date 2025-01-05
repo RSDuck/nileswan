@@ -20,6 +20,7 @@
 #include <stdint.h>
 
 #include "mcu.h"
+#include "nvram.h"
 #include "rtc.h"
 #include "spi.h"
 #include "tusb.h"
@@ -27,6 +28,7 @@
 
 int main(void) {
     mcu_init();
+    nvram_init();
 
     // mcu_rtc_init();
 
@@ -36,6 +38,9 @@ int main(void) {
     while (true) {
         mcu_usb_power_task();
         if (mcu_usb_is_active()) {
+#ifdef CONFIG_ENABLE_CDC_DEBUG_PORT
+            tud_cdc_n_write_flush(1);
+#endif
             tud_task();
         }
         mcu_spi_task();

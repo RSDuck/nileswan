@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2024 Adrian Siekierka
+ * Copyright (c) 2025 Adrian Siekierka
  *
  * Nileswan MCU is free software: you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free
@@ -15,20 +15,20 @@
  * with Nileswan MCU. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <stdarg.h>
-#include "nanoprintf.h"
+#ifndef _NVRAM_H_
+#define _NVRAM_H_
 
 #include "mcu.h"
-#include "tusb.h"
 
-#ifdef CONFIG_ENABLE_CDC_DEBUG_PORT
-int cdc_debug(const char *format, ...) {
-    char buf[96];
-    va_list val;
-    va_start(val, format);
-    int n = npf_vsnprintf(buf, sizeof(buf), format, val);
-    tud_cdc_n_write_str(1, buf);
-    va_end(val);
-    return n;
-}
-#endif
+#define NVRAM_MAGIC 0xAA557113
+
+typedef struct {
+    uint32_t magic;
+    uint16_t eeprom_data[1024];
+    uint8_t eeprom_type;
+} nvram_t;
+
+extern nvram_t nvram;
+void nvram_init(void);
+
+#endif /* _NVRAM_H_ */

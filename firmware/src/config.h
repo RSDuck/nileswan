@@ -36,6 +36,10 @@
 
 #define MCU_UID_LENGTH 12
 
+// Debug configuration
+
+#define CONFIG_DEBUG_SPI_NATIVE_CMD
+
 // GPIO A
 #define MCU_PORT_SPI GPIOA
 #define MCU_PIN_SPI_NSS LL_GPIO_PIN_4
