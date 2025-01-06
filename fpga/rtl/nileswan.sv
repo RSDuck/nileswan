@@ -428,9 +428,9 @@ module nileswan(
     // save some LEs, SRAM ignores the banking bits above bit 2
     assign AddrExt[6:3] = addr_ext_masked_rom[6:3];
 
-    assign nPSRAM1Sel = ~(~nSel & nIO & psram_1_addr);
-    assign nPSRAM2Sel = ~(~nSel & nIO & psram_2_addr);
-    assign nSRAMSel = ~(~nSel & nIO & sram_addr);
+    assign nPSRAM1Sel = ~(~nSel & nIO & psram_1_addr & (~nOE|~nWE));
+    assign nPSRAM2Sel = ~(~nSel & nIO & psram_2_addr & (~nOE|~nWE));
+    assign nSRAMSel = ~(~nSel & nIO & sram_addr & (~nOE|~nWE));
 
     assign PSRAM_nLB = access_in_ram_area & AddrLo[0];
     assign PSRAM_nUB = access_in_ram_area & ~AddrLo[0];
