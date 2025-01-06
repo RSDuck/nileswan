@@ -1,23 +1,59 @@
 include config.mk
 
 DISTDIR  ?= out/dist
+EMUDIR   ?= out/emulator
 MFGDIR   ?= out/manufacturing
 MANIFEST ?= manifest/full_update.txt
 UPDATEWS := $(DISTDIR)/fwupdate.ws
 FLASHBIN := $(MFGDIR)/spi.bin
+EMUIPL0  := $(EMUDIR)/nileswan.ipl0
+EMUSPI   := $(EMUDIR)/nileswan.spi
+EMUIMG   := $(EMUDIR)/nileswan.img
+EMUIMG_SIZE_MB ?= 512
 
-.PHONY: all clean help program-fpga program libnile libnile-ipl1 ipl0 ipl1 recovery updater fpga
+.PHONY: all dist dist-mfg dist-emu clean help firmware program-fpga program libnile libnile-ipl1 ipl0 ipl1 recovery updater fpga
 
-all: ipl0 ipl1 recovery fpga $(UPDATEWS) $(FLASHBIN)
+all: dist dist-mfg
+
+dist: $(UPDATEWS)
+
+dist-mfg: $(FLASHBIN)
+
+dist-emu: $(EMUIPL0) $(EMUSPI) $(EMUIMG)
 
 help:
 	@echo "nileswan build system"
 	@echo ""
-	@echo "all              Build all components"
-	@echo "                 User distributables are stored in $(DISTDIR)"
-	@echo "                 Manufacturing files are stored in $(MFGDIR)"
+	@echo "all              Build all user/manufacturing components (default)"
+	@echo "  dist           Build user distributables, stored in $(DISTDIR)"
+	@echo "  dist-mfg       Build manufacturing files, stored in $(MFGDIR)"
+	@echo "dist-emu         Build emulation package, stored in $(EMUDIR)"
 	@echo "program-fpga     Build and program initial FPGA bitstream"
 	@echo "program          Build and program complete SPI flash contents"
+
+$(EMUIPL0): ipl0
+	@mkdir -p $(@D)
+	cp software/ipl0/ipl0.bin $@
+
+$(EMUSPI): $(FLASHBIN)
+	@mkdir -p $(@D)
+	cp $(FLASHBIN) $@
+
+$(EMUIMG): firmware
+	@mkdir -p $(@D)
+	dd if=/dev/zero of="$@" bs=1M count=$(EMUIMG_SIZE_MB)
+	mkfs.vfat "$@"
+	mmd -i "$@" NILESWAN
+	mcopy -i "$@" firmware/build/firmware.bin ::NILESWAN/MCU.BIN
+
+firmware: firmware/build/firmware.bin
+
+firmware/build/firmware.bin: firmware/build/build.ninja
+	cd firmware/build && ninja
+
+firmware/build/build.ninja:
+	-mkdir firmware/build
+	cd firmware/build && cmake -G Ninja ..
 
 libnile:
 	cd software/libnile && make TARGET=wswan/medium && make -j1 TARGET=wswan/medium install
@@ -56,6 +92,8 @@ program: $(FLASHBIN)
 
 clean:
 	rm -rf out
+	-cd firmware/build && ninja clean
+	-rm -rf firmware/build/build.ninja
 	cd software/libnile && rm -rf build
 	cd software/ipl0 && make clean
 	cd software/ipl1 && make clean
