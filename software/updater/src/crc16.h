@@ -21,6 +21,6 @@
 #include <stdint.h>
 #include <wonderful.h>
 
-uint16_t crc16(const void __far *data, uint16_t len);
+uint16_t crc16(const void __far *data, uint16_t len, uint16_t initial);
 
 #endif /* __CRC16_H__ */

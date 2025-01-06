@@ -40,7 +40,18 @@ crc16 = crc.Calculator(crc.Configuration(
     reverse_output=False,
 ))
 
+FLASH_SECTOR_SIZE = 256
 version = [9, 9, 9]
+
+def pad(data, right):
+    diff = FLASH_SECTOR_SIZE - int(len(data) % FLASH_SECTOR_SIZE)
+    if diff == FLASH_SECTOR_SIZE:
+        return data
+    if right:
+        data = data + b'\xFF'*diff
+    else:
+        data = b'\xFF'*diff + data
+    return data
 
 with open(args.manifest, 'r') as rules:
     for line in rules:
@@ -57,16 +68,18 @@ with open(args.manifest, 'r') as rules:
             with open(rule_map['FLASH'], 'rb') as file:
                 data = file.read()
 
-            file_position = file_position - ((len(data) + 15) >> 4)
-
             flash_position = int(rule_map['AT'])
+            data = pad(data, flash_position > 0)
             if flash_position < 0:
                 flash_position = (-flash_position) - len(data)
 
+            file_position = file_position - ((len(data) + 15) >> 4)
             data_at_position[file_position] = data
+
             rule_data += bytearray(struct.pack("<BHHIH",
                 0x01, file_position, len(data), flash_position, crc16.checksum(data)))
         elif rule_name == 'PACKED_FLASH':
+            # TODO: Pad to flash sector size (or detect issue)
             subprocess.run(["rm", "temp.bin"])
             subprocess.run(["wf-zx0-salvador", "-v", rule[1], "temp.bin"])
             unpacked_data = None
@@ -77,11 +90,11 @@ with open(args.manifest, 'r') as rules:
                 data = file.read()
             subprocess.run(["rm", "temp.bin"])
 
-            file_position = file_position - ((len(data) + 15) >> 4)
             flash_position = int(rule_map['AT'])
             if flash_position < 0:
                 flash_position = (-flash_position) - len(data)
 
+            file_position = file_position - ((len(data) + 15) >> 4)
             data_at_position[file_position] = data
 
             rule_data += bytearray(struct.pack("<BHHIH",

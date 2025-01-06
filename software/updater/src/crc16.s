@@ -59,15 +59,18 @@ crc16_table:
    .word 0xEF1F, 0xFF3E, 0xCF5D, 0xDF7C, 0xAF9B, 0xBFBA, 0x8FD9, 0x9FF8
    .word 0x6E17, 0x7E36, 0x4E55, 0x5E74, 0x2E93, 0x3EB2, 0x0ED1, 0x1EF0
 
-// uint16_t crc16(const char __far *data, uint16_t len);
+// uint16_t crc16(const char __far *data, uint16_t len, uint16_t initial);
 	.global crc16
 crc16:
     push ds
     push si
+    push bp
+    mov bp, sp
 
     mov ds, dx
     mov si, ax
-    xor dx, dx
+
+    mov dx, [bp + WF_PLATFORM_CALL_STACK_OFFSET(6)]
 
 1:
     lodsb
@@ -82,6 +85,7 @@ crc16:
 
     mov ax, dx
 
+    pop bp
     pop si
     pop ds
     WF_PLATFORM_RET

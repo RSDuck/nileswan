@@ -79,7 +79,7 @@ void run_update_manifest(bool verify) {
 					memcpy(UNPACK_BUFFER, MK_FP(cmd->load_segment, 0), cmd->unpacked_length);
 				}
 				// Calculate CRC16 sum
-				uint16_t actual_crc = crc16(UNPACK_BUFFER, cmd->unpacked_length);
+				uint16_t actual_crc = crc16(UNPACK_BUFFER, cmd->unpacked_length, 0);
 				if (actual_crc != cmd->expected_crc) {
 					text_scroll_up_middle(true);
 					text_printf(screen_1, 0, TEXT_CENTERED, DISPLAY_HEIGHT >> 1, crc_error_part, part);
@@ -90,9 +90,9 @@ void run_update_manifest(bool verify) {
 
 				uint32_t start_address = cmd->flash_address;
 				if (start_address & 0xFF) {
-					updater_early_error(corrupt_data, part);
+					updater_early_error(corrupt_data, start_address & 0xFF);
 				}
-				
+
 				if (!verify) {
 					text_scroll_up_middle(true);
 					text_printf(screen_1, 0, TEXT_CENTERED, 9, erasing_part, part);
@@ -203,7 +203,7 @@ void main(void) {
 		updater_early_error(corrupt_data, update_manifest_seg);
 	memset(update_manifest_data, 0, sizeof(update_manifest_data));
 	memcpy(update_manifest_data, update_manifest_start + 2, update_manifest_start[0]);
-	uint16_t actual_crc16 = crc16((const char*) update_manifest_data, update_manifest_start[0]);
+	uint16_t actual_crc16 = crc16((const char*) update_manifest_data, update_manifest_start[0], 0);
 	if (actual_crc16 != update_manifest_start[1])
 		updater_early_error(corrupt_data, actual_crc16);
 
