@@ -28,6 +28,7 @@ help:
 	@echo "  dist           Build user distributables, stored in $(DISTDIR)"
 	@echo "  dist-mfg       Build manufacturing files, stored in $(MFGDIR)"
 	@echo "dist-emu         Build emulation package, stored in $(EMUDIR)"
+	@echo "                 (requires dd, dosfstools, mtools)"
 	@echo "program-fpga     Build and program initial FPGA bitstream"
 	@echo "program          Build and program complete SPI flash contents"
 
