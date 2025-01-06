@@ -16,7 +16,6 @@
  */
 
 #include "mcu.h"
-#include <stm32l0xx_ll_rcc.h>
 #include "rtc.h"
 
 static uint8_t rtc_curr_cmd;

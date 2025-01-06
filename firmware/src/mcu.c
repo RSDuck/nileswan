@@ -18,7 +18,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stm32l0xx_ll_utils.h>
 
 #include "mcu.h"
 #include "config.h"
@@ -47,10 +46,22 @@ static void __mcu_usb_on_power_change(void) {
 }
 
 void EXTI4_15_IRQHandler(void) {
+#ifdef TARGET_U0
+    if ((EXTI->RPR1 & EXTI_RPR1_RPIF8) != 0) {
+        EXTI->RPR1 = EXTI_RPR1_RPIF8;
+        __mcu_usb_on_power_change();
+    }
+
+    if ((EXTI->FPR1 & EXTI_FPR1_FPIF8) != 0) {
+        EXTI->FPR1 = EXTI_FPR1_FPIF8;
+        __mcu_usb_on_power_change();
+    }
+#else
     if ((EXTI->PR & EXTI_PR_PIF8) != 0) {
         EXTI->PR = EXTI_PR_PIF8;
         __mcu_usb_on_power_change();
     }
+#endif
 }
 
 void mcu_init(void) {
@@ -63,8 +74,12 @@ void mcu_init(void) {
 
     LL_RCC_SetAHBPrescaler(LL_RCC_SYSCLK_DIV_1);
     LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_1);
+#ifdef TARGET_U0
+    LL_APB1_GRP2_EnableClock(LL_APB1_GRP2_PERIPH_SYSCFG);
+#else
     LL_RCC_SetAPB2Prescaler(LL_RCC_APB2_DIV_1);
     LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
+#endif
 
     LL_SetSystemCoreClock(16000000);
 
@@ -75,7 +90,11 @@ void mcu_init(void) {
     LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOA | LL_IOP_GRP1_PERIPH_GPIOB);
 
     // Initialize SPI
+#ifdef TARGET_U0
+    LL_APB1_GRP2_EnableClock(LL_APB1_GRP2_PERIPH_SPI1);
+#else
     LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SPI1);
+#endif
 
     for (uint32_t pin = LL_GPIO_PIN_4; pin <= LL_GPIO_PIN_7; pin <<= 1) {
         LL_GPIO_SetAFPin_0_7(MCU_PORT_SPI, pin, LL_GPIO_AF_0);
@@ -100,7 +119,11 @@ void mcu_init(void) {
     LL_mDelay(1);
     __mcu_usb_on_power_change();
 
+#ifdef TARGET_U0
+    LL_EXTI_SetEXTISource(LL_EXTI_CONFIG_PORTB, LL_EXTI_CONFIG_LINE8);
+#else
     LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTB, LL_SYSCFG_EXTI_LINE8);
+#endif
     LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_8);
     LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_8);
     LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_8);
@@ -123,7 +146,9 @@ void USB_IRQHandler(void) {
 
 static void __mcu_usb_power_on(void) {
     // Enable 48 MHz internal oscillator
+#ifndef TARGET_U0
     LL_SYSCFG_VREFINT_EnableHSI48();
+#endif
     LL_RCC_HSI48_Enable();
     while (!LL_RCC_HSI48_IsReady());
     LL_RCC_SetUSBClockSource(LL_RCC_USB_CLKSOURCE_HSI48);
@@ -146,7 +171,9 @@ static void __mcu_usb_power_off(void) {
     LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_CRS);
     LL_RCC_SetUSBClockSource(LL_RCC_USB_CLKSOURCE_PLL);
     LL_RCC_HSI48_Disable();
+#ifndef TARGET_U0
     LL_SYSCFG_VREFINT_DisableHSI48();
+#endif
 }
 
 void mcu_usb_power_task(void) {

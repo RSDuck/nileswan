@@ -18,9 +18,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stm32l052xx.h>
-#include <stm32l0xx_ll_spi.h>
 
+#include "mcu.h"
 #include "tusb.h"
 
 #include "spi.h"
@@ -115,6 +114,7 @@ void DMA1_Channel2_3_IRQHandler(void) {
         LL_DMA_ClearFlag_TC2(DMA1);
 
         mcu_spi_disable_dma_rx();
+        
         LL_SPI_EnableIT_TXE(MCU_PERIPH_SPI);
         spi_native_idx = 2;
     }
@@ -147,6 +147,9 @@ void SPI1_IRQHandler(void) {
             int rx_length = spi_native_start_command_rx(cmd);
             if (rx_length) {
                 mcu_spi_enable_dma_rx(spi_rx_buffer, rx_length);
+#ifdef CONFIG_DEBUG_SPI_NATIVE_CMD
+                cdc_debug("spi/native: starting command %04X (%d bytes)\r\n", cmd, rx_length);
+#endif
             } else {
                 LL_SPI_EnableIT_TXE(MCU_PERIPH_SPI);
                 spi_native_idx = 2;
@@ -193,7 +196,14 @@ void mcu_spi_init(mcu_spi_mode_t mode) {
     // Initialize SPI DMA
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
 
+#ifdef TARGET_U0
+    LL_DMA_SetPeriphRequest(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMAMUX_REQ_SPI1_TX);
+    LL_DMA_SetPeriphRequest(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMAMUX_REQ_SPI1_RX);
+#else
     LL_DMA_SetPeriphRequest(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_REQUEST_1);
+    LL_DMA_SetPeriphRequest(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_REQUEST_1);
+#endif
+
     LL_DMA_SetDataTransferDirection(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
     LL_DMA_SetChannelPriorityLevel(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_PRIORITY_LOW);
     LL_DMA_SetMode(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_MODE_NORMAL);
@@ -202,7 +212,6 @@ void mcu_spi_init(mcu_spi_mode_t mode) {
     LL_DMA_SetPeriphSize(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_PDATAALIGN_BYTE);
     LL_DMA_SetMemorySize(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_MDATAALIGN_BYTE);
 
-    LL_DMA_SetPeriphRequest(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_REQUEST_1);
     LL_DMA_SetDataTransferDirection(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
     LL_DMA_SetChannelPriorityLevel(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_PRIORITY_LOW);
     LL_DMA_SetMode(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_MODE_NORMAL);

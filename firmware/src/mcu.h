@@ -20,6 +20,26 @@
 
 #include <stdbool.h>
 
+#ifdef TARGET_U0
+#include <stm32u073xx.h>
+#include <stm32u0xx_ll_rcc.h>
+#include <stm32u0xx_ll_bus.h>
+#include <stm32u0xx_ll_exti.h>
+#include <stm32u0xx_ll_system.h>
+#include <stm32u0xx_ll_cortex.h>
+#include <stm32u0xx_ll_utils.h>
+#include <stm32u0xx_ll_gpio.h>
+#include <stm32u0xx_ll_spi.h>
+#include <stm32u0xx_ll_pwr.h>
+#include <stm32u0xx_ll_usb.h>
+#include <stm32u0xx_ll_crs.h>
+#include <stm32u0xx_ll_dma.h>
+#include <stm32u0xx_ll_rtc.h>
+
+#define USB USB_DRD_FS
+#define LL_RCC_USB_CLKSOURCE_PLL LL_RCC_USB_CLKSOURCE_PLLQ
+#define RTC_IRQn RTC_TAMP_IRQn
+#else
 #include <stm32l052xx.h>
 #include <stm32l0xx_ll_rcc.h>
 #include <stm32l0xx_ll_bus.h>
@@ -34,6 +54,7 @@
 #include <stm32l0xx_ll_crs.h>
 #include <stm32l0xx_ll_dma.h>
 #include <stm32l0xx_ll_rtc.h>
+#endif
 
 #include "config.h"
 

@@ -1,16 +1,17 @@
 ENTRY(Reset_Handler)
 
 MEMORY {
-    FLASH (rx) : ORIGIN = 0x8000000, LENGTH = 64K
-    RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 5632
-    NVRAM (rw) : ORIGIN = 0x20000000 + 5632, LENGTH = 2560
+    FLASH (rx) : ORIGIN = 0x8000000, LENGTH = 256K
+    RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 32K
+    NVRAM (rwx) : ORIGIN = 0x20000000 + 32K, LENGTH = 8K
 }
 
 _siheap = 0;
 _sistack = 0x200;
 _estack = ORIGIN(RAM) + LENGTH(RAM);
 
-SECTIONS {
+SECTIONS
+{
   .isr_vector : {
     . = ALIGN(4);
     KEEP(*(.isr_vector))
