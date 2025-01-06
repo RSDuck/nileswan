@@ -463,9 +463,6 @@ module nileswan(
     wire output_ipcbuf = nIO & ipcbuf_addr;
     wire output_rxbuf = nIO & rxbuf_addr;
 
-    wire enable_output_lo = (sel_oe & (output_io_out | output_bootrom | output_ipcbuf | output_rxbuf)) | psram_hi_read;
-    wire enable_output_hi = (sel_oe & (output_bootrom | output_rxbuf)) | psram_hi_write;
-
     reg[7:0] output_data_lo, output_data_hi;
     always_comb begin
         casez ({output_ipcbuf, psram_hi_read, output_io_out, output_bootrom, output_rxbuf})
@@ -484,39 +481,39 @@ module nileswan(
         endcase
     end
 
-    assign Data[7:0] = enable_output_lo ? output_data_lo : 8'hZZ;
-    assign Data[15:8] = enable_output_hi ? output_data_hi : 8'hZZ;
-    /*wire enable_output_lo_on_oe = (output_io_out | output_bootrom | output_ipcbuf | output_rxbuf);
-    wire enable_output_lo_on_we = psram_hi_read;
-    wire enable_output_hi = (sel_oe & (output_bootrom | output_rxbuf)) | psram_hi_write;
-
     // to prevent e.g. address changes from causing glitches
     // which end in enabling output for a moment
     // guard outputs with an explicit final LE where
     // the other inputs /SEL, /OE, /WE do not fluctuate
     // thus the output should be stable
 
-    wire guarded_output_enable_1_lo, guarded_output_enable_2_lo, guarded_output_enable_hi;
-    // ~I0 & ~I1 & I2
-    SB_LUT4 #(.LUT_INIT(16'b0001000000010000)) output_lo_on_we_guard (
-        .I0(nSel),
-        .I1(nWE),
-        .I3(enable_output_lo_on_we),
-        .O(guarded_output_enable_1_lo));
-    // (~I0 & ~I1 & I2) | I3
-    SB_LUT4 #(.LUT_INIT(16'b1111111100010000)) output_lo_on_oe_guard (
-        .I0(nSel),
-        .I1(nOE),
-        .I2(enable_output_lo_on_oe),
-        .I3(guarded_output_enable_1_lo),
-        .O(guarded_output_enable_2_lo));
+    wire enable_output_lo = (sel_oe & (output_io_out | output_bootrom | output_ipcbuf | output_rxbuf)) | psram_hi_read;
+    wire enable_output_hi_on_oe = sel_oe & (output_bootrom | output_rxbuf);
+    wire enable_output_hi_on_we = psram_hi_write;
+
+    wire guarded_output_enable_lo, guarded_output_enable_hi_on_we, guarded_output_enable_hi_combined;
+
     // ~I0 & ~I1 & I2
     SB_LUT4 #(.LUT_INIT(16'b0001000000010000)) output_hi_guard (
         .I0(nSel),
         .I1(nOE),
-        .I2(enable_output_hi),
-        .O(guarded_output_enable_hi));
+        .I2(enable_output_lo),
+        .O(guarded_output_enable_lo));
 
-    assign Data[7:0] = guarded_output_enable_2_lo ? output_data_lo : 8'hZZ;
-    assign Data[15:8] = guarded_output_enable_hi ? output_data_hi : 8'hZZ;*/
+    // ~I0 & ~I1 & I2
+    SB_LUT4 #(.LUT_INIT(16'b0001000000010000)) output_hi_on_we_guard (
+        .I0(nSel),
+        .I1(nWE),
+        .I2(enable_output_hi_on_we),
+        .O(guarded_output_enable_hi_on_we));
+    // (~I0 & ~I1 & I2) | I3
+    SB_LUT4 #(.LUT_INIT(16'b1111111100010000)) output_hi_on_oe_guard (
+        .I0(nSel),
+        .I1(nOE),
+        .I2(enable_output_hi_on_oe),
+        .I3(guarded_output_enable_hi_on_we),
+        .O(guarded_output_enable_hi_combined));
+
+    assign Data[7:0] = guarded_output_enable_lo ? output_data_lo : 8'hZZ;
+    assign Data[15:8] = guarded_output_enable_hi_combined ? output_data_hi : 8'hZZ;
 endmodule
