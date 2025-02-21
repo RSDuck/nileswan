@@ -33,6 +33,9 @@ During transfer the data in the TX buffer currently not mapped into the address 
 
 All values besides the transfer abort are read only while a transfer is in progress.
 
+Transfer aborting is not immediate for internal reasons and to allow the transfer to end cleanly on a byte boundary. After an abort is issued the busy bit will continue to be high until the abort is finally completed.
+
+
 For EEPROM or RTC SPI communication to work the cartridge serial clock has to be selected.
 
 ### Power/system control

@@ -48,6 +48,10 @@ module SPI (
 
     reg running = 0;
 
+    reg abort_req_async = 1'b0;
+    reg[1:0] abort_req_transfer_clk = 2'h0;
+    wire AbortReq = abort_req_transfer_clk[1];
+
     typedef enum reg[1:0] {
         channelCS_DeselTF,
         channelCS_SelTF,
@@ -115,8 +119,11 @@ module SPI (
     always @(posedge TransferClk)
         start_transfer_clk <= {start_transfer_clk[1:0], start_async};
 
+    always @(posedge TransferClk)
+        abort_req_transfer_clk <= {abort_req_transfer_clk[0], abort_req_async};
+
     wire FillerOver = (seen_non_filler || ShiftRegHasZeroBit);
-    wire LastPeriod = (byte_position == transfer_len) && bit_position == 7 && FillerOver;
+    wire LastPeriod = ((FillerOver && byte_position == transfer_len) || AbortReq) && bit_position == 7;
 
     always @(posedge TransferClk) begin
         if (Start)
@@ -237,10 +244,14 @@ module SPI (
 
                 bus_mapped_buffer <= WriteData[6];
 
-                if (WriteData[7])
+                if (WriteData[7]) begin
                     start_async <= start_async ^ 1;
+
+                    abort_req_async <= 1'b0;
+                end
             end else if (~WriteData[7]) begin
                 // abort transfer
+                abort_req_async <= 1'b1;
             end
         end
     end
