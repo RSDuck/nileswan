@@ -97,7 +97,11 @@ void mcu_init(void) {
 #endif
 
     for (uint32_t pin = LL_GPIO_PIN_4; pin <= LL_GPIO_PIN_7; pin <<= 1) {
+#ifdef TARGET_U0
+        LL_GPIO_SetAFPin_0_7(MCU_PORT_SPI, pin, LL_GPIO_AF_5);
+#else
         LL_GPIO_SetAFPin_0_7(MCU_PORT_SPI, pin, LL_GPIO_AF_0);
+#endif
         LL_GPIO_SetPinOutputType(MCU_PORT_SPI, pin, LL_GPIO_OUTPUT_PUSHPULL);
         LL_GPIO_SetPinSpeed(MCU_PORT_SPI, pin, LL_GPIO_SPEED_FREQ_LOW);
         LL_GPIO_SetPinPull(MCU_PORT_SPI, pin, LL_GPIO_PULL_NO);
@@ -120,13 +124,16 @@ void mcu_init(void) {
     __mcu_usb_on_power_change();
 
 #ifdef TARGET_U0
-    LL_EXTI_SetEXTISource(LL_EXTI_CONFIG_PORTB, LL_EXTI_CONFIG_LINE8);
+    LL_EXTI_SetEXTISource(LL_EXTI_CONFIG_PORTB, LL_EXTI_CONFIG_LINE5);
+    LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_5);
+    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_5);
+    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_5);
 #else
     LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTB, LL_SYSCFG_EXTI_LINE8);
-#endif
     LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_8);
     LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_8);
     LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_8);
+#endif
     NVIC_SetPriority(EXTI4_15_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
     NVIC_EnableIRQ(EXTI4_15_IRQn);
 }
@@ -138,7 +145,11 @@ bool mcu_usb_is_active(void) {
 void SysTick_Handler(void) {
 }
 
+#ifdef TARGET_U0
+void USB_DRD_FS_IRQHandler(void) {
+#else
 void USB_IRQHandler(void) {
+#endif    
     if (usb_init_status >= USB_INIT_STATUS_ON) {
         tud_int_handler(0);
     }
@@ -155,13 +166,18 @@ static void __mcu_usb_power_on(void) {
 
     // Enable clock recovery system
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_CRS);
-    LL_CRS_SetSyncDivider(LL_CRS_SYNC_DIV_1);
-    LL_CRS_SetSyncPolarity(LL_CRS_SYNC_POLARITY_RISING);
-    LL_CRS_SetSyncSignalSource(LL_CRS_SYNC_SOURCE_USB);
-    LL_CRS_SetReloadCounter(__LL_CRS_CALC_CALCULATE_RELOADVALUE(48000000,1000));
-    LL_CRS_SetFreqErrorLimit(34);
-    LL_CRS_SetHSI48SmoothTrimming(64);
-    
+    LL_CRS_ConfigSynchronization(LL_CRS_HSI48CALIBRATION_DEFAULT,
+                                 LL_CRS_ERRORLIMIT_DEFAULT,
+                                 LL_CRS_RELOADVALUE_DEFAULT,
+                                 LL_CRS_SYNC_DIV_1 | LL_CRS_SYNC_SOURCE_USB | LL_CRS_SYNC_POLARITY_RISING);
+
+    LL_CRS_EnableFreqErrorCounter();
+    LL_CRS_EnableAutoTrimming();
+
+#ifdef TARGET_U0
+    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
+    LL_PWR_EnableVddUSB();
+#endif
     // Enable USB clock
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USB);
 }
@@ -173,6 +189,10 @@ static void __mcu_usb_power_off(void) {
     LL_RCC_HSI48_Disable();
 #ifndef TARGET_U0
     LL_SYSCFG_VREFINT_DisableHSI48();
+#endif
+
+#ifdef TARGET_U0
+    LL_PWR_DisableVddUSB();
 #endif
 }
 

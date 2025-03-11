@@ -39,6 +39,7 @@
 // Debug configuration
 
 #define CONFIG_DEBUG_SPI_NATIVE_CMD
+#define CONFIG_DEBUG_SPI_EEPROM_CMD
 
 // GPIO A
 #define MCU_PORT_SPI GPIOA
@@ -51,7 +52,11 @@
 // GPIO B
 #define MCU_PIN_FPGA_IRQ LL_GPIO_PIN_6
 #define MCU_PIN_SRAM_POWER LL_GPIO_PIN_7
+#ifdef TARGET_U0
+#define MCU_PIN_USB_POWER LL_GPIO_PIN_5
+#else
 #define MCU_PIN_USB_POWER LL_GPIO_PIN_8
+#endif
 
 // TODO: In rev6+, this is a separate pin
 #define MCU_PIN_FPGA_READY LL_GPIO_PIN_6

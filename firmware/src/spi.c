@@ -193,6 +193,10 @@ void mcu_spi_init(mcu_spi_mode_t mode) {
     LL_SPI_SetBaudRatePrescaler(MCU_PERIPH_SPI, LL_SPI_BAUDRATEPRESCALER_DIV2);
     LL_SPI_SetNSSMode(MCU_PERIPH_SPI, LL_SPI_NSS_HARD_INPUT);
 
+#ifdef TARGET_U0
+    LL_SPI_SetRxFIFOThreshold(MCU_PERIPH_SPI, LL_SPI_RX_FIFO_TH_QUARTER);
+#endif
+
     // Initialize SPI DMA
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
 
@@ -233,9 +237,9 @@ void mcu_spi_init(mcu_spi_mode_t mode) {
     LL_DMA_EnableIT_TC(DMA1, MCU_DMA_CHANNEL_SPI_RX);
     LL_DMA_EnableIT_TC(DMA1, MCU_DMA_CHANNEL_SPI_TX);
 
-    NVIC_SetPriority(SPI1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
+    NVIC_SetPriority(SPI1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 10, 0));
     NVIC_EnableIRQ(SPI1_IRQn);
-    NVIC_SetPriority(DMA1_Channel2_3_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
+    NVIC_SetPriority(DMA1_Channel2_3_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 5, 0));
     NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
 
     mcu_spi_disable_dma_tx();
