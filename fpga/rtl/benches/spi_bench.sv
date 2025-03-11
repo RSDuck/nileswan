@@ -232,6 +232,44 @@ module spi_bench ();
         compareTestDevRX(8'hFF);
         compareTestDevRX(8'hFF);
 
+        // aborted wait and read
+        pushTestDevTx(8'hFF);
+        pushTestDevTx(8'hFF);
+        pushTestDevTx(8'hFF);
+        pushTestDevTx(8'hFF);
+        pushTestDevTx(8'hFF);
+        pushTestDevTx(8'hFF);
+        pushTestDevTx(8'hFF);
+        pushTestDevTx(8'hFF);
+        testdev_tx_queue.push_back(1);
+
+        write_spicnt_lo = 1;
+        writeReg(0);
+        write_spicnt_lo = 0;
+
+        write_spicnt_hi = 1;
+        // start transfer, mode=wait and read, dev/cs = flash, use other buffer
+        writeReg(8'h80 | (8'h3 << 1) | (8'h2 << 4) | (8'h1 << 3) | (8'h1 << 6));
+        write_spicnt_hi = 0;
+
+        #(fastclk_half_period*20);
+
+        write_spicnt_hi = 1;
+        writeReg(8'h0);
+        write_spicnt_hi = 0;
+
+        while (spi_cnt[15]) begin
+            readRXBuf(0, read_spi_data);
+        end
+
+        testdev_tx_queue.delete();
+        testdev_rx_queue.delete();
+
+        // swap buffers back and deassert /CS
+        write_spicnt_hi = 1;
+        writeReg(8'h0);
+        write_spicnt_hi = 0;
+
         // wait and read with a single byte
         pushTestDevTx(8'hFF);
         pushTestDevTx(8'hFF);
