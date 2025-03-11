@@ -47,13 +47,13 @@ static void __mcu_usb_on_power_change(void) {
 
 void EXTI4_15_IRQHandler(void) {
 #ifdef TARGET_U0
-    if ((EXTI->RPR1 & EXTI_RPR1_RPIF8) != 0) {
-        EXTI->RPR1 = EXTI_RPR1_RPIF8;
+    if ((EXTI->RPR1 & EXTI_RPR1_RPIF5) != 0) {
+        EXTI->RPR1 = EXTI_RPR1_RPIF5;
         __mcu_usb_on_power_change();
     }
 
-    if ((EXTI->FPR1 & EXTI_FPR1_FPIF8) != 0) {
-        EXTI->FPR1 = EXTI_FPR1_FPIF8;
+    if ((EXTI->FPR1 & EXTI_FPR1_FPIF5) != 0) {
+        EXTI->FPR1 = EXTI_FPR1_FPIF5;
         __mcu_usb_on_power_change();
     }
 #else
