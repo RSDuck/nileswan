@@ -1,81 +1,83 @@
-set_io FastClk 13
-set_io FastClkEnable 10
+set_io FastClk 34
+set_io FastClkEnable 1
 
-set_io -pullup yes Button 1
+set_io -pullup yes Button 51
 
-set_io AddrLo[0] 80
-set_io AddrLo[1] 83
-set_io AddrLo[2] 82
-set_io AddrLo[3] 81
-set_io AddrLo[4] 27
-set_io AddrLo[5] 26
-set_io AddrLo[6] 25
-set_io AddrLo[7] 24
-set_io AddrLo[8] 21
-set_io AddrLo[9] 20
+set_io AddrLo[0] 69
+set_io AddrLo[1] 71
+set_io AddrLo[2] 72
+set_io AddrLo[3] 73
+set_io AddrLo[4] 59
+set_io AddrLo[5] 60
+set_io AddrLo[6] 64
+set_io AddrLo[7] 65
+set_io AddrLo[8] 66
+set_io AddrLo[9] 68
 
-set_io AddrHi[0] 37
-set_io AddrHi[1] 40
-set_io AddrHi[2] 41
-set_io AddrHi[3] 42
+set_io AddrHi[0] 18
+set_io AddrHi[1] 19
+set_io AddrHi[2] 20
+set_io AddrHi[3] 21
 
-set_io Data[0] 85
-set_io Data[1] 86
-set_io Data[2] 87
-set_io Data[3] 91
-set_io Data[4] 4
-set_io Data[5] 8
-set_io Data[6] 7
-set_io Data[7] 3
-set_io Data[8] 96
-set_io Data[9] 95
-set_io Data[10] 94
-set_io Data[11] 93
-set_io Data[12] 68
-set_io Data[13] 65
-set_io Data[14] 66
-set_io Data[15] 64
+set_io Data[0] 78
+set_io Data[1] 79
+set_io Data[2] 80
+set_io Data[3] 81
+set_io Data[4] 82
+set_io Data[5] 85
+set_io Data[6] 83
+set_io Data[7] 86
+set_io Data[8] 24
+set_io Data[9] 25
+set_io Data[10] 26
+set_io Data[11] 27
+set_io Data[12] 93
+set_io Data[13] 95
+set_io Data[14] 94
+set_io Data[15] 96
 
-set_io MBC 36
-set_io SClk 15
+set_io MBC 12
+set_io SClk 33
 
-set_io nOE 33
-set_io nWE 34
-set_io nSel 29
-set_io nIO 30
+set_io nOE 13
+set_io nWE 15
+set_io nSel 9
+set_io nIO 10
 
-set_io nMem_OE 100
-set_io nMem_WE 51
+set_io nMem_OE 28
+set_io nMem_WE 87
 
-set_io nCartInt 28
+set_io nCartInt 8
 
-set_io nPSRAM1Sel 78
-set_io nPSRAM2Sel 2
-set_io PSRAM_nUB 97
-set_io PSRAM_nLB 99
+set_io nPSRAM1Sel 30
+set_io nPSRAM2Sel 36
+set_io PSRAM_nUB 52
+set_io PSRAM_nLB 29
+set_io PSRAM_nZZ 16
 
-set_io nSRAMSel 79
+set_io nSRAMSel 74
 
-set_io AddrExt[0] 56
-set_io AddrExt[1] 54
-set_io AddrExt[2] 53
-set_io AddrExt[3] 60
-set_io AddrExt[4] 59
-set_io AddrExt[5] 52
-set_io AddrExt[6] 57
+set_io AddrExt[0] 42
+set_io AddrExt[1] 40
+set_io AddrExt[2] 37
+set_io AddrExt[3] 100
+set_io AddrExt[4] 99
+set_io AddrExt[5] 97
+set_io AddrExt[6] 41
 
-set_io nMCUSel 19
+set_io nMCUSel 56
 set_io nFlashSel 49
 set_io SPIClk 48
 set_io SPIDo 45
 set_io -pullup yes SPIDi 46
 
-set_io nTFSel 74
-set_io TFDo 73
-set_io TFDi 71
-set_io TFClk 72
+set_io nMCUReset 54
+set_io -pullup yes nMCUReady 57
 
-set_io -pullup yes TFDetect 25
-set_io TFPow 69
 
-set_io nMCUReset 16
+set_io nTFSel 7
+set_io TFDo 4
+set_io TFDi 2
+set_io TFClk 3
+
+set_io TFPow 91

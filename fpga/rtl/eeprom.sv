@@ -1,3 +1,10 @@
+typedef enum reg[1:0] {
+    eepromSize_128B,
+    eepromSize_1KB,
+    eepromSize_2KB,
+    eepromSize_NoEEPROM
+} EEPROMSizeTypes;
+
 module EEPROM (
     input SClk,
     input nWE,
@@ -23,13 +30,6 @@ module EEPROM (
 
     (* blockram *)
     reg[15:0] memory[1024];
-
-    typedef enum reg[1:0] {
-        eepromSize_128B,
-        eepromSize_1KB,
-        eepromSize_2KB,
-        eepromSize_NoEEPROM
-    } EEPROMSizeTypes;
 
     typedef enum reg[1:0] {
         cmd_Write,

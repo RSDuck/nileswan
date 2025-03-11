@@ -22,11 +22,11 @@
 |11|Transfer speed (0 = 24 MHz "high frequency clock", 1 = 384 kHz from cartbus)|
 |12-13|Channel select/chip select (0=no device selected and output to TF channel, 1=select TF, 2=select flash, 3=select μC)|
 |14|Memory mapped RX and TX buffer index (0-1)|
-|15|Start/busy, when written (0=abort transfer, 1=start transfer), when read (0=idle, 1=transfering)|
+|15|Start/busy, when written (0=abort transfer, 1=start transfer), when read (0=idle, 1=transferring)|
 
 * In read mode all output serial bits are 1. The incoming bits are stored in the RX buffer.
 * In write mode bits from the TX buffer are output. The incoming serial bits are discarded.
-* In exchange mode the TX buffer is output, while simultanously the RX buffer is populated with incoming data.
+* In exchange mode the TX buffer is output, while simultaneously the RX buffer is populated with incoming data.
 * Wait and read mode behaves like read mode except bytes are only stored with the first byte received which is not 0xFF.
 
 During transfer the data in the TX buffer currently not mapped into the address space is sent out. The received data is stored in the RX buffer currently not memory mapped. The transfer always starts from the beginning of the buffers.
@@ -48,7 +48,7 @@ For EEPROM or RTC SPI communication to work the cartridge serial clock has to be
 |2|Enable nileswan exclusive I/O registers (0=off, 1=on (default))|
 |3|Enable Bandai 2001 exclusive I/O registers (0=off, 1=on (default))|
 |4|Enable Bandai 2003 exclusive I/O registers (0=off, 1=on (default))|
-|5|Unused/0|
+|5|μC BOOT0|
 |6|Enable SRAM (0=off, 1=on (default))|
 |7|μC reset line|
 
@@ -58,16 +58,21 @@ Disabling a range of I/O registers only changes the visibility. E.g. the upper b
 
 The μC reset line bit directly connects to the nRST pin of the microcontroller.
 
+μC BOOT0 controls whether the microcontroller starts from bootloader ROM or programmable flash (see STM32 documentation). The line is shared with busy line for emulated EEPROM operations and the BOOT0 bit is only output when is configured accordingly EMU_CNT.
+
 If SRAM is enabled SRAM (banks 0-7) may be selected when accessing the RAM area.
 
 **`0xE6` - `EMU_CNT`
 
 | Bit(s) | Description |
 |------|------|
-|0-1|Emulated EEPROM size (0=128B, 1=1KB, 2=2KB, 3=no EEPROM connected)|
-|2-7|Unused/0|
+|0-1|Emulated EEPROM size (0=128B, 1=1KB, 2=2KB, 3=no EEPROM connected (default))|
+|2|EEPROM busy line usage (0=use as EEPROM busy line (default), 1=output BOOT0)|
+|3-7|Unused/0|
 
 See section on EEPROM for details on EEPROM size.
+
+It is important to make sure the FPGA and the μC are not driving the EEPROM busy/BOOT0 line at the same time.
 
 ### Interrupts
 
