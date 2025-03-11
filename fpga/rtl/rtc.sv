@@ -83,7 +83,7 @@ module RTC(
         cmd_RTCData4W: cmd_final_state = state_Byte3Bit0+7;
         cmd_RTCMiscRegR,
         cmd_RTCMiscRegW: cmd_final_state = state_Byte2Bit0+7;
-        default: cmd_final_state = 6'hXX;
+        default: cmd_final_state = 6'h00;
         endcase
     end
 

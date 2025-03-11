@@ -174,7 +174,7 @@ module EEPROM (
         10'h1F: spi_out = serial_data_out[2];
         10'h20: spi_out = serial_data_out[1];
         10'h21: spi_out = serial_data_out[0];
-        default: spi_out = 1'bX;
+        default: spi_out = 1'b0;
         endcase
     end
 
