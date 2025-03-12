@@ -72,7 +72,7 @@ set_io SPIDo 45
 set_io -pullup yes SPIDi 46
 
 set_io nMCUReset 54
-set_io -pullup yes nMCUReady 57
+set_io MCUReady 57
 
 
 set_io nTFSel 7

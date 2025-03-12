@@ -44,7 +44,7 @@ module nileswan(
     
     output nMCUReset,
     
-    inout nMCUReady);
+    inout MCUReady);
 
     // POW_CNT
     reg enable_fastclk = 1'b1;
@@ -61,9 +61,8 @@ module nileswan(
 
     reg[1:0] eeprom_size = eepromSize_NoEEPROM;
 
-    reg output_boot0 = 1'b0;
-    reg mcu_boot0 = 1'b0;
-    assign nMCUReady = output_boot0 ? mcu_boot0 : 1'bZ;
+    reg pull_high_boot0 = 1'b0;
+    assign MCUReady = pull_high_boot0 ? 1'b1 : 1'bZ;
 
     assign nMem_OE = nOE;
     assign nMem_WE = nWE;
@@ -261,7 +260,7 @@ module nileswan(
 
     wire[7:0] PowCnt = {nmcu_reset,
                 enable_sram,
-                mcu_boot0,
+                pull_high_boot0,
                 enable_bandai2003_ex,
                 enable_bandai2001_ex,
                 enable_nileswan_ex,
@@ -368,7 +367,7 @@ module nileswan(
                     enable_bandai2001_ex <= Data[3];
                     enable_bandai2003_ex <= Data[4];*/
 
-                    mcu_boot0 <= Data[5];
+                    pull_high_boot0 <= Data[5];
 
                     enable_sram <= Data[6];
 
@@ -379,7 +378,6 @@ module nileswan(
             EMU_CNT: begin
                 if (enable_nileswan_ex) begin
                     eeprom_size <= Data[1:0];
-                    output_boot0 <= Data[2];
                 end
             end
 
