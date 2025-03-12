@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 set(CMAKE_TOOLCHAIN_FILE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake/stm32_gcc.cmake)
 
-option(TARGET_U0 "Target U0 family" OFF)
+option(TARGET_U0 "Target U0 family" ON)
 
 project(firmware C ASM)
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
