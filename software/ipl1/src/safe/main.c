@@ -207,7 +207,7 @@ bool load_spi_flash(uint32_t _offset, uint16_t banks) {
 
 void try_boot_rom(void) {
 	outportb(IO_CART_FLASH, 0);
-	outportw(IO_BANK_2003_ROM0, PSRAM_MAX_BANK - 13);
+	outportw(IO_BANK_2003_ROM0, PSRAM_MAX_BANK);
 	outportw(IO_BANK_2003_ROM1, PSRAM_MAX_BANK - 12);
 	outportw(IO_BANK_2003_RAM, 0);
 	outportw(IO_BANK_ROM_LINEAR, PSRAM_MAX_BANK >> 4);
@@ -217,7 +217,7 @@ void try_boot_rom(void) {
 
 	outportb(IO_DISPLAY_CTRL, 0);
 	outportb(IO_SCR1_SCRL_Y, 0);
-	asm volatile("ljmp $0xFFFF, $0x0000");
+	asm volatile("ljmp $0x2FFF, $0x0000");
 }
 
 #define MCU_FLASH_OPTR_ADDR 0x40022020U
