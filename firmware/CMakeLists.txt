@@ -15,7 +15,7 @@ if(TARGET_U0)
     find_package(CMSIS COMPONENTS STM32U073KC REQUIRED)
     find_package(HAL COMPONENTS STM32U0 LL_RCC LL_EXTI LL_GPIO LL_RTC LL_SPI LL_UTILS REQUIRED)
 
-    set(CMAKE_C_FLAGS "-g -Os -mcpu=cortex-m0plus -mthumb -DTARGET_U0")
+    add_compile_options(-g -Os -mcpu=cortex-m0plus -mthumb -DTARGET_U0)
 else()
     stm32_fetch_cmsis(L0)
     stm32_fetch_hal(L0)
@@ -23,7 +23,7 @@ else()
     find_package(CMSIS COMPONENTS STM32L052K8 REQUIRED)
     find_package(HAL COMPONENTS STM32L0 LL_RCC LL_EXTI LL_GPIO LL_RTC LL_SPI LL_UTILS REQUIRED)
 
-    set(CMAKE_C_FLAGS "-g -Os -mcpu=cortex-m0plus -mthumb -DTARGET_L0")
+    add_compile_options(-g -Os -mcpu=cortex-m0plus -mthumb -DTARGET_L0)
 endif()
 
 set(PROJECT_SOURCES

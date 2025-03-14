@@ -10,8 +10,7 @@ _siheap = 0;
 _sistack = 0x200;
 _estack = ORIGIN(RAM) + LENGTH(RAM);
 
-SECTIONS
-{
+SECTIONS {
   .isr_vector : {
     . = ALIGN(4);
     KEEP(*(.isr_vector))
