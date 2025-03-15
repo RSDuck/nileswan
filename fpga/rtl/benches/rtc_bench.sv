@@ -86,19 +86,23 @@ module cartserial_bench ();
         testdev_tx_queue.push_back(0);
 
         sel_rtc_ctrl = 1;
-        writeReg(8'h12);
+        writeReg(8'h13);
         sel_rtc_ctrl = 0;
 
         while (rtc_ctrl[4]) begin
             #(sclk_half_period);
         end
 
-        compareTestDevRX(8'hF2);
+        compareTestDevRX(8'hF3);
         // again shift register garbage
-        compareTestDevRX(8'h00);
+        compareTestDevRX(8'hFF);
 
         assert (rtc_data == 8'hEE) 
         else   $error("Wrong data in RTC data register %x", rtc_data);
+
+        sel_rtc_data = 1;
+        writeReg(8'h22);
+        sel_rtc_data = 0;
 
         // RTC write status
         pushTestDevTx(8'h11);
@@ -107,18 +111,14 @@ module cartserial_bench ();
         testdev_tx_queue.push_back(0);
 
         sel_rtc_ctrl = 1;
-        writeReg(8'h19);
+        writeReg(8'h18);
         sel_rtc_ctrl = 0;
 
         while (~rtc_ctrl[7]) begin
             #(sclk_half_period);
         end
 
-        compareTestDevRX(8'hF9);
-
-        sel_rtc_data = 1;
-        writeReg(8'h22);
-        sel_rtc_data = 0;
+        compareTestDevRX(8'hF8);
 
         while (~rtc_ctrl[7]) begin
             #(sclk_half_period);
