@@ -27,8 +27,9 @@ DEFINES		:=
 # Libraries
 # ---------
 
-LIBS		:= -lwsx -lws
-LIBDIRS		:= $(WF_ARCH_LIBDIRS)
+LIBS		:= -lnilefs -lnile -lwsx -lws
+LIBDIRS		:= $(WF_TARGET_DIR) \
+		   ../libnile/dist/$(TARGET)
 
 # Build artifacts
 # ---------------

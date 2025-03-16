@@ -27,10 +27,12 @@
 #include "ipc.h"
 #include "util.h"
 
-#define SCREEN ((uint16_t*) (0x3800 + (13 * 32 * 2)))
+#define SCREEN ((uint16_t*) (0x3800 + (12 * 32 * 2)))
 
 #define PSRAM_MAX_BANK 127
 #define SRAM_MAX_BANK 7
+
+#define PROGRESS_BAR_Y ((13 * 8) - 4)
 
 // tests_asm.s
 void ram_fault_test(void *results, uint16_t bank_count);
@@ -70,10 +72,9 @@ static void report_fatfs_error(uint8_t result) {
 }
 
 static void update_progress(void) {
-	uint16_t progress_end = ((++bank_count) << 4) / bank_count_max;
-	for (; progress_pos < progress_end; progress_pos++) {
-		SCREEN[13 * 32 + 6 + progress_pos] = ((uint8_t) '-') | 0x100;
-	}
+	uint16_t progress_end = ((uint32_t)(++bank_count) << 7) / bank_count_max;
+	if (progress_end > 128) progress_end = 128;
+	outportb(IO_SCR2_WIN_X2, (6 << 3) + progress_end - 1);
 }
 
 static uint8_t load_menu(void) {
@@ -129,19 +130,28 @@ void main(void) {
 	nile_flash_sleep(); // Put flash chip to sleep
 	ipc_init();
 
-    ws_display_set_shade_lut(SHADE_LUT_DEFAULT);
-    outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(0, 7, 2, 5));
-    outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(0, 0, 0, 0));
-    outportb(IO_SCR_BASE, SCR1_BASE(SCREEN));
+	ws_display_set_shade_lut(SHADE_LUT_DEFAULT);
+	outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(0, 7, 2, 5));
+	outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(0, 0, 0, 0));
 	wsx_zx0_decompress((uint16_t*) 0x3200, gfx_tiles);
-	memset(SCREEN, 0x6, (32 * 19 - 4) * sizeof(uint16_t));
 
+	// Initialize screen 1
+	memset(SCREEN, 0x6, (32 * 19 - 4) * sizeof(uint16_t));
 	mem_expand_8_16(SCREEN + (8 * 32) + 12, swan_logo_map, 4, 0x100);
 	mem_expand_8_16(SCREEN + (9 * 32) + 12, swan_logo_map + 4, 4, 0x100);
 	mem_expand_8_16(SCREEN + (10 * 32) + 12, swan_logo_map + 8, 4, 0x100);
-	outportw(IO_SCR1_SCRL_X, (14 * 8 - 4) << 8);
+	outportw(IO_SCR1_SCRL_X, (13 * 8 - 4) << 8);
 
-    outportb(IO_DISPLAY_CTRL, DISPLAY_SCR1_ENABLE);
+	// Initialize screen 2
+	for (int i = 0; i < 28; i++)
+		SCREEN[32 * 19 + i] = ((uint8_t) '-') | 0x100;
+	outportw(IO_SCR2_SCRL_X, (248 - PROGRESS_BAR_Y) << 8);
+	outportw(IO_SCR2_WIN_X1, (6 | (PROGRESS_BAR_Y << 5)) << 3);
+	outportw(IO_SCR2_WIN_X2, ((6 | ((PROGRESS_BAR_Y + 8) << 5)) << 3) - 0x101);
+
+	// Show screens
+	outportb(IO_SCR_BASE, SCR1_BASE(SCREEN) | SCR2_BASE(SCREEN));
+	outportw(IO_DISPLAY_CTRL, DISPLAY_SCR1_ENABLE | DISPLAY_SCR2_ENABLE | DISPLAY_SCR2_WIN_INSIDE);
 
 	uint8_t result;
 	if (!(result = load_menu())) {
