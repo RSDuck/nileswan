@@ -20,22 +20,22 @@ module RTC(
     output SPIClkStretch
 );
     typedef enum reg[3:0] {
-        cmd_RTCResetR,
         cmd_RTCResetW,
-        cmd_RTCStatusR,
+        cmd_RTCResetR,
         cmd_RTCStatusW,
-        cmd_RTCData0R,
+        cmd_RTCStatusR,
         cmd_RTCData0W,
-        cmd_RTCData4R,
+        cmd_RTCData0R,
         cmd_RTCData4W,
-        cmd_RTCMiscRegR,
+        cmd_RTCData4R,
         cmd_RTCMiscRegW,
-        cmd_RTCNopR,
+        cmd_RTCMiscRegR,
         cmd_RTCNopW,
-        cmd_RTCInvalid6R,
+        cmd_RTCNopR,
         cmd_RTCInvalid6W,
-        cmd_RTCInvalid7R,
-        cmd_RTCInvalid7W
+        cmd_RTCInvalid6R,
+        cmd_RTCInvalid7W,
+        cmd_RTCInvalid7R
     } Command;
     Command cmd;
 
@@ -82,16 +82,16 @@ module RTC(
     reg[6:0] cmd_final_state;
     always_comb begin
         case (cmd)
-        cmd_RTCResetR,
-        cmd_RTCResetW: cmd_final_state = state_Byte0Bit0+7;
-        cmd_RTCStatusR,
-        cmd_RTCStatusW: cmd_final_state = state_Byte1Bit0+7;
-        cmd_RTCData0R,
-        cmd_RTCData0W: cmd_final_state = state_Byte7Bit0+7;
-        cmd_RTCData4R,
-        cmd_RTCData4W: cmd_final_state = state_Byte3Bit0+7;
-        cmd_RTCMiscRegR,
-        cmd_RTCMiscRegW: cmd_final_state = state_Byte2Bit0+7;
+        cmd_RTCResetW,
+        cmd_RTCResetR: cmd_final_state = state_Byte0Bit0+7;
+        cmd_RTCStatusW,
+        cmd_RTCStatusR: cmd_final_state = state_Byte1Bit0+7;
+        cmd_RTCData0W,
+        cmd_RTCData0R: cmd_final_state = state_Byte7Bit0+7;
+        cmd_RTCData4W,
+        cmd_RTCData4R: cmd_final_state = state_Byte3Bit0+7;
+        cmd_RTCMiscRegW,
+        cmd_RTCMiscRegR: cmd_final_state = state_Byte2Bit0+7;
         default: cmd_final_state = 6'h00;
         endcase
     end
