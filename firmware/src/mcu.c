@@ -138,8 +138,12 @@ void mcu_init(void) {
     NVIC_EnableIRQ(EXTI4_15_IRQn);
 }
 
-bool mcu_usb_is_active(void) {
+bool mcu_usb_is_enabled(void) {
     return usb_init_status == USB_INIT_STATUS_ON;
+}
+
+bool mcu_usb_is_active(void) {
+    return usb_init_status == USB_INIT_STATUS_ON && tud_connected() && !tud_suspended();
 }
 
 void SysTick_Handler(void) {

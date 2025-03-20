@@ -60,6 +60,13 @@
 
 void mcu_init(void);
 
+/**
+ * @brief Returns true if the USB port is powered on.
+ */
+bool mcu_usb_is_enabled(void);
+/**
+ * @brief Returns true if the USB port is powered on and the USB device is active (connected, not suspended).
+ */
 bool mcu_usb_is_active(void);
 void mcu_usb_power_task(void);
 

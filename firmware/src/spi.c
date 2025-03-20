@@ -84,6 +84,9 @@ static void mcu_spi_dma_finish(void) {
     } else if (spi_mode == MCU_SPI_MODE_RTC) {
         LL_GPIO_ResetOutputPin(GPIOB, MCU_PIN_FPGA_READY);
         int len = rtc_finish_command_rx(spi_rx_buffer, spi_tx_buffer);
+#ifdef CONFIG_DEBUG_SPI_NATIVE_CMD
+        cdc_debug(", returning %d bytes\r\n", len);
+#endif
         if (len) {
             mcu_spi_enable_dma_tx(spi_tx_buffer, len);
         } else {
@@ -108,7 +111,9 @@ void DMA1_Channel2_3_IRQHandler(void) {
 
         mcu_spi_disable_dma_tx();
 
-        LL_SPI_SetRxFIFOThreshold(MCU_PERIPH_SPI, LL_SPI_RX_FIFO_TH_HALF);
+        if (spi_mode == MCU_SPI_MODE_NATIVE) {
+            LL_SPI_SetRxFIFOThreshold(MCU_PERIPH_SPI, LL_SPI_RX_FIFO_TH_HALF);
+        }
         LL_SPI_EnableIT_RXNE(MCU_PERIPH_SPI);
     }
 
@@ -156,6 +161,9 @@ void SPI1_IRQHandler(void) {
             LL_SPI_DisableIT_RXNE(MCU_PERIPH_SPI);
             LL_GPIO_ResetOutputPin(GPIOB, MCU_PIN_FPGA_READY);
             uint8_t cmd = LL_SPI_ReceiveData8(MCU_PERIPH_SPI);
+#ifdef CONFIG_DEBUG_SPI_RTC_CMD
+            cdc_debug("spi/rtc: %02X", cmd);
+#endif
             int rx_length = rtc_start_command_rx(cmd);
             if (rx_length) {
                 mcu_spi_enable_dma_rx(spi_rx_buffer, rx_length);

@@ -37,12 +37,16 @@ int main(void) {
 
     while (true) {
         mcu_usb_power_task();
-        if (mcu_usb_is_active()) {
+        if (mcu_usb_is_enabled()) {
 #ifdef CONFIG_ENABLE_CDC_DEBUG_PORT
             tud_cdc_n_write_flush(1);
 #endif
             tud_task();
         }
         mcu_spi_task();
+
+        if (!mcu_usb_is_active()) {
+            __WFE();
+        }
     }
 }

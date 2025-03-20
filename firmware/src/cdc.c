@@ -23,7 +23,7 @@
 
 #ifdef CONFIG_ENABLE_CDC_DEBUG_PORT
 int cdc_debug(const char *format, ...) {
-    if (!mcu_usb_is_active()) return 0;
+    if (!mcu_usb_is_enabled()) return 0;
     char buf[96];
     va_list val;
     va_start(val, format);
