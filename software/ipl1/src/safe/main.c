@@ -32,7 +32,6 @@ typedef enum {
 	MENU_OPTION_BOOT_RECOVERY_CURRENT,
 	MENU_OPTION_BOOT_RECOVERY_FACTORY,
 	MENU_OPTION_SRAM_SPEED,
-	MENU_OPTION_SETUP_MCU_BOOT,
 	MENU_OPTIONS_COUNT
 } menu_option_t;
 
@@ -220,42 +219,6 @@ void try_boot_rom(void) {
 	asm volatile("ljmp $0x2FFF, $0x0000");
 }
 
-#define MCU_FLASH_OPTR_ADDR 0x40022020U
-
-void mcu_setup_boot_flags() {
-	clear_screen();
-
-	uint16_t prev_spi_cnt = inportw(IO_NILE_SPI_CNT);
-	outportw(IO_NILE_SPI_CNT, NILE_SPI_CLOCK_CART|NILE_SPI_DEV_MCU);
-
-	nile_spi_xch(NILE_MCU_BOOT_START);
-	if (!nile_mcu_boot_wait_ack()) {
-		DRAW_STRING(1, 1, "No response from MCU", 0);
-	} else {
-		DRAW_STRING(1, 1, "FLASH_OPTR:", 0);
-		uint8_t flash_optr[4];
-
-		if (!nile_mcu_boot_read_memory(MCU_FLASH_OPTR_ADDR, flash_optr, sizeof(flash_optr))) {
-			DRAW_STRING(1, 2, "read failure", 0);
-		} else {
-			print_hex_number(SCREEN + (2 * 32) + 1,
-				flash_optr[2]|(flash_optr[3]<<8));
-			print_hex_number(SCREEN + (2 * 32) + 1 + 4,
-				flash_optr[0]|(flash_optr[1]<<8));
-		}
-
-		// unset NBOOT_SEL allowing to 
-		flash_optr[3] &= ~1;
-		if (nile_mcu_boot_write_memory(MCU_FLASH_OPTR_ADDR, flash_optr, sizeof(flash_optr)))
-			DRAW_STRING(1, 3, "write successful", 0)
-		else
-			DRAW_STRING(1, 3, "write failed", 0)
-	}
-	
-	outportw(IO_NILE_SPI_CNT, prev_spi_cnt);
-	wait_for_button();
-}
-
 void main(void) {
 	ipc_init();
 
@@ -300,7 +263,6 @@ update_full_menu:
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_RETENTION, "test SRAM after reboot", 0);
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_BOOT_RECOVERY_CURRENT, "boot recovery", 0);
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_BOOT_RECOVERY_FACTORY, "boot factory recovery", 0);
-	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_SETUP_MCU_BOOT, "setup U0 boot flags", 0);
 
 	uint16_t keys_pressed = 0;
 	uint16_t keys_held = 0;
@@ -373,10 +335,6 @@ update_dynamic_options:
 						outportb(IO_SYSTEM_CTRL2, WS_MODE_COLOR);
 					}
 				}
-			} break;
-			case MENU_OPTION_SETUP_MCU_BOOT: {
-				mcu_setup_boot_flags();
-				goto update_full_menu;
 			} break;
 			}
 			last_test_pos = -1;
