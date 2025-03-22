@@ -181,10 +181,17 @@ new_line:
                 console_print_newline();
             }
             str++;
+            flags &= ~(CONSOLE_FLAG_RIGHT);
             goto new_line;
         } else if (*str == '\t') {
             x += 10;
         } else {
+            int width = (flags & CONSOLE_FLAG_MONOSPACE) ? 5 : vwf8_get_char_width(*str);
+            if ((x + width) > DISPLAY_WIDTH_PX) {
+                console_draw_newline();
+                flags &= ~(CONSOLE_FLAG_RIGHT);
+                goto new_line;
+            }
             if (flags & CONSOLE_FLAG_MONOSPACE) {
                 vwf8_draw_char(tile, *str, x);
                 x += 5;
