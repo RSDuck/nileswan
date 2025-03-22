@@ -1,4 +1,5 @@
 #include "console.h"
+#include "ops/tf_card.h"
 #include <string.h>
 #include <wonderful.h>
 #include <ws.h>
@@ -44,6 +45,7 @@ void console_press_any_key(void) {
 static const char __wf_rom* __wf_rom menu_main[] = {
 	s_setup_mcu_boot_flags,
 	s_print_cartridge_ids,
+	s_tf_card_test,
 	NULL
 };
 
@@ -70,6 +72,11 @@ void main(void) {
 		case 1:
 			console_clear();
 			op_id_print();
+			console_press_any_key();
+			break;
+		case 2:
+			console_clear();
+			op_tf_card_test();
 			console_press_any_key();
 			break;
 		}

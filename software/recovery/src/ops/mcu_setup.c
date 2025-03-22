@@ -37,5 +37,6 @@ bool op_mcu_setup_boot_flags(void) {
     }
 
     outportw(IO_NILE_SPI_CNT, prev_spi_cnt);
+    console_print_newline();
     return result;
 }

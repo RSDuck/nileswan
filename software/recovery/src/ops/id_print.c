@@ -39,7 +39,6 @@ bool op_id_print(void) {
             console_printf(0, s_format_4_bytes, buf[11], buf[10], buf[9], buf[8]);
             console_printf(0, s_format_4_bytes, buf[7], buf[6], buf[5], buf[4]);
             console_printf(0, s_format_4_bytes, buf[3], buf[2], buf[1], buf[0]);
-            console_print_newline();
         } else {
             result = false;
         }
@@ -47,5 +46,6 @@ bool op_id_print(void) {
         result = false;
     }
 
+    console_print_newline();
     return result;
 }
