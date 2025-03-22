@@ -36,15 +36,15 @@ void wait_for_vblank(void) {
 __attribute__((section(".rom0_ffff_e000.bios_pad")))
 volatile uint8_t bios_pad[0x1FF0] = {0x00};
 
-static const char __wf_rom* __wf_rom menu_main[] = {
-	s_setup_mcu_boot_flags,
-	NULL
-};
-
 void console_press_any_key(void) {
 	console_print(CONSOLE_FLAG_NO_SERIAL, s_press_any_key_to_continue);
 	input_wait_any_key();
 }
+
+static const char __wf_rom* __wf_rom menu_main[] = {
+	s_setup_mcu_boot_flags,
+	NULL
+};
 
 void main(void) {
 	// FIXME: bios_pad[0] is used here solely to create a strong memory reference
@@ -59,7 +59,7 @@ void main(void) {
 	console_init();
 
 	while (true) {
-		console_print_header(s_nileswan_recovery);
+		console_draw_header(s_nileswan_recovery);
 		switch (menu_run(menu_main)) {
 		case 0:
 			op_mcu_setup_boot_flags();

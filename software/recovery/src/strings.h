@@ -22,6 +22,7 @@ DEFINE_STRING(s_nileswan_header,
     " _ _(_) |___ ____ __ ____ _ _ _\n"
     "| ' \\ | / -_|_-< V  V / _` | ' \\\n"
     "|_|_|_|_\\___/__/\\_/\\_/\\__,_|_|_|\n");
-DEFINE_STRING(s_press_any_key_to_continue, "\nPress any button to continue...");
+
+DEFINE_STRING(s_press_any_key_to_continue, "\n\nPress any button to continue...");
 
 #endif /* _STRINGS_H_ */

@@ -219,6 +219,5 @@ void console_printf(uint16_t flags, const char __far* format, ...) {
 
 bool console_print_status(bool status) {
     console_print(CONSOLE_FLAG_RIGHT | CONSOLE_FLAG_HIGHLIGHT, status ? s_ok : s_fail);
-    console_print_newline();
     return status;
 }

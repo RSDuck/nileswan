@@ -16,16 +16,19 @@ bool op_mcu_setup_boot_flags(void) {
     console_print(0, s_restarting_mcu);
 
     if (console_print_status(nile_mcu_reset(true))) {
+        console_print_newline();
         uint8_t flash_optr[4];
 
         console_print(0, s_flash_optr);
         if (console_print_status(nile_mcu_boot_read_memory(MCU_FLASH_OPTR_ADDR, flash_optr, sizeof(flash_optr)))) {
             console_printf(0, s_format_4_bytes, flash_optr[3], flash_optr[2], flash_optr[1], flash_optr[0]);
+            console_print_newline();
 
             flash_optr[3] &= ~1; // Unset NBOOT_SEL
 
             console_print(0, s_new_flash_optr);
             console_printf(0, s_format_4_bytes, flash_optr[3], flash_optr[2], flash_optr[1], flash_optr[0]);
+            console_print_newline();
 
             console_print(0, s_writing_changes);
             if (console_print_status(nile_mcu_boot_write_memory(MCU_FLASH_OPTR_ADDR, flash_optr, sizeof(flash_optr)))) {
