@@ -2,8 +2,7 @@
 #include <string.h>
 #include <wonderful.h>
 #include <ws.h>
-#include <ws/display.h>
-#include <ws/hardware.h>
+#include <nile.h>
 
 #define IRAM_IMPLEMENTATION
 #include "iram.h"
@@ -13,6 +12,7 @@
 #include "strings.h"
 #include "vwf8.h"
 
+#include "ops/id_print.h"
 #include "ops/mcu_setup.h"
 
 volatile uint16_t vbl_ticks;
@@ -43,6 +43,7 @@ void console_press_any_key(void) {
 
 static const char __wf_rom* __wf_rom menu_main[] = {
 	s_setup_mcu_boot_flags,
+	s_print_cartridge_ids,
 	NULL
 };
 
@@ -62,7 +63,13 @@ void main(void) {
 		console_draw_header(s_nileswan_recovery);
 		switch (menu_run(menu_main)) {
 		case 0:
+			console_clear();
 			op_mcu_setup_boot_flags();
+			console_press_any_key();
+			break;
+		case 1:
+			console_clear();
+			op_id_print();
 			console_press_any_key();
 			break;
 		}

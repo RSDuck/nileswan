@@ -12,7 +12,6 @@ bool op_mcu_setup_boot_flags(void) {
     outportw(IO_NILE_SPI_CNT, NILE_SPI_CLOCK_CART | NILE_SPI_DEV_MCU);
 
     console_print_header(s_setup_mcu_boot_flags);
-    console_clear();
     console_print(0, s_restarting_mcu);
 
     if (console_print_status(nile_mcu_reset(true))) {

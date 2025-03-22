@@ -15,6 +15,7 @@ DEFINE_STRING(s_ok, "[OK]");
 DEFINE_STRING(s_fail, "[FAIL]");
 DEFINE_STRING(s_flash_optr, "FLASH_OPTR = ");
 DEFINE_STRING(s_new_flash_optr, "New FLASH_OPTR = ");
+DEFINE_STRING(s_format_1_u32, "%08lX");
 DEFINE_STRING(s_format_4_bytes, "%02X%02X%02X%02X");
 DEFINE_STRING(s_writing_changes, "Writing changes...");
 DEFINE_STRING(s_nileswan_header,
@@ -23,5 +24,9 @@ DEFINE_STRING(s_nileswan_header,
     "| ' \\ | / -_|_-< V  V / _` | ' \\\n"
     "|_|_|_|_\\___/__/\\_/\\_/\\__,_|_|_|\n");
 DEFINE_STRING(s_press_any_key_to_continue, "\n\nPress any button to continue...");
+DEFINE_STRING(s_print_cartridge_ids, "Print cartridge IDs");
+DEFINE_STRING(s_flash_jedec_id, "SPI flash JEDEC ID = ");
+DEFINE_STRING(s_flash_uuid, "SPI flash UUID = ");
+DEFINE_STRING(s_mcu_uuid, "MCU UUID = ");
 
 #endif /* _STRINGS_H_ */

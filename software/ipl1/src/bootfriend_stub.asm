@@ -38,6 +38,26 @@ start:
 
 	rep movsb
 
+; Clear IPL0 register storage
+	xor ax, ax
+	mov di, 0x3800
+	mov cx, 24
+	rep stosb
+
+; Set initial SP
+	es mov word [0x3800 + 10], 0x2000
+	es mov word [0x3800 + 24], 0xF002
+
+; Clear registers
+	mov bx, ax
+	mov cx, ax
+	mov dx, ax
+	mov bp, ax
+	mov si, ax
+	mov di, ax
+	mov ds, ax
+; ES and SS are already cleared
+
 	retf
 
 ipl1_data:
