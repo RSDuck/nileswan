@@ -7,6 +7,10 @@
 
 // #define VWF8_SUPPORT_4BPP
 
+int vwf8_get_char_width(uint8_t chr) {
+    return *(font8_bitmap + ((chr - 0x20) * 9));
+}
+
 int vwf8_get_string_width(const char __wf_rom* s) {
     int w = 0;
 

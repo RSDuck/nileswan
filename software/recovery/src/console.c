@@ -1,11 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <ws.h>
-#include <ws/display.h>
-#include <ws/hardware.h>
-#include <ws/serial.h>
 #include "console.h"
 #include "iram.h"
+#include "strings.h"
 #include "vwf8.h"
 
 static uint8_t __wf_rom tile_border[16] = {
@@ -102,17 +100,24 @@ static void console_set_y(uint8_t y) {
     console_x = 1;
     y &= 0xF;
     console_y = y;
-    outportb(IO_SCR1_SCRL_Y, 248 + (y << 3));
-}
-
-static void console_next_line(void) {
-    memset(TILE_LINE((console_y + 1) & 0xF), 0, 28*16);
-    console_set_y(console_y + 1);
+    outportb(IO_SCR1_SCRL_Y, 120 + (y << 3));
 }
 
 void console_clear(void) {
     memset(TILE_LINE(0), 0, 28*16*16);
     console_set_y(15);
+}
+
+static void console_draw_newline(void) {
+    memset(TILE_LINE((console_y + 1) & 0xF), 0, 28*16);
+    console_set_y(console_y + 1);
+}
+
+void console_print_newline(void) { 
+    console_draw_newline();
+
+    ws_serial_putc('\r');
+    ws_serial_putc('\n');
 }
 
 #define CONSOLE_STACK_BUFFER_LENGTH 81
@@ -161,23 +166,36 @@ new_line:
         if (flags & CONSOLE_FLAG_CENTER) {
             x = (DISPLAY_WIDTH_PX - width) >> 1;
         } else if (flags & CONSOLE_FLAG_RIGHT) {
-            x = (DISPLAY_WIDTH_PX - x - width);
+            if (!(flags & CONSOLE_FLAG_NO_SERIAL)) {
+                ws_serial_putc(' ');
+            }
+            x = (DISPLAY_WIDTH_PX - width);
         }
     }
 
     while (*str) {
         if (*str == '\n') {
-            ws_serial_putc('\r');
-            ws_serial_putc('\n');
-            console_next_line();
+            if (flags & CONSOLE_FLAG_NO_SERIAL) {
+                console_draw_newline();
+            } else {
+                console_print_newline();
+            }
             str++;
             goto new_line;
         } else if (*str == '\t') {
             x += 10;
         } else {
-    		x = vwf8_draw_char(tile, *str, x);
+            if (flags & CONSOLE_FLAG_MONOSPACE) {
+                vwf8_draw_char(tile, *str, x);
+                x += 5;
+            } else {
+    		    x = vwf8_draw_char(tile, *str, x);
+            }
         }
-        ws_serial_putc(*(str++));
+        if (!(flags & CONSOLE_FLAG_NO_SERIAL)) {
+            ws_serial_putc(*str);
+        }
+        str++;
 	}
     if (!(flags & (CONSOLE_FLAG_CENTER | CONSOLE_FLAG_RIGHT))) {
 	    console_x = x;
@@ -197,4 +215,10 @@ void console_printf(uint16_t flags, const char __far* format, ...) {
     vsnprintf(buf, CONSOLE_STACK_BUFFER_LENGTH, format, val);
     va_end(val);
     return console_print(flags, buf);
+}
+
+bool console_print_status(bool status) {
+    console_print(CONSOLE_FLAG_RIGHT | CONSOLE_FLAG_HIGHLIGHT, status ? s_ok : s_fail);
+    console_print_newline();
+    return status;
 }
