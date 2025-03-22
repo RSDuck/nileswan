@@ -36,9 +36,11 @@ BUILDDIR	:= build
 ELF_BOOT	:= build/$(NAME_BOOT).elf
 MAP_BOOT	:= build/$(NAME_BOOT).map
 EXE_BOOT	:= $(NAME_BOOT).bin
+BFB_BOOT	:= $(NAME_BOOT).bfb
 ELF_SAFE	:= build/$(NAME_SAFE).elf
 MAP_SAFE	:= build/$(NAME_SAFE).map
 EXE_SAFE	:= $(NAME_SAFE).bin
+BFB_SAFE	:= $(NAME_SAFE).bfb
 
 # Verbose flag
 # ------------
@@ -102,9 +104,9 @@ DEPS		:= $(OBJS:.o=.d)
 # Targets
 # -------
 
-.PHONY: all clean
+.PHONY: all clean program
 
-all: $(EXE_BOOT) $(EXE_SAFE) compile_commands.json
+all: $(EXE_BOOT) $(EXE_SAFE) $(BFB_BOOT) $(BFB_SAFE) compile_commands.json
 
 program: $(EXE_BOOT) $(EXE_SAFE)
 	iceprog -i 4 -o 160k $(EXE_BOOT)
@@ -114,9 +116,17 @@ $(EXE_BOOT): $(ELF_BOOT)
 	@echo "  OBJCOPY $@"
 	$(_V)$(OBJCOPY) -O binary $< $@
 
+$(BFB_BOOT): $(EXE_BOOT) src/bootfriend_stub.asm
+	@echo "  NASM    $@"
+	nasm -o $(BFB_BOOT) src/bootfriend_stub.asm
+
 $(EXE_SAFE): $(ELF_SAFE)
 	@echo "  OBJCOPY $@"
 	$(_V)$(OBJCOPY) -O binary $< $@
+
+$(BFB_SAFE): $(EXE_SAFE) src/bootfriend_stub.asm
+	@echo "  NASM    $@"
+	nasm -DSAFE -o $(BFB_SAFE) src/bootfriend_stub.asm
 
 $(ELF_BOOT): $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_BOOT) link.ld
 	@echo "  LD      $@"
@@ -128,7 +138,7 @@ $(ELF_SAFE): $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_SAFE) link.ld
 
 clean:
 	@echo "  CLEAN"
-	$(_V)$(RM) $(EXE_BOOT) $(ELF_BOOT) $(EXE_SAFE) $(ELF_SAFE) $(BUILDDIR) compile_commands.json
+	$(_V)$(RM) $(EXE_BOOT) $(ELF_BOOT) $(EXE_SAFE) $(ELF_SAFE) $(BFB_BOOT) $(BFB_SAFE) $(BUILDDIR) compile_commands.json
 
 compile_commands.json: $(OBJS) | Makefile
 	@echo "  MERGE   compile_commands.json"
