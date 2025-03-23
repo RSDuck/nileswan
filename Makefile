@@ -9,13 +9,14 @@ FLASHBIN := $(MFGDIR)/spi.bin
 EMUIPL0  := $(EMUDIR)/nileswan.ipl0
 EMUSPI   := $(EMUDIR)/nileswan.spi
 EMUIMG   := $(EMUDIR)/nileswan.img
+MCUBIN   := $(DISTDIR)/NILESWAN/MCU.BIN
 EMUIMG_SIZE_MB ?= 512
 
 .PHONY: all dist dist-mfg dist-emu clean help firmware program-fpga program libnile libnile-ipl1 ipl0 ipl1 recovery updater fpga
 
 all: dist dist-mfg
 
-dist: $(UPDATEWS)
+dist: $(UPDATEWS) $(MCUBIN)
 
 dist-mfg: $(FLASHBIN)
 
@@ -40,14 +41,18 @@ $(EMUSPI): $(FLASHBIN)
 	@mkdir -p $(@D)
 	cp $(FLASHBIN) $@
 
-$(EMUIMG): firmware
+$(EMUIMG): $(MCUBIN)
 	@mkdir -p $(@D)
 	dd if=/dev/zero of="$@" bs=1M count=$(EMUIMG_SIZE_MB)
 	mkfs.vfat "$@"
 	mmd -i "$@" NILESWAN
-	mcopy -i "$@" firmware/build/firmware.bin ::NILESWAN/MCU.BIN
+	mcopy -i "$@" $(MCUBIN) ::NILESWAN/MCU.BIN
 
-firmware: firmware/build/firmware.bin
+firmware: $(MCUBIN)
+
+$(MCUBIN): firmware/build/firmware.bin
+	@mkdir -p $(@D)
+	python3 firmware/headerize.py $< $@
 
 firmware/build/firmware.bin: firmware/build/build.ninja
 	cd firmware/build && ninja
