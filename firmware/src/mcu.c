@@ -21,6 +21,7 @@
 
 #include "mcu.h"
 #include "config.h"
+#include "spi.h"
 #include "tusb.h"
 
 typedef enum {
@@ -64,13 +65,50 @@ void EXTI4_15_IRQHandler(void) {
 #endif
 }
 
+void mcu_update_clock_speed(void) {
+    uint32_t msi_range;
+    uint32_t freq;
+
+    LL_PWR_SetRegulVoltageScaling(LL_PWR_REGU_VOLTAGE_SCALE1);
+    while (LL_PWR_IsActiveFlag_VOS());
+
+    // TODO: Fix clock speed switching on USB enable
+    msi_range = LL_RCC_MSIRANGE_8;
+    freq = 16 * 1000 * 1000;
+
+    /* if (mcu_usb_is_power_connected() || mcu_spi_get_freq() == MCU_SPI_FREQ_6MHZ) {
+        // USB requires a >= 10 MHz clock
+        // fast SPI requires a >= 12 MHz clock
+        msi_range = LL_RCC_MSIRANGE_8;
+        freq = 16 * 1000 * 1000;
+    } else if (mcu_spi_get_mode() == MCU_SPI_MODE_EEPROM) {
+        // 2 MHz for slow EEPROM emulation
+        msi_range = LL_RCC_MSIRANGE_5;
+        freq = 2 * 1000 * 1000;
+    } else {
+        // 8 MHz
+        msi_range = LL_RCC_MSIRANGE_7;
+        freq = 8 * 1000 * 1000;
+    } */
+
+    while (!LL_RCC_MSI_IsReady());
+    LL_RCC_MSI_SetRange(msi_range);
+
+    LL_SetSystemCoreClock(freq);
+    LL_Init1msTick(freq);
+}
+
 void mcu_init(void) {
     // Set system clock to 16 MHz
-    LL_RCC_HSI_Enable();
-    while (!LL_RCC_HSI_IsReady());
+    LL_RCC_MSI_Enable();
+    while (!LL_RCC_MSI_IsReady());
 
-    LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_HSI);
-    while(LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_HSI);
+    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
+
+    mcu_update_clock_speed();
+
+    LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_MSI);
+    while(LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_MSI);
 
     LL_RCC_SetAHBPrescaler(LL_RCC_SYSCLK_DIV_1);
     LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_1);
@@ -81,11 +119,10 @@ void mcu_init(void) {
     LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
 #endif
 
-    LL_SetSystemCoreClock(16000000);
-
-    LL_Init1msTick(16000000);
     LL_SYSTICK_SetClkSource(LL_SYSTICK_CLKSOURCE_HCLK);
     LL_SYSTICK_EnableIT();
+
+    LL_FLASH_SetLatency(LL_FLASH_LATENCY_0);
 
     LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOA | LL_IOP_GRP1_PERIPH_GPIOB);
 
@@ -161,9 +198,6 @@ void USB_IRQHandler(void) {
 
 static void __mcu_usb_power_on(void) {
     // Enable 48 MHz internal oscillator
-#ifndef TARGET_U0
-    LL_SYSCFG_VREFINT_EnableHSI48();
-#endif
     LL_RCC_HSI48_Enable();
     while (!LL_RCC_HSI48_IsReady());
     LL_RCC_SetUSBClockSource(LL_RCC_USB_CLKSOURCE_HSI48);
@@ -178,10 +212,8 @@ static void __mcu_usb_power_on(void) {
     LL_CRS_EnableFreqErrorCounter();
     LL_CRS_EnableAutoTrimming();
 
-#ifdef TARGET_U0
-    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
     LL_PWR_EnableVddUSB();
-#endif
+
     // Enable USB clock
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USB);
 }
@@ -191,13 +223,8 @@ static void __mcu_usb_power_off(void) {
     LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_CRS);
     LL_RCC_SetUSBClockSource(LL_RCC_USB_CLKSOURCE_PLL);
     LL_RCC_HSI48_Disable();
-#ifndef TARGET_U0
-    LL_SYSCFG_VREFINT_DisableHSI48();
-#endif
 
-#ifdef TARGET_U0
     LL_PWR_DisableVddUSB();
-#endif
 }
 
 void mcu_usb_power_task(void) {
@@ -206,6 +233,8 @@ void mcu_usb_power_task(void) {
             .role = TUSB_ROLE_DEVICE,
             .speed = TUSB_SPEED_AUTO
         };
+
+        mcu_update_clock_speed();
 
         __mcu_usb_power_on();
         tusb_init(0, &dev_init);

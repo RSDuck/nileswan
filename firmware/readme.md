@@ -22,7 +22,7 @@ Each packet, except "Switch to mode", has a response. The response always consis
 
 Test command. The parameter is the number of bytes to echo, followed by the bytes to echo.
 
-#### 0x01 - SPI: Switch to mode
+#### 0x01 - MCU: Switch to mode
 
 The parameter is the ID of the mode of communication to use going forward:
 
@@ -34,9 +34,8 @@ The parameter is the ID of the mode of communication to use going forward:
 
 The parameter is the maximum frequency to set:
 
-- 0 - command mode
-- 1 - EEPROM emulation mode
-- 2 - RTC S-3511A emulation mode
+- 0 - 384 KHz
+- 1 - 6 MHz
 
 The response is 1 on success, 0 on failure.
 

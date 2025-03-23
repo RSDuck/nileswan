@@ -59,6 +59,7 @@
 #include "config.h"
 
 void mcu_init(void);
+void mcu_update_clock_speed(void);
 
 /**
  * @brief Returns true if the USB port is powered on.

@@ -30,7 +30,9 @@
 #include "rtc.h"
 #include "spi_cmd.h"
 
-static uint8_t spi_mode;
+static uint8_t spi_mode = MCU_SPI_MODE_NATIVE;
+static uint8_t spi_freq = MCU_SPI_FREQ_384KHZ;
+
 __attribute__((section(".noinit")))
 uint8_t spi_tx_buffer[MCU_SPI_TX_BUFFER_SIZE];
 uint8_t spi_rx_buffer[MCU_SPI_RX_BUFFER_SIZE];
@@ -175,10 +177,21 @@ void SPI1_IRQHandler(void) {
     }
 }
 
+uint32_t mcu_spi_get_freq(void) {
+    return spi_freq;
+}
+
 void mcu_spi_set_freq(uint32_t freq) {
+    spi_freq = freq;
     LL_GPIO_SetPinSpeed(MCU_PORT_SPI, MCU_PIN_SPI_SCK, freq);
     LL_GPIO_SetPinSpeed(MCU_PORT_SPI, MCU_PIN_SPI_POCI, freq);
     LL_GPIO_SetPinSpeed(MCU_PORT_SPI, MCU_PIN_SPI_PICO, freq);
+
+    mcu_update_clock_speed();
+}
+
+mcu_spi_mode_t mcu_spi_get_mode(void) {
+    return spi_mode;
 }
 
 void mcu_spi_init(mcu_spi_mode_t mode) {
@@ -249,6 +262,8 @@ void mcu_spi_init(mcu_spi_mode_t mode) {
 
     mcu_spi_disable_dma_tx();
 
+    mcu_update_clock_speed();
+    
     // Enable SPI
     mcu_spi_enable();
 }
