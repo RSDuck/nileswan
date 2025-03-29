@@ -58,19 +58,19 @@ module RTC(
         state_LowerCS,
         state_RaiseCS,
         state_Byte0Bit0 = 8,
-        state_Byte1Bit0 = 16,
+        state_Byte1Bit0 = state_Byte0Bit0+8,
         state_WaitData1 = state_Byte1Bit0+8,
-        state_Byte2Bit0,
+        state_Byte2Bit0 = state_WaitData1+1,
         state_WaitData2 = state_Byte2Bit0+8,
-        state_Byte3Bit0,
+        state_Byte3Bit0 = state_WaitData2+1,
         state_WaitData3 = state_Byte3Bit0+8,
-        state_Byte4Bit0,
+        state_Byte4Bit0 = state_WaitData3+1,
         state_WaitData4 = state_Byte4Bit0+8,
-        state_Byte5Bit0,
+        state_Byte5Bit0 = state_WaitData4+1,
         state_WaitData5 = state_Byte5Bit0+8,
-        state_Byte6Bit0,
+        state_Byte6Bit0 = state_WaitData5+1,
         state_WaitData6 = state_Byte6Bit0+8,
-        state_Byte7Bit0
+        state_Byte7Bit0 = state_WaitData6+1
     } SPIState;
     SPIState spi_state = state_Idle;
     reg[7:0] shiftreg = 8'h0;
@@ -90,6 +90,8 @@ module RTC(
         cmd_RTCData0R: cmd_final_state = state_Byte7Bit0+7;
         cmd_RTCData4W,
         cmd_RTCData4R: cmd_final_state = state_Byte3Bit0+7;
+        cmd_RTCNopW,
+        cmd_RTCNopR,
         cmd_RTCMiscRegW,
         cmd_RTCMiscRegR: cmd_final_state = state_Byte2Bit0+7;
         default: cmd_final_state = 6'h00;
@@ -173,8 +175,15 @@ module RTC(
         end
     end
 
+    /*
+        Already let Busy bit go down while the state machine
+        isn't in idle state yet so that happens simultaneously
+        with the Ready bit to go high for the last byte.
+    */
+    wire Busy = StartRTCCmd|(spi_state != state_Idle && spi_state != state_RaiseCS);
+
     assign RTCData = UseWrittenData ? data_written : data_recv;
-    assign RTCCtrl = {Ready, 2'b00, StartRTCCmd|(spi_state != state_Idle), cmd[3:0]};
+    assign RTCCtrl = {Ready, 2'b00, Busy, cmd[3:0]};
 
     reg cs = 1;
     always @(posedge SClk) begin

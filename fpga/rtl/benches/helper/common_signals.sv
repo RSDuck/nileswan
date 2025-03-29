@@ -26,3 +26,13 @@ task writeReg(input[7:0] data);
     #(swan_clock_period/2);
     nIO = 1;
 endtask
+
+task readReg();
+    #(swan_clock_period/2);
+    nIO = 0;
+    nOE = 0;
+    #(swan_clock_period);
+    nOE = 1;
+    #(swan_clock_period/2);
+    nIO = 1;
+endtask

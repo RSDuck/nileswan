@@ -100,11 +100,11 @@ module cartserial_bench ();
         assert (rtc_data == 8'hEE) 
         else   $error("Wrong data in RTC data register %x", rtc_data);
 
+        // RTC write status
         sel_rtc_data = 1;
         writeReg(8'h22);
         sel_rtc_data = 0;
 
-        // RTC write status
         pushTestDevTx(8'h11);
         pushTestDevTx(8'h12);
         pushTestDevTx(8'h13);
@@ -135,6 +135,108 @@ module cartserial_bench ();
         end
 
         compareTestDevRX(8'h33);
+
+        sel_rtc_data = 1;
+        writeReg(8'h00);
+        sel_rtc_data = 0;
+
+        // RTC read status
+        pushTestDevTx(8'h11);
+        pushTestDevTx(8'hAA);
+        pushTestDevTx(8'hBB);
+        pushTestDevTx(8'hCC);
+        pushTestDevTx(8'hDD);
+        pushTestDevTx(8'hEE);
+        pushTestDevTx(8'hFF);
+        pushTestDevTx(8'h22);
+        testdev_tx_queue.push_back(0);
+
+        sel_rtc_ctrl = 1;
+        writeReg(8'h15);
+        sel_rtc_ctrl = 0;
+
+        while (~rtc_ctrl[7]) begin
+            #(sclk_half_period);
+        end
+
+        compareTestDevRX(8'hF5);
+        compareTestDevRX(8'hFF);
+
+        sel_rtc_data = 1;
+        readReg();
+        sel_rtc_data = 0;
+        assert (rtc_data == 8'hAA) 
+        else   $error("Wrong data in RTC data register %x", rtc_data);
+
+        while (~rtc_ctrl[7]) begin
+            #(sclk_half_period);
+        end
+
+        compareTestDevRX(8'hFF);
+
+        sel_rtc_data = 1;
+        readReg();
+        sel_rtc_data = 0;
+        assert (rtc_data == 8'hBB)
+        else   $error("Wrong data in RTC data register %x", rtc_data);
+
+        while (~rtc_ctrl[7]) begin
+            #(sclk_half_period);
+        end
+
+        compareTestDevRX(8'hFF);
+
+        sel_rtc_data = 1;
+        readReg();
+        sel_rtc_data = 0;
+        assert (rtc_data == 8'hCC)
+        else   $error("Wrong data in RTC data register %x", rtc_data);
+        while (~rtc_ctrl[7]) begin
+            #(sclk_half_period);
+        end
+
+        compareTestDevRX(8'hFF);
+
+        sel_rtc_data = 1;
+        readReg();
+        sel_rtc_data = 0;
+        assert (rtc_data == 8'hDD)
+        else   $error("Wrong data in RTC data register %x", rtc_data);
+        while (~rtc_ctrl[7]) begin
+            #(sclk_half_period);
+        end
+
+        compareTestDevRX(8'hFF);
+
+        sel_rtc_data = 1;
+        readReg();
+        sel_rtc_data = 0;
+        assert (rtc_data == 8'hEE)
+        else   $error("Wrong data in RTC data register %x", rtc_data);
+
+        while (~rtc_ctrl[7]) begin
+            #(sclk_half_period);
+        end
+
+        compareTestDevRX(8'hFF);
+
+        sel_rtc_data = 1;
+        readReg();
+        sel_rtc_data = 0;
+        assert (rtc_data == 8'hFF)
+        else   $error("Wrong data in RTC data register %x", rtc_data);
+
+        while (~rtc_ctrl[7]) begin
+            #(sclk_half_period);
+        end
+
+        compareTestDevRX(8'hFF);
+
+        sel_rtc_data = 1;
+        readReg();
+        sel_rtc_data = 0;
+        assert (rtc_data == 8'h22)
+        else   $error("Wrong data in RTC data register %x", rtc_data);
 
         $finish;
     end
