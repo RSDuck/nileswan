@@ -157,6 +157,9 @@ void SPI1_IRQHandler(void) {
         } else if (spi_mode == MCU_SPI_MODE_EEPROM) {
             LL_GPIO_ResetOutputPin(GPIOA, MCU_PIN_FPGA_READY);
             uint16_t data = LL_SPI_ReceiveData16(MCU_PERIPH_SPI);
+#ifdef CONFIG_DEBUG_SPI_EEPROM_CMD
+            cdc_debug_write_hex16(data);
+#endif
 #ifdef CONFIG_FULL_EEPROM_EMULATION
             LL_SPI_TransmitData16(MCU_PERIPH_SPI, eeprom_exch_word(data));
 #else
@@ -168,7 +171,7 @@ void SPI1_IRQHandler(void) {
             LL_GPIO_ResetOutputPin(GPIOA, MCU_PIN_FPGA_READY);
             uint8_t cmd = LL_SPI_ReceiveData8(MCU_PERIPH_SPI);
 #ifdef CONFIG_DEBUG_SPI_RTC_CMD
-            cdc_debug("spi/rtc: %02X", cmd);
+            cdc_debug_write_hex16(cmd);
 #endif
             int rx_length = rtc_start_command_rx(cmd);
             if (rx_length) {
@@ -203,8 +206,6 @@ void mcu_spi_init(mcu_spi_mode_t mode) {
     LL_DMA_DisableChannel(DMA1, MCU_DMA_CHANNEL_SPI_RX);
 
     mcu_spi_disable();
-
-    LL_mDelay(1);
 
     // Initialize SPI
     LL_SPI_SetMode(MCU_PERIPH_SPI, LL_SPI_MODE_SLAVE);

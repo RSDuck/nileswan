@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <stm32u0xx_ll_crs.h>
 #include <stm32u0xx_ll_gpio.h>
+#include <stm32u0xx_ll_system.h>
 
 #include "mcu.h"
 #include "config.h"
@@ -33,10 +34,11 @@ typedef enum {
     USB_INIT_STATUS_REQUEST_OFF = 3
 } usb_init_status_t;
 
+static bool usb_enabled = false;
 static uint8_t usb_init_status = USB_INIT_STATUS_OFF;
 
 static void __mcu_usb_on_power_change(void) {
-    if (mcu_usb_is_power_connected()) {
+    if (mcu_usb_is_power_connected() && usb_enabled) {
         if (usb_init_status == USB_INIT_STATUS_OFF) {
             usb_init_status = USB_INIT_STATUS_REQUEST_ON;
         } else if (usb_init_status == USB_INIT_STATUS_ON) {
@@ -88,21 +90,43 @@ void mcu_update_clock_speed(void) {
     msi_range = LL_RCC_MSIRANGE_8;
     freq = 16 * 1000 * 1000;
 
-    if (mcu_spi_get_mode() == MCU_SPI_MODE_EEPROM) {
-        // 2 MHz for slow EEPROM emulation
-        msi_range = LL_RCC_MSIRANGE_5;
-        freq = 2 * 1000 * 1000;
-    } else if (usb_init_status == USB_INIT_STATUS_OFF && mcu_spi_get_freq() == MCU_SPI_FREQ_384KHZ) {
-        // 8 MHz for non-USB mode
-        msi_range = LL_RCC_MSIRANGE_7;
-        freq = 8 * 1000 * 1000;
+    // If SPI and USB don't require a 16MHz clock...
+    if (usb_init_status == USB_INIT_STATUS_OFF && mcu_spi_get_freq() == MCU_SPI_FREQ_384KHZ) {
+        if (mcu_spi_get_mode() == MCU_SPI_MODE_EEPROM) {
+            // 2 MHz for slow EEPROM emulation
+            msi_range = LL_RCC_MSIRANGE_5;
+            freq = 2 * 1000 * 1000;
+        } else {
+            // 8 MHz for non-USB mode
+            msi_range = LL_RCC_MSIRANGE_7;
+            freq = 8 * 1000 * 1000;
+        }
     }
+
+#ifdef CONFIG_ENABLE_CDC_DEBUG_PORT
+    // If USB debug is enabled...
+    if (mcu_usb_is_active()) {
+        if (0
+#ifdef CONFIG_DEBUG_SPI_EEPROM_CMD
+             || mcu_spi_get_mode() == MCU_SPI_MODE_EEPROM
+#endif
+#ifdef CONFIG_DEBUG_SPI_RTC_CMD
+             || mcu_spi_get_mode() == MCU_SPI_MODE_RTC
+#endif
+        ) {
+            msi_range = LL_RCC_MSIRANGE_9;
+            freq = 24 * 1000 * 1000;
+        }
+    }
+#endif
 
     while (!LL_RCC_MSI_IsReady());
     LL_RCC_MSI_SetRange(msi_range);
 
     LL_SetSystemCoreClock(freq);
     LL_Init1msTick(freq);
+
+    LL_FLASH_SetLatency(LL_FLASH_LATENCY_0);
 }
 
 void mcu_init(void) {
@@ -131,8 +155,6 @@ void mcu_init(void) {
 
     LL_SYSTICK_SetClkSource(LL_SYSTICK_CLKSOURCE_HCLK);
     LL_SYSTICK_EnableIT();
-
-    LL_FLASH_SetLatency(LL_FLASH_LATENCY_0);
 
     LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOA | LL_IOP_GRP1_PERIPH_GPIOB);
 
@@ -170,9 +192,6 @@ void mcu_init(void) {
     LL_GPIO_SetPinSpeed(GPIOB, MCU_PIN_USB_POWER, LL_GPIO_SPEED_FREQ_LOW);
     LL_GPIO_SetPinMode(GPIOB, MCU_PIN_USB_POWER, LL_GPIO_MODE_INPUT);
 
-    LL_mDelay(1);
-    __mcu_usb_on_power_change();
-
     // Initialize battery sensing
     // TODO: Set up a comparator for MCU_PIN_BAT
     LL_GPIO_SetPinPull(GPIOB, MCU_PIN_BAT, LL_GPIO_PULL_NO);
@@ -198,11 +217,17 @@ void mcu_init(void) {
 
     LL_mDelay(1);
     __mcu_bat_on_power_change();
+    mcu_usb_set_enabled(true);
 
     LL_GPIO_SetOutputPin(GPIOA, MCU_PIN_FPGA_READY);
 }
 
-bool mcu_usb_is_enabled(void) {
+void mcu_usb_set_enabled(bool enabled) {
+    usb_enabled = enabled;
+    __mcu_usb_on_power_change();
+}
+
+bool mcu_usb_is_powered(void) {
     return usb_init_status == USB_INIT_STATUS_ON;
 }
 

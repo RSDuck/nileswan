@@ -23,7 +23,7 @@
 
 #ifdef CONFIG_ENABLE_CDC_DEBUG_PORT
 int cdc_debug(const char *format, ...) {
-    if (!mcu_usb_is_enabled()) return 0;
+    if (!mcu_usb_is_active()) return 0;
     char buf[96];
     va_list val;
     va_start(val, format);
@@ -31,5 +31,23 @@ int cdc_debug(const char *format, ...) {
     tud_cdc_n_write_str(1, buf);
     va_end(val);
     return n;
+}
+
+void cdc_debug_write(void *data, int len) {
+    if (!mcu_usb_is_active()) return;
+    tud_cdc_n_write(1, data, len);
+}
+
+static const char hexchars[] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
+
+void cdc_debug_write_hex16(uint16_t v) {
+    char c[6];
+    c[0] = hexchars[v >> 12];
+    c[1] = hexchars[(v >> 8) & 0xF];
+    c[2] = hexchars[(v >> 4) & 0xF];
+    c[3] = hexchars[v & 0xF];
+    c[4] = 13;
+    c[5] = 10;
+    cdc_debug_write(c, sizeof(c));
 }
 #endif

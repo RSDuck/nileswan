@@ -22,8 +22,12 @@
 
 #ifdef CONFIG_ENABLE_CDC_DEBUG_PORT
 int cdc_debug(const char *format, ...);
+void cdc_debug_write(void *data, int len);
+void cdc_debug_write_hex16(uint16_t v);
 #else
 #define cdc_debug(...)
+#define cdc_debug_write(...)
+#define cdc_debug_write_hex16(...)
 #endif
 
 #endif /* _CDC_H_ */

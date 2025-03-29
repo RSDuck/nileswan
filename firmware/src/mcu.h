@@ -61,17 +61,27 @@
 void mcu_init(void);
 void mcu_update_clock_speed(void);
 void mcu_shutdown(void);
-
-/**
- * @brief Returns true if the USB port is powered on.
- */
-bool mcu_usb_is_enabled(void);
-/**
- * @brief Returns true if the USB port is powered on and the USB device is active (connected, not suspended).
- */
-bool mcu_usb_is_active(void);
 void mcu_usb_power_task(void);
 
+/**
+ * @brief Set whether or not the USB port should be enabled (on the MCU side).
+ * The USB hardware will only be activated if the USB port is enabled and an USB
+ * cable is physically connected to a host.
+ */
+void mcu_usb_set_enabled(bool enabled);
+/**
+ * @brief Returns true if the USB port is powered on and enabled.
+ */
+bool mcu_usb_is_powered(void);
+/**
+ * @brief Returns true if the USB port is powered on and enabled,
+ * and the USB device is active (connected, not suspended).
+ */
+bool mcu_usb_is_active(void);
+
+/**
+ * @brief Returns true if the USB port is powered on (physically).
+ */
 static inline bool mcu_usb_is_power_connected(void) {
     return LL_GPIO_IsInputPinSet(GPIOB, MCU_PIN_USB_POWER);
 }
