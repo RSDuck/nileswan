@@ -233,10 +233,15 @@ void main(void) {
 		1, (DISPLAY_HEIGHT - UPDATE_SUCCESS_SCREEN_LINES) >> 1,
 		UPDATE_SUCCESS_SCREEN_LINES,
 		ws_system_is_color() ? update_success_screen : update_successM_screen);
+
+	nile_flash_sleep();
+	outportb(IO_NILE_POW_CNT, 0);
+
 	if (ws_system_is_color()) {
 		wait_for_key(model == WS_MODEL_PCV2 ? KEY_PCV2_CIRCLE : KEY_A);
-
 		outportb(IO_SYSTEM_CTRL3, SYSTEM_CTRL3_POWEROFF);
-	}	
-	while(1);
+	}
+
+	cpu_irq_disable();
+	while(1) cpu_halt();
 }
