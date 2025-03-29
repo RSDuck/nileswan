@@ -391,7 +391,7 @@ module nileswan(
     reg access_in_ram_area;
     reg apply_bank_mask;
     always_comb begin
-        rom_addr_ext_fin = 9'hXX;
+        rom_addr_ext_fin = 9'h0;
         sel_rom_space = 0;
         sel_ram_space = 0;
         access_in_ram_area = 0;
