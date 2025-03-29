@@ -18,7 +18,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stm32u0xx_ll_spi.h>
 
 #include "mcu.h"
 #include "tusb.h"
@@ -201,6 +200,18 @@ mcu_spi_mode_t mcu_spi_get_mode(void) {
     return spi_mode;
 }
 
+void mcu_spi_enable(void) {
+    LL_SPI_Enable(MCU_PERIPH_SPI);
+}
+
+void mcu_spi_disable(void) {
+    LL_mDelay(1);
+    LL_SPI_Disable(MCU_PERIPH_SPI);
+    while (LL_SPI_GetRxFIFOLevel(MCU_PERIPH_SPI)) {
+        LL_SPI_ReceiveData8(MCU_PERIPH_SPI);
+    }
+}
+
 void mcu_spi_init(mcu_spi_mode_t mode) {
     LL_DMA_DisableChannel(DMA1, MCU_DMA_CHANNEL_SPI_TX);
     LL_DMA_DisableChannel(DMA1, MCU_DMA_CHANNEL_SPI_RX);
@@ -208,11 +219,8 @@ void mcu_spi_init(mcu_spi_mode_t mode) {
     mcu_spi_disable();
 
     // Initialize SPI
-    LL_SPI_SetMode(MCU_PERIPH_SPI, LL_SPI_MODE_SLAVE);
-    LL_SPI_SetTransferBitOrder(MCU_PERIPH_SPI, LL_SPI_MSB_FIRST);
-    LL_SPI_SetTransferDirection(MCU_PERIPH_SPI, LL_SPI_FULL_DUPLEX);
-    LL_SPI_SetClockPolarity(MCU_PERIPH_SPI, LL_SPI_POLARITY_LOW);
-    LL_SPI_SetClockPhase(MCU_PERIPH_SPI, LL_SPI_PHASE_1EDGE);
+    MCU_PERIPH_SPI->CR1 = LL_SPI_MODE_SLAVE | LL_SPI_MSB_FIRST | LL_SPI_FULL_DUPLEX
+        | LL_SPI_POLARITY_LOW | LL_SPI_PHASE_1EDGE;
     LL_SPI_SetBaudRatePrescaler(MCU_PERIPH_SPI, LL_SPI_BAUDRATEPRESCALER_DIV2);
     LL_SPI_SetNSSMode(MCU_PERIPH_SPI, LL_SPI_NSS_HARD_INPUT);
 
@@ -275,8 +283,12 @@ void mcu_spi_init(mcu_spi_mode_t mode) {
 
     NVIC_SetPriority(SPI1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 10, 0));
     NVIC_EnableIRQ(SPI1_IRQn);
-    NVIC_SetPriority(DMA1_Channel2_3_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 5, 0));
-    NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
+    if (dma_enabled) {
+        NVIC_SetPriority(DMA1_Channel2_3_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 5, 0));
+        NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
+    } else {
+        NVIC_DisableIRQ(DMA1_Channel2_3_IRQn);
+    }
 
     mcu_spi_disable_dma_tx();
 

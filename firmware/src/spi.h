@@ -18,6 +18,7 @@
 #ifndef _SPI_H_
 #define _SPI_H_
 
+#include "config.h"
 #include "mcu.h"
 
 extern uint8_t spi_tx_buffer[MCU_SPI_TX_BUFFER_SIZE];
@@ -42,12 +43,7 @@ void mcu_spi_enable_dma_tx(const void *address, uint32_t length);
 void mcu_spi_enable_dma_rx(void *address, uint32_t length);
 void mcu_spi_task(void);
 
-static inline void mcu_spi_enable(void) {
-    LL_SPI_Enable(MCU_PERIPH_SPI);
-}
-
-static inline void mcu_spi_disable(void) {
-    LL_SPI_Disable(MCU_PERIPH_SPI);
-}
+void mcu_spi_enable(void);
+void mcu_spi_disable(void);
 
 #endif /* _SPI_H_ */

@@ -18,9 +18,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stm32u0xx_ll_crs.h>
-#include <stm32u0xx_ll_gpio.h>
-#include <stm32u0xx_ll_system.h>
 
 #include "mcu.h"
 #include "config.h"
