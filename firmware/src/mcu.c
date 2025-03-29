@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stm32u0xx_ll_crs.h>
 
 #include "mcu.h"
 #include "config.h"
@@ -28,7 +29,6 @@ typedef enum {
     USB_INIT_STATUS_OFF = 0,
     USB_INIT_STATUS_REQUEST_ON = 1,
     USB_INIT_STATUS_ON = 2,
-    // TODO
     USB_INIT_STATUS_REQUEST_OFF = 3
 } usb_init_status_t;
 
@@ -42,12 +42,20 @@ static void __mcu_usb_on_power_change(void) {
             USB->BCDR |= USB_BCDR_DPPU;
         }
     } else {
-        USB->BCDR &= ~USB_BCDR_DPPU;
+        if (usb_init_status == USB_INIT_STATUS_ON) {
+            usb_init_status = USB_INIT_STATUS_REQUEST_OFF;
+        }
+    }
+}
+
+static void __mcu_bat_on_power_change(void) {
+    // If battery inserted and running on battery, go to Standby
+    if (LL_GPIO_IsInputPinSet(GPIOB, MCU_PIN_BAT) && LL_GPIO_IsInputPinSet(GPIOB, MCU_PIN_RUNS_ON_BAT)) {
+        mcu_shutdown();
     }
 }
 
 void EXTI4_15_IRQHandler(void) {
-#ifdef TARGET_U0
     if ((EXTI->RPR1 & EXTI_RPR1_RPIF5) != 0) {
         EXTI->RPR1 = EXTI_RPR1_RPIF5;
         __mcu_usb_on_power_change();
@@ -57,12 +65,16 @@ void EXTI4_15_IRQHandler(void) {
         EXTI->FPR1 = EXTI_FPR1_FPIF5;
         __mcu_usb_on_power_change();
     }
-#else
-    if ((EXTI->PR & EXTI_PR_PIF8) != 0) {
-        EXTI->PR = EXTI_PR_PIF8;
-        __mcu_usb_on_power_change();
+
+    if ((EXTI->RPR1 & EXTI_RPR1_RPIF7) != 0) {
+        EXTI->RPR1 = EXTI_RPR1_RPIF7;
+        __mcu_bat_on_power_change();
     }
-#endif
+
+    if ((EXTI->FPR1 & EXTI_FPR1_FPIF7) != 0) {
+        EXTI->FPR1 = EXTI_FPR1_FPIF7;
+        __mcu_bat_on_power_change();
+    }
 }
 
 void mcu_update_clock_speed(void) {
@@ -72,24 +84,18 @@ void mcu_update_clock_speed(void) {
     LL_PWR_SetRegulVoltageScaling(LL_PWR_REGU_VOLTAGE_SCALE1);
     while (LL_PWR_IsActiveFlag_VOS());
 
-    // TODO: Fix clock speed switching on USB enable
     msi_range = LL_RCC_MSIRANGE_8;
     freq = 16 * 1000 * 1000;
 
-    /* if (mcu_usb_is_power_connected() || mcu_spi_get_freq() == MCU_SPI_FREQ_6MHZ) {
-        // USB requires a >= 10 MHz clock
-        // fast SPI requires a >= 12 MHz clock
-        msi_range = LL_RCC_MSIRANGE_8;
-        freq = 16 * 1000 * 1000;
-    } else if (mcu_spi_get_mode() == MCU_SPI_MODE_EEPROM) {
+    if (mcu_spi_get_mode() == MCU_SPI_MODE_EEPROM) {
         // 2 MHz for slow EEPROM emulation
         msi_range = LL_RCC_MSIRANGE_5;
         freq = 2 * 1000 * 1000;
-    } else {
-        // 8 MHz
+    } else if (usb_init_status == USB_INIT_STATUS_OFF && mcu_spi_get_freq() == MCU_SPI_FREQ_384KHZ) {
+        // 8 MHz for non-USB mode
         msi_range = LL_RCC_MSIRANGE_7;
         freq = 8 * 1000 * 1000;
-    } */
+    }
 
     while (!LL_RCC_MSI_IsReady());
     LL_RCC_MSI_SetRange(msi_range);
@@ -99,11 +105,13 @@ void mcu_update_clock_speed(void) {
 }
 
 void mcu_init(void) {
-    // Set system clock to 16 MHz
     LL_RCC_MSI_Enable();
     while (!LL_RCC_MSI_IsReady());
 
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
+    LL_LPM_EnableSleep();
+
+    LL_RCC_MSI_EnableRangeSelection();
 
     mcu_update_clock_speed();
 
@@ -112,6 +120,7 @@ void mcu_init(void) {
 
     LL_RCC_SetAHBPrescaler(LL_RCC_SYSCLK_DIV_1);
     LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_1);
+    
 #ifdef TARGET_U0
     LL_APB1_GRP2_EnableClock(LL_APB1_GRP2_PERIPH_SYSCFG);
 #else
@@ -145,12 +154,15 @@ void mcu_init(void) {
         LL_GPIO_SetPinMode(MCU_PORT_SPI, pin, LL_GPIO_MODE_ALTERNATE);
     }
 
-    // Initialize FPGA IRQ pin
-    LL_GPIO_SetPinOutputType(GPIOB, MCU_PIN_FPGA_IRQ, LL_GPIO_OUTPUT_PUSHPULL);
-    LL_GPIO_SetPinPull(GPIOB, MCU_PIN_FPGA_IRQ, LL_GPIO_PULL_NO);
-    LL_GPIO_SetPinSpeed(GPIOB, MCU_PIN_FPGA_IRQ, LL_GPIO_SPEED_FREQ_LOW); // 400 kHz
-    LL_GPIO_SetOutputPin(GPIOB, MCU_PIN_FPGA_IRQ);
-    LL_GPIO_SetPinMode(GPIOB, MCU_PIN_FPGA_IRQ, LL_GPIO_MODE_OUTPUT);
+    // Initialize FPGA pins
+    LL_GPIO_SetPinPull(GPIOA, MCU_PIN_FPGA_IRQ, LL_GPIO_PULL_NO);
+    LL_GPIO_SetPinSpeed(GPIOA, MCU_PIN_FPGA_IRQ, LL_GPIO_SPEED_FREQ_LOW);
+    LL_GPIO_SetPinMode(GPIOA, MCU_PIN_FPGA_IRQ, LL_GPIO_MODE_INPUT);
+
+    LL_GPIO_SetPinOutputType(GPIOA, MCU_PIN_FPGA_READY, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetPinPull(GPIOA, MCU_PIN_FPGA_READY, LL_GPIO_PULL_NO);
+    LL_GPIO_SetPinSpeed(GPIOA, MCU_PIN_FPGA_READY, LL_GPIO_SPEED_FREQ_LOW);
+    LL_GPIO_SetPinMode(GPIOA, MCU_PIN_FPGA_READY, LL_GPIO_MODE_INPUT);
 
     // Initialize VBUS sensing
     LL_GPIO_SetPinPull(GPIOB, MCU_PIN_USB_POWER, LL_GPIO_PULL_DOWN);
@@ -160,19 +172,32 @@ void mcu_init(void) {
     LL_mDelay(1);
     __mcu_usb_on_power_change();
 
-#ifdef TARGET_U0
+    // Initialize battery sensing
+    LL_GPIO_SetPinPull(GPIOB, MCU_PIN_BAT, LL_GPIO_PULL_NO);
+    LL_GPIO_SetPinSpeed(GPIOB, MCU_PIN_BAT, LL_GPIO_SPEED_FREQ_LOW);
+    LL_GPIO_SetPinMode(GPIOB, MCU_PIN_BAT, LL_GPIO_MODE_ANALOG);
+    LL_GPIO_SetPinPull(GPIOB, MCU_PIN_RUNS_ON_BAT, LL_GPIO_PULL_UP);
+    LL_GPIO_SetPinSpeed(GPIOB, MCU_PIN_RUNS_ON_BAT, LL_GPIO_SPEED_FREQ_LOW);
+    LL_GPIO_SetPinMode(GPIOB, MCU_PIN_RUNS_ON_BAT, LL_GPIO_MODE_INPUT);
+
+    // Keep the pulls active in Standby mode
+    LL_PWR_EnableGPIOPullDown(LL_PWR_GPIO_B, MCU_PIN_USB_POWER);
+    LL_PWR_EnableGPIOPullUp(LL_PWR_GPIO_B, MCU_PIN_RUNS_ON_BAT);
+    LL_PWR_EnablePUPDCfg();
+
     LL_EXTI_SetEXTISource(LL_EXTI_CONFIG_PORTB, LL_EXTI_CONFIG_LINE5);
-    LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_5);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_5);
-    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_5);
-#else
-    LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTB, LL_SYSCFG_EXTI_LINE8);
-    LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_8);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_8);
-    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_8);
-#endif
+    LL_EXTI_SetEXTISource(LL_EXTI_CONFIG_PORTB, LL_EXTI_CONFIG_LINE7);
+    LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_5 | LL_EXTI_LINE_7);
+    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_5 | LL_EXTI_LINE_7);
+    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_5 | LL_EXTI_LINE_7);
+
     NVIC_SetPriority(EXTI4_15_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
     NVIC_EnableIRQ(EXTI4_15_IRQn);
+
+    LL_mDelay(1);
+    __mcu_bat_on_power_change();
+
+    LL_GPIO_SetOutputPin(GPIOA, MCU_PIN_FPGA_READY);
 }
 
 bool mcu_usb_is_enabled(void) {
@@ -186,12 +211,8 @@ bool mcu_usb_is_active(void) {
 void SysTick_Handler(void) {
 }
 
-#ifdef TARGET_U0
 void USB_DRD_FS_IRQHandler(void) {
-#else
-void USB_IRQHandler(void) {
-#endif    
-    if (usb_init_status >= USB_INIT_STATUS_ON) {
+    if (usb_init_status == USB_INIT_STATUS_ON) {
         tud_int_handler(0);
     }
 }
@@ -219,8 +240,10 @@ static void __mcu_usb_power_on(void) {
 }
 
 static void __mcu_usb_power_off(void) {
-    LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_USB);
-    LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_CRS);
+    LL_CRS_DisableAutoTrimming();
+    LL_CRS_DisableFreqErrorCounter();
+
+    LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_USB | LL_APB1_GRP1_PERIPH_CRS);
     LL_RCC_SetUSBClockSource(LL_RCC_USB_CLKSOURCE_PLL);
     LL_RCC_HSI48_Disable();
 
@@ -234,14 +257,33 @@ void mcu_usb_power_task(void) {
             .speed = TUSB_SPEED_AUTO
         };
 
-        mcu_update_clock_speed();
-
         __mcu_usb_power_on();
+        mcu_update_clock_speed();
         tusb_init(0, &dev_init);
         usb_init_status = USB_INIT_STATUS_ON;
 
         __mcu_usb_on_power_change();
     } else if (usb_init_status == USB_INIT_STATUS_ON) {
         tud_task();
+    } else if (usb_init_status == USB_INIT_STATUS_REQUEST_OFF) {
+        USB->BCDR &= ~USB_BCDR_DPPU;
+
+        __mcu_usb_power_off();
+
+        usb_init_status = USB_INIT_STATUS_OFF;
+        mcu_update_clock_speed();
     }
+}
+
+void mcu_shutdown(void) {
+    // We're actually going into Standby, as we want to preserve SRAM2 contents.
+    LL_LPM_EnableDeepSleep();
+
+    LL_PWR_SetSRAMContentRetention(LL_PWR_FULL_SRAM_RETENTION);
+    LL_PWR_SetPowerMode(LL_PWR_MODE_STANDBY);
+    __mcu_usb_power_off();
+
+    __disable_irq();
+
+    __WFI();
 }

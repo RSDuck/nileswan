@@ -84,7 +84,7 @@ static void mcu_spi_dma_finish(void) {
 
         mcu_spi_enable_dma_tx(spi_tx_buffer, len + 2);
     } else if (spi_mode == MCU_SPI_MODE_RTC) {
-        LL_GPIO_ResetOutputPin(GPIOB, MCU_PIN_FPGA_READY);
+        LL_GPIO_ResetOutputPin(GPIOA, MCU_PIN_FPGA_READY);
         int len = rtc_finish_command_rx(spi_rx_buffer, spi_tx_buffer);
 #ifdef CONFIG_DEBUG_SPI_NATIVE_CMD
         cdc_debug(", returning %d bytes\r\n", len);
@@ -94,7 +94,7 @@ static void mcu_spi_dma_finish(void) {
         } else {
             LL_SPI_EnableIT_RXNE(MCU_PERIPH_SPI);
         }
-        LL_GPIO_SetOutputPin(GPIOB, MCU_PIN_FPGA_READY);
+        LL_GPIO_SetOutputPin(GPIOA, MCU_PIN_FPGA_READY);
     }
 }
 
@@ -155,13 +155,17 @@ void SPI1_IRQHandler(void) {
                 spi_native_idx = 2;
             }
         } else if (spi_mode == MCU_SPI_MODE_EEPROM) {
-            LL_GPIO_ResetOutputPin(GPIOB, MCU_PIN_FPGA_READY);
+            LL_GPIO_ResetOutputPin(GPIOA, MCU_PIN_FPGA_READY);
             uint16_t data = LL_SPI_ReceiveData16(MCU_PERIPH_SPI);
+#ifdef CONFIG_FULL_EEPROM_EMULATION
             LL_SPI_TransmitData16(MCU_PERIPH_SPI, eeprom_exch_word(data));
-            LL_GPIO_SetOutputPin(GPIOB, MCU_PIN_FPGA_READY);
+#else
+            eeprom_exch_word(data);
+#endif
+            LL_GPIO_SetOutputPin(GPIOA, MCU_PIN_FPGA_READY);
         } else if (spi_mode == MCU_SPI_MODE_RTC) {
             LL_SPI_DisableIT_RXNE(MCU_PERIPH_SPI);
-            LL_GPIO_ResetOutputPin(GPIOB, MCU_PIN_FPGA_READY);
+            LL_GPIO_ResetOutputPin(GPIOA, MCU_PIN_FPGA_READY);
             uint8_t cmd = LL_SPI_ReceiveData8(MCU_PERIPH_SPI);
 #ifdef CONFIG_DEBUG_SPI_RTC_CMD
             cdc_debug("spi/rtc: %02X", cmd);
@@ -172,7 +176,7 @@ void SPI1_IRQHandler(void) {
             } else {
                 mcu_spi_dma_finish();
             }
-            LL_GPIO_SetOutputPin(GPIOB, MCU_PIN_FPGA_READY);
+            LL_GPIO_SetOutputPin(GPIOA, MCU_PIN_FPGA_READY);
         }
     }
 }
@@ -200,40 +204,49 @@ void mcu_spi_init(mcu_spi_mode_t mode) {
 
     mcu_spi_disable();
 
+    LL_mDelay(1);
+
     // Initialize SPI
     LL_SPI_SetMode(MCU_PERIPH_SPI, LL_SPI_MODE_SLAVE);
+    LL_SPI_SetTransferBitOrder(MCU_PERIPH_SPI, LL_SPI_MSB_FIRST);
     LL_SPI_SetTransferDirection(MCU_PERIPH_SPI, LL_SPI_FULL_DUPLEX);
     LL_SPI_SetClockPolarity(MCU_PERIPH_SPI, LL_SPI_POLARITY_LOW);
     LL_SPI_SetClockPhase(MCU_PERIPH_SPI, LL_SPI_PHASE_1EDGE);
     LL_SPI_SetBaudRatePrescaler(MCU_PERIPH_SPI, LL_SPI_BAUDRATEPRESCALER_DIV2);
     LL_SPI_SetNSSMode(MCU_PERIPH_SPI, LL_SPI_NSS_HARD_INPUT);
 
-    // Initialize SPI DMA
-    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
+    bool dma_enabled = spi_mode != MCU_SPI_MODE_EEPROM;
+
+    if (dma_enabled) {
+        // Initialize SPI DMA
+        LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
 
 #ifdef TARGET_U0
-    LL_DMA_SetPeriphRequest(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMAMUX_REQ_SPI1_TX);
-    LL_DMA_SetPeriphRequest(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMAMUX_REQ_SPI1_RX);
+        LL_DMA_SetPeriphRequest(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMAMUX_REQ_SPI1_TX);
+        LL_DMA_SetPeriphRequest(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMAMUX_REQ_SPI1_RX);
 #else
-    LL_DMA_SetPeriphRequest(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_REQUEST_1);
-    LL_DMA_SetPeriphRequest(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_REQUEST_1);
+        LL_DMA_SetPeriphRequest(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_REQUEST_1);
+        LL_DMA_SetPeriphRequest(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_REQUEST_1);
 #endif
 
-    LL_DMA_SetDataTransferDirection(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
-    LL_DMA_SetChannelPriorityLevel(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_PRIORITY_LOW);
-    LL_DMA_SetMode(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_MODE_NORMAL);
-    LL_DMA_SetPeriphIncMode(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_PERIPH_NOINCREMENT);
-    LL_DMA_SetMemoryIncMode(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_MEMORY_INCREMENT);
-    LL_DMA_SetPeriphSize(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_PDATAALIGN_BYTE);
-    LL_DMA_SetMemorySize(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_MDATAALIGN_BYTE);
+        LL_DMA_SetDataTransferDirection(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+        LL_DMA_SetChannelPriorityLevel(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_PRIORITY_LOW);
+        LL_DMA_SetMode(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_MODE_NORMAL);
+        LL_DMA_SetPeriphIncMode(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_PERIPH_NOINCREMENT);
+        LL_DMA_SetMemoryIncMode(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_MEMORY_INCREMENT);
+        LL_DMA_SetPeriphSize(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_PDATAALIGN_BYTE);
+        LL_DMA_SetMemorySize(DMA1, MCU_DMA_CHANNEL_SPI_TX, LL_DMA_MDATAALIGN_BYTE);
 
-    LL_DMA_SetDataTransferDirection(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
-    LL_DMA_SetChannelPriorityLevel(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_PRIORITY_LOW);
-    LL_DMA_SetMode(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_MODE_NORMAL);
-    LL_DMA_SetPeriphIncMode(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_PERIPH_NOINCREMENT);
-    LL_DMA_SetMemoryIncMode(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_MEMORY_INCREMENT);
-    LL_DMA_SetPeriphSize(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_PDATAALIGN_BYTE);
-    LL_DMA_SetMemorySize(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_MDATAALIGN_BYTE);
+        LL_DMA_SetDataTransferDirection(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+        LL_DMA_SetChannelPriorityLevel(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_PRIORITY_LOW);
+        LL_DMA_SetMode(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_MODE_NORMAL);
+        LL_DMA_SetPeriphIncMode(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_PERIPH_NOINCREMENT);
+        LL_DMA_SetMemoryIncMode(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_MEMORY_INCREMENT);
+        LL_DMA_SetPeriphSize(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_PDATAALIGN_BYTE);
+        LL_DMA_SetMemorySize(DMA1, MCU_DMA_CHANNEL_SPI_RX, LL_DMA_MDATAALIGN_BYTE);
+    } else {
+        LL_AHB1_GRP1_DisableClock(LL_AHB1_GRP1_PERIPH_DMA1);
+    }
 
     spi_mode = mode;
     if (spi_mode == MCU_SPI_MODE_RTC) {
@@ -244,6 +257,8 @@ void mcu_spi_init(mcu_spi_mode_t mode) {
         LL_SPI_SetDataWidth(MCU_PERIPH_SPI, LL_SPI_DATAWIDTH_16BIT);
 #ifdef CONFIG_FULL_EEPROM_EMULATION
         LL_SPI_TransmitData16(MCU_PERIPH_SPI, 0xFFFF);
+#else
+        LL_SPI_SetTransferDirection(MCU_PERIPH_SPI, LL_SPI_SIMPLEX_RX);
 #endif
     } else {
         LL_SPI_SetRxFIFOThreshold(MCU_PERIPH_SPI, LL_SPI_RX_FIFO_TH_HALF);
@@ -252,8 +267,10 @@ void mcu_spi_init(mcu_spi_mode_t mode) {
     LL_SPI_EnableIT_RXNE(MCU_PERIPH_SPI);
     LL_DMA_ClearFlag_TC2(DMA1);
     LL_DMA_ClearFlag_TC3(DMA1);
-    LL_DMA_EnableIT_TC(DMA1, MCU_DMA_CHANNEL_SPI_RX);
-    LL_DMA_EnableIT_TC(DMA1, MCU_DMA_CHANNEL_SPI_TX);
+    if (dma_enabled) {
+        LL_DMA_EnableIT_TC(DMA1, MCU_DMA_CHANNEL_SPI_RX);
+        LL_DMA_EnableIT_TC(DMA1, MCU_DMA_CHANNEL_SPI_TX);
+    }
 
     NVIC_SetPriority(SPI1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 10, 0));
     NVIC_EnableIRQ(SPI1_IRQn);

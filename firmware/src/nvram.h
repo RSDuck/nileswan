@@ -24,6 +24,7 @@
 
 typedef struct {
     uint32_t magic;
+    uint32_t save_id;
     uint16_t eeprom_data[1024];
     uint8_t eeprom_type;
 } nvram_t;

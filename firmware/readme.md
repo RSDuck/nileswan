@@ -26,16 +26,17 @@ Test command. The parameter is the number of bytes to echo, followed by the byte
 
 The parameter is the ID of the mode of communication to use going forward:
 
-- 0 - command mode
-- 1 - EEPROM emulation mode
-- 2 - RTC S-3511A emulation mode
+- `00` - command mode
+- `01` - EEPROM emulation mode
+- `02` - RTC S-3511A emulation mode
+- `FF` - standby mode (requires reset to respond to SPI again)
 
 #### 0x02 - SPI: Set maximum frequency
 
 The parameter is the maximum frequency to set:
 
-- 0 - 384 KHz
-- 1 - 6 MHz
+- `00` - 384 KHz
+- `01` - 6 MHz
 
 The response is 1 on success, 0 on failure.
 
@@ -47,13 +48,13 @@ The response is the unique ID of the chip.
 
 Set the size of the emulated EEPROM:
 
-- 0 - no EEPROM
-- 1 - M93LC06
-- 2 - M93LC46 compatible
-- 3 - M93LC56 compatible
-- 4 - M93LC66 compatible
-- 5 - M93LC76 compatible
-- 6 - M93LC86 compatible
+- `00` - no EEPROM
+- `01` - M93LC06
+- `02` - M93LC46 compatible
+- `03` - M93LC56 compatible
+- `04` - M93LC66 compatible
+- `05` - M93LC76 compatible
+- `06` - M93LC86 compatible
 
 The response is 1 on success, 0 on failure.
 
@@ -82,6 +83,18 @@ The response is the data returned by the emulated S-3511A.
 #### 0x15 - EEPROM: Get emulation mode
 
 The response is 1 byte - the EEPROM emulation mode.
+
+#### 0x16 - MCU: Set save ID
+
+The parameter is ignored; followed by four bytes of the save ID.
+
+The response is empty.
+
+#### 0x17 - MCU: Get save ID
+
+The parameter is ignored.
+
+The response is four bytes of the save ID.
 
 #### 0x40 - USB: CDC: Read
 

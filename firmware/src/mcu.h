@@ -60,6 +60,7 @@
 
 void mcu_init(void);
 void mcu_update_clock_speed(void);
+void mcu_shutdown(void);
 
 /**
  * @brief Returns true if the USB port is powered on.
