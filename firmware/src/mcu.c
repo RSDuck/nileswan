@@ -19,6 +19,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stm32u0xx_ll_crs.h>
+#include <stm32u0xx_ll_gpio.h>
 
 #include "mcu.h"
 #include "config.h"
@@ -173,9 +174,10 @@ void mcu_init(void) {
     __mcu_usb_on_power_change();
 
     // Initialize battery sensing
+    // TODO: Set up a comparator for MCU_PIN_BAT
     LL_GPIO_SetPinPull(GPIOB, MCU_PIN_BAT, LL_GPIO_PULL_NO);
     LL_GPIO_SetPinSpeed(GPIOB, MCU_PIN_BAT, LL_GPIO_SPEED_FREQ_LOW);
-    LL_GPIO_SetPinMode(GPIOB, MCU_PIN_BAT, LL_GPIO_MODE_ANALOG);
+    LL_GPIO_SetPinMode(GPIOB, MCU_PIN_BAT, LL_GPIO_MODE_INPUT);
     LL_GPIO_SetPinPull(GPIOB, MCU_PIN_RUNS_ON_BAT, LL_GPIO_PULL_UP);
     LL_GPIO_SetPinSpeed(GPIOB, MCU_PIN_RUNS_ON_BAT, LL_GPIO_SPEED_FREQ_LOW);
     LL_GPIO_SetPinMode(GPIOB, MCU_PIN_RUNS_ON_BAT, LL_GPIO_MODE_INPUT);
