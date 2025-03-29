@@ -88,7 +88,7 @@ The response is 1 byte - the EEPROM emulation mode.
 
 The parameter is ignored; followed by four bytes of the save ID.
 
-The response is empty.
+The response is 1 on success, 0 on failure.
 
 #### 0x17 - MCU: Get save ID
 

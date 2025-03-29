@@ -6,8 +6,6 @@ MEMORY {
     NVRAM (rwx) : ORIGIN = 0x20000000 + 32K, LENGTH = 8K
 }
 
-_siheap = 0;
-_sistack = 0x200;
 _estack = ORIGIN(RAM) + LENGTH(RAM);
 
 SECTIONS {
@@ -96,14 +94,9 @@ SECTIONS {
     __bss_end__ = _ebss;
   } >RAM
 
-  ._user_heap_stack : {
-    . = ALIGN(8);
-    PROVIDE ( end = . );
-    PROVIDE ( _end = . );
-    . = . + _siheap;
-    . = . + _sistack;
-    . = ALIGN(8);
-  } >RAM
+  . = ALIGN(8);
+  PROVIDE ( end = . );
+  PROVIDE ( _end = . );
 
   .ARM.attributes 0 : { *(.ARM.attributes) }
 

@@ -23,7 +23,8 @@ bool op_mcu_setup_boot_flags(void) {
             console_printf(0, s_format_4_bytes, flash_optr[3], flash_optr[2], flash_optr[1], flash_optr[0]);
             console_print_newline();
 
-            flash_optr[3] &= ~1; // Unset NBOOT_SEL
+            flash_optr[3] &= ~0x01; // Unset NBOOT_SEL
+            flash_optr[2] |=  0x80; // Set BKPSRAM_HW_ERASE_DISABLE
 
             console_print(0, s_new_flash_optr);
             console_printf(0, s_format_4_bytes, flash_optr[3], flash_optr[2], flash_optr[1], flash_optr[0]);

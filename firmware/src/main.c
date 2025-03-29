@@ -30,7 +30,7 @@ int main(void) {
     mcu_init();
     nvram_init();
 
-    // mcu_rtc_init();
+    mcu_rtc_init();
 
     mcu_spi_set_freq(MCU_SPI_FREQ_384KHZ);
     mcu_spi_init(MCU_SPI_MODE_NATIVE);

@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stm32u0xx_ll_pwr.h>
 
 #include "mcu.h"
 #include "config.h"
@@ -153,6 +154,8 @@ void mcu_init(void) {
     LL_SYSTICK_SetClkSource(LL_SYSTICK_CLKSOURCE_HCLK);
     LL_SYSTICK_EnableIT();
 
+    LL_PWR_EnableBkUpAccess();
+
     LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOA | LL_IOP_GRP1_PERIPH_GPIOB);
 
     // Initialize SPI
@@ -217,6 +220,8 @@ void mcu_init(void) {
     mcu_usb_set_enabled(true);
 
     LL_GPIO_ResetOutputPin(GPIOA, MCU_PIN_FPGA_BUSY);
+
+    while (!LL_PWR_IsEnabledBkUpAccess());
 }
 
 void mcu_usb_set_enabled(bool enabled) {
@@ -303,11 +308,17 @@ void mcu_shutdown(void) {
     // We're actually going into Standby, as we want to preserve SRAM2 contents.
     LL_LPM_EnableDeepSleep();
 
-    LL_PWR_SetSRAMContentRetention(LL_PWR_FULL_SRAM_RETENTION);
+    LL_PWR_EnableSRAMRetention();
+    LL_PWR_DisableBkUpAccess();
     LL_PWR_SetPowerMode(LL_PWR_MODE_STANDBY);
-    __mcu_usb_power_off();
+    while (LL_PWR_IsEnabledBkUpAccess() || !LL_PWR_IsEnabledSRAMRetention());
+   
+    if (usb_init_status != USB_INIT_STATUS_OFF) {
+        usb_init_status = USB_INIT_STATUS_REQUEST_OFF;
+        mcu_usb_power_task();
+    }
 
     __disable_irq();
 
-    __WFI();
+    while(1) __WFI();
 }

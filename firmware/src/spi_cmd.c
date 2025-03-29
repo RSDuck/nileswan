@@ -100,7 +100,8 @@ int spi_native_finish_command_rx(uint8_t *rx, uint8_t *tx) {
         return 1;
     case MCU_SPI_CMD_SET_SAVE_ID:
         memcpy(&nvram.save_id, rx, 4);
-        return 0;
+        tx[0] = 1;
+        return 1;
     case MCU_SPI_CMD_GET_SAVE_ID:
         memcpy(tx, &nvram.save_id, 4);
         return 4;

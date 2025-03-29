@@ -16,6 +16,7 @@
  */
 
 #include "mcu.h"
+#include <stm32u0xx_ll_rcc.h>
 #include "rtc.h"
 
 static uint8_t rtc_curr_cmd;
@@ -70,11 +71,15 @@ void mcu_rtc_init(void) {
 }
 
 void rtc_reset(void) {
-    // TODO: LSI is probably not accurate enough
     LL_RCC_ForceBackupDomainReset();
     LL_RCC_ReleaseBackupDomainReset();
+
+    LL_RCC_LSE_Enable();
+    while (!LL_RCC_LSE_IsReady());
+
+    LL_RCC_SetRTCClockSource(LL_RCC_RTC_CLKSOURCE_LSE);
     LL_RCC_EnableRTC();
-    LL_RCC_SetRTCClockSource(LL_RCC_RTC_CLKSOURCE_LSI);
+    while (!LL_RCC_IsEnabledRTC());
 
     rtc_write_start();
     rtc_init_start();
