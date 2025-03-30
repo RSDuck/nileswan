@@ -39,7 +39,7 @@
 // Debug configuration
 
 #define CONFIG_DEBUG_SPI_NATIVE_CMD
-#define CONFIG_DEBUG_SPI_EEPROM_CMD
+// #define CONFIG_DEBUG_SPI_EEPROM_CMD
 #define CONFIG_DEBUG_SPI_RTC_CMD
 
 // GPIO A

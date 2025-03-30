@@ -1,4 +1,5 @@
 #include "console.h"
+#include "ops/ieeprom.h"
 #include "ops/tf_card.h"
 #include <string.h>
 #include <wonderful.h>
@@ -42,10 +43,25 @@ void console_press_any_key(void) {
 	input_wait_any_key();
 }
 
+bool console_warranty_disclaimer(void) {
+	console_print(0, s_warranty_disclaimer);
+	input_wait_any_key();
+	console_print_newline();
+	console_print_newline();
+	return (input_pressed & KEY_A);
+}
+
 static const char __wf_rom* __wf_rom menu_main[] = {
+	s_internal_eeprom_recovery,
 	s_setup_mcu_boot_flags,
 	s_print_cartridge_ids,
 	s_tf_card_test,
+	NULL
+};
+
+static const char __wf_rom* __wf_rom menu_ieeprom[] = {
+	s_disable_custom_splash,
+	s_restore_tft_data,
 	NULL
 };
 
@@ -66,15 +82,31 @@ void main(void) {
 		switch (menu_run(menu_main)) {
 		case 0:
 			console_clear();
+			console_draw_header(s_internal_eeprom_recovery);
+			switch (menu_run(menu_ieeprom)) {
+			case 0:
+				console_clear();
+				op_ieeprom_disable_custom_splash();
+				console_press_any_key();
+				break;
+			case 1:
+				console_clear();
+				op_ieeprom_restore_tft_data();
+				console_press_any_key();
+				break;
+			}
+			break;
+		case 1:
+			console_clear();
 			op_mcu_setup_boot_flags();
 			console_press_any_key();
 			break;
-		case 1:
+		case 2:
 			console_clear();
 			op_id_print();
 			console_press_any_key();
 			break;
-		case 2:
+		case 3:
 			console_clear();
 			op_tf_card_test();
 			console_press_any_key();

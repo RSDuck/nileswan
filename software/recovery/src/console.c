@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <ws.h>
+#include <ws/display.h>
+#include <ws/system.h>
 #include "console.h"
 #include "iram.h"
 #include "strings.h"
@@ -31,6 +33,23 @@ static inline void console_ui_init(void) {
 	outportw(IO_SCR_PAL_1, MONO_PAL_COLORS(4, 0, 6, 2));
 	// Palette 2 - white text (1) on black background (0) with grey highlights (2)
 	outportw(IO_SCR_PAL_2, MONO_PAL_COLORS(7, 0, 2, 5));
+    
+    // Enable color mode.
+    if (ws_system_is_color()) {
+        ws_system_mode_set(WS_MODE_COLOR);
+        MEM_COLOR_PALETTE(0)[0] = 0xFFF;
+        MEM_COLOR_PALETTE(0)[1] = 0x000;
+        MEM_COLOR_PALETTE(0)[2] = 0x444;
+        MEM_COLOR_PALETTE(0)[3] = 0xBBB;
+        MEM_COLOR_PALETTE(1)[0] = 0x777;
+        MEM_COLOR_PALETTE(1)[1] = 0xFFF;
+        MEM_COLOR_PALETTE(1)[2] = 0x222;
+        MEM_COLOR_PALETTE(1)[3] = 0xBBB;
+        MEM_COLOR_PALETTE(2)[0] = 0x000;
+        MEM_COLOR_PALETTE(2)[1] = 0xFFF;
+        MEM_COLOR_PALETTE(2)[2] = 0xBBB;
+        MEM_COLOR_PALETTE(2)[3] = 0x444;
+    }
 
 	// Tile 511 - border tile
 	memcpy(MEM_TILE(511), tile_border, sizeof(tile_border));
@@ -207,6 +226,11 @@ new_line:
     if (!(flags & (CONSOLE_FLAG_CENTER | CONSOLE_FLAG_RIGHT))) {
 	    console_x = x;
     }
+}
+
+void console_putc(uint16_t flags, uint16_t ch) {
+    ch &= 0xFF;
+    console_print(flags, (const char __far*) &ch);
 }
 
 void console_vprintf(uint16_t flags, const char __far* format, va_list val) {

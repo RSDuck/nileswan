@@ -32,4 +32,13 @@ DEFINE_STRING(s_tf_card_test, "Mount external storage");
 DEFINE_STRING(s_tf_card_init, "Initializing storage...");
 DEFINE_STRING(s_error_code, "Error code %d");
 
+DEFINE_STRING(s_model_unsupported, "This action is not supported on this console.\n");
+DEFINE_STRING(s_warranty_disclaimer, "This action modifies sensitive data.\nYou do so at your own risk.\n\nBy choosing to continue, you agree that the developers of this software will not be held responsible for any damage or loss resulting from the use of this action.\n\nDo you want to continue? A - Yes, other - No");
+
+DEFINE_STRING(s_internal_eeprom_recovery, "Internal EEPROM recovery >");
+DEFINE_STRING(s_ieeprom_writing, "Writing to IEEPROM...");
+DEFINE_STRING(s_disable_custom_splash, "Disable custom splash");
+DEFINE_STRING(s_custom_splash_already_disabled, "Custom splash already disabled!");
+DEFINE_STRING(s_restore_tft_data, "Restore TFT panel data");
+
 #endif /* _STRINGS_H_ */

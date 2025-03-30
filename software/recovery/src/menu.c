@@ -45,6 +45,6 @@ int menu_run(const char __far* __far* options) {
         }
     }
 
-    ws_screen_modify_tiles(screen_1, ~SCR_ENTRY_PALETTE_MASK, SCR_ENTRY_PALETTE(0), 0, selected_option, 28, 1);
+    ws_screen_modify_tiles(screen_1, ~SCR_ENTRY_PALETTE_MASK, SCR_ENTRY_PALETTE(0), 0, prev_selected_option, 28, 1);
     return selected_option;
 }
