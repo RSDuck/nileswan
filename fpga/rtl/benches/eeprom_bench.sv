@@ -22,10 +22,14 @@ module eeprom_bench ();
 
     wire spi_sel, spi_next_do, spi_clk_running;
 
+    reg ready_falling_edge = 1'b0;
+
     EEPROM eeprom (
         .SClk(sclk),
         .nWE(nWE),
         .nOE(nOE),
+
+        .MCUReadyFallingEdge(ready_falling_edge),
 
         .WriteData(write_data),
 
@@ -97,6 +101,19 @@ module eeprom_bench ();
         writeReg(CTRL_ERASE);
         sel_serial_ctrl = 0;
 
+        if (check_spi) begin
+            while (testdev_rx_queue.size() < 16) begin
+                #(sclk_half_period);
+            end
+            #(sclk_half_period*10);
+
+            ready_falling_edge = 1;
+            #(sclk_half_period*3);
+            ready_falling_edge = 0;
+
+        end
+
+
         while (~serial_ctrl[1]) begin
             #(sclk_half_period);
         end
@@ -141,6 +158,18 @@ module eeprom_bench ();
 
         assert (~serial_ctrl[1])
         else   $error("Busy bit was not raised?");
+
+        if (check_spi) begin
+            while (testdev_rx_queue.size() < 32) begin
+                #(sclk_half_period);
+            end
+
+            #(sclk_half_period*10);
+
+            ready_falling_edge = 1;
+            #(sclk_half_period*3);
+            ready_falling_edge = 0;
+        end
 
         while (~serial_ctrl[1]) begin
             #(sclk_half_period);

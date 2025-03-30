@@ -63,6 +63,11 @@ module nileswan(
 
     reg pull_high_boot0 = 1'b0;
     assign MCUReady = pull_high_boot0 ? 1'b1 : 1'bZ;
+    reg[2:0] mcu_ready_edge = 2'h0;
+    always @(posedge SClk) begin
+        mcu_ready_edge <= {mcu_ready_edge[1:0], MCUReady};
+    end
+    wire MCUReadyFallingEdge = mcu_ready_edge[2] & ~mcu_ready_edge[1];
 
     assign nMem_OE = nOE;
     assign nMem_WE = nWE;
@@ -135,6 +140,8 @@ module nileswan(
         .SClk(SClk),
         .nWE(nWE),
         .nOE(nOE),
+
+        .MCUReadyFallingEdge(MCUReadyFallingEdge),
 
         .EEPROMSize(eeprom_size),
 

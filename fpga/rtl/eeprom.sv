@@ -10,6 +10,8 @@ module EEPROM (
     input nWE,
     input nOE,
 
+    input MCUReadyFallingEdge,
+
     input[7:0] WriteData,
 
     input[1:0] EEPROMSize,
@@ -198,9 +200,19 @@ module EEPROM (
     reg bugged_done_bit = 0;
     reg write_protect = 1;
 
+    reg external_busy = 1'b0;
+
+    always @(posedge SClk) begin
+        if (InternalWriteBusy && write_counter == 10'h0)
+            external_busy <= 1'b1;
+
+        if (MCUReadyFallingEdge)
+            external_busy <= 1'b0;
+    end
+
     assign SerialData = invalid_serial_read ? 16'hFFFF : serial_data_in;
     assign SerialCom = command;
-    assign SerialCtrl = {6'h0, ~InternalWriteBusy, bugged_done_bit};
+    assign SerialCtrl = {6'h0, ~(InternalWriteBusy | external_busy), bugged_done_bit};
 
     always @(posedge nWE) begin
         /*if (SelSerialCtrl && InternalWriteBusy) begin
@@ -211,7 +223,7 @@ module EEPROM (
                 internal_write_restart <= interal_write_restart_done ^ 1;
             end
             endcase
-        end else */if (SelSerialCtrl && ~InternalWriteBusy) begin
+        end else */if (SelSerialCtrl && SerialCtrl[1]) begin
             if (DoRead)
                 bugged_done_bit <= 1;
 
