@@ -93,10 +93,9 @@ void mcu_update_clock_speed(void) {
             msi_range = LL_RCC_MSIRANGE_4;
             freq = 1 * 1000 * 1000;
         } else if (mcu_spi_get_mode() == MCU_SPI_MODE_NATIVE) {
-            // 8 MHz for non-USB mode
-            // TODO: lower requirements for RTC mode
-            msi_range = LL_RCC_MSIRANGE_7;
-            freq = 8 * 1000 * 1000;
+            // 4 MHz for non-USB mode
+            msi_range = LL_RCC_MSIRANGE_6;
+            freq = 4 * 1000 * 1000;
         }
     }
 
@@ -199,11 +198,11 @@ void mcu_init(void) {
     LL_GPIO_SetPinMode(GPIOA, MCU_PIN_FPGA_IRQ, LL_GPIO_MODE_INPUT);
 
     // BUSY is only pulled high, never low
-    LL_GPIO_SetOutputPin(GPIOA, MCU_PIN_FPGA_BUSY);
+    LL_GPIO_SetPinMode(GPIOA, MCU_PIN_FPGA_BUSY, LL_GPIO_MODE_ANALOG);
     LL_GPIO_SetPinOutputType(GPIOA, MCU_PIN_FPGA_BUSY, LL_GPIO_OUTPUT_PUSHPULL);
     LL_GPIO_SetPinPull(GPIOA, MCU_PIN_FPGA_BUSY, LL_GPIO_PULL_NO);
     LL_GPIO_SetPinSpeed(GPIOA, MCU_PIN_FPGA_BUSY, LL_GPIO_SPEED_FREQ_LOW);
-    LL_GPIO_SetPinMode(GPIOA, MCU_PIN_FPGA_BUSY, LL_GPIO_MODE_ANALOG);
+    LL_GPIO_SetOutputPin(GPIOA, MCU_PIN_FPGA_BUSY);
 
     // Initialize VBUS sensing
     LL_GPIO_SetPinPull(GPIOB, MCU_PIN_USB_POWER, LL_GPIO_PULL_DOWN);

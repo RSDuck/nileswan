@@ -224,8 +224,8 @@ void mcu_spi_disable(void) {
 }
 
 void mcu_spi_init(mcu_spi_mode_t mode) {
-    LL_DMA_DisableChannel(DMA1, MCU_DMA_CHANNEL_SPI_TX);
-    LL_DMA_DisableChannel(DMA1, MCU_DMA_CHANNEL_SPI_RX);
+    mcu_spi_disable_dma_tx();
+    mcu_spi_disable_dma_rx();
 
     mcu_spi_disable();
 
@@ -299,8 +299,6 @@ void mcu_spi_init(mcu_spi_mode_t mode) {
     } else {
         NVIC_DisableIRQ(DMA1_Channel2_3_IRQn);
     }
-
-    mcu_spi_disable_dma_tx();
 
     mcu_update_clock_speed();
     
