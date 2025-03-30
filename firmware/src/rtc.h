@@ -31,6 +31,7 @@
 void mcu_rtc_init(void);
 
 void rtc_reset(void);
+bool rtc_is_configured(void);
 void rtc_write_status(uint8_t value);
 uint8_t rtc_read_status(void);
 void rtc_write_datetime(const uint8_t *buffer, bool date);

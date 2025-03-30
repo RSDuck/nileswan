@@ -36,6 +36,12 @@ __attribute__((section(".noinit")))
 uint8_t spi_tx_buffer[MCU_SPI_TX_BUFFER_SIZE];
 uint8_t spi_rx_buffer[MCU_SPI_RX_BUFFER_SIZE];
 
+static void mcu_spi_clear_rx_queue(void) {
+    while (LL_SPI_GetRxFIFOLevel(MCU_PERIPH_SPI)) {
+        LL_SPI_ReceiveData8(MCU_PERIPH_SPI);
+    }
+}
+
 void mcu_spi_disable_dma_tx(void) {
     LL_DMA_DisableChannel(DMA1, MCU_DMA_CHANNEL_SPI_TX);
     LL_SPI_DisableDMAReq_TX(MCU_PERIPH_SPI);
@@ -78,16 +84,12 @@ static void mcu_spi_dma_finish(void) {
 #ifdef CONFIG_DEBUG_SPI_NATIVE_CMD
         cdc_debug(", returning %d bytes\r\n", len);
 #endif
-        spi_tx_buffer[0] = (len << 1) & 0xFF;
-        spi_tx_buffer[1] = (len << 1) >> 8;
+        *((uint16_t*) spi_tx_buffer) = (len << 1);
 
         mcu_spi_enable_dma_tx(spi_tx_buffer, len + 2);
     } else if (spi_mode == MCU_SPI_MODE_RTC) {
         mcu_fpga_start_busy();
         int len = rtc_finish_command_rx(spi_rx_buffer, spi_tx_buffer);
-#ifdef CONFIG_DEBUG_SPI_NATIVE_CMD
-        cdc_debug(", returning %d bytes\r\n", len);
-#endif
         if (len) {
             mcu_spi_enable_dma_tx(spi_tx_buffer, len);
         } else {
@@ -115,6 +117,7 @@ void DMA1_Channel2_3_IRQHandler(void) {
         if (spi_mode == MCU_SPI_MODE_NATIVE) {
             LL_SPI_SetRxFIFOThreshold(MCU_PERIPH_SPI, LL_SPI_RX_FIFO_TH_HALF);
         }
+
         LL_SPI_EnableIT_RXNE(MCU_PERIPH_SPI);
     }
 
@@ -124,10 +127,13 @@ void DMA1_Channel2_3_IRQHandler(void) {
         mcu_spi_disable_dma_rx();
         
         LL_SPI_EnableIT_TXE(MCU_PERIPH_SPI);
-        spi_native_idx = 2;
+        if (spi_mode == MCU_SPI_MODE_NATIVE) {
+            spi_native_idx = 2;
+        } else {
+            mcu_spi_dma_finish();
+        }
     }
 }
-
 
 void SPI1_IRQHandler(void) {
     if (LL_SPI_IsActiveFlag_TXE(SPI1)) {
@@ -169,15 +175,18 @@ void SPI1_IRQHandler(void) {
             LL_SPI_DisableIT_RXNE(MCU_PERIPH_SPI);
             mcu_fpga_start_busy();
             uint8_t cmd = LL_SPI_ReceiveData8(MCU_PERIPH_SPI);
+#ifdef CONFIG_DEBUG_SPI_DISABLE_PROCESSING
 #ifdef CONFIG_DEBUG_SPI_RTC_CMD
             cdc_debug_write_hex16(cmd);
 #endif
+#else
             int rx_length = rtc_start_command_rx(cmd);
             if (rx_length) {
                 mcu_spi_enable_dma_rx(spi_rx_buffer, rx_length);
             } else {
                 mcu_spi_dma_finish();
             }
+#endif
             mcu_fpga_finish_busy();
         }
     }
@@ -207,9 +216,7 @@ void mcu_spi_enable(void) {
 void mcu_spi_disable(void) {
     LL_mDelay(1);
     LL_SPI_Disable(MCU_PERIPH_SPI);
-    while (LL_SPI_GetRxFIFOLevel(MCU_PERIPH_SPI)) {
-        LL_SPI_ReceiveData8(MCU_PERIPH_SPI);
-    }
+    mcu_spi_clear_rx_queue();
 }
 
 void mcu_spi_init(mcu_spi_mode_t mode) {

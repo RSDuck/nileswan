@@ -24,11 +24,7 @@ static uint8_t rtc_curr_cmd;
 int rtc_start_command_rx(uint8_t cmd) {
     rtc_curr_cmd = cmd;
 
-    // Is this a write command?
-    if ((cmd & 0xF1) != 0x60)
-        return 0;
-
-    switch (cmd & 0xE) {
+    switch (cmd & 0xF) {
     case 2: /* Status */
         return 1;
     case 4: /* Date/Time */
@@ -62,6 +58,15 @@ static void rtc_init_end(void) {
 }
 
 void mcu_rtc_init(void) {
+    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_RTCAPB);
+
+    LL_RCC_LSI_Enable();
+    while (!LL_RCC_LSI_IsReady());
+
+    if (LL_RCC_GetRTCClockSource() == LL_RCC_RTC_CLKSOURCE_NONE) {
+        rtc_reset();
+    }
+
     // Enable RTC alarm interrupt
     LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_17);
     LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_17);
@@ -70,16 +75,16 @@ void mcu_rtc_init(void) {
     NVIC_EnableIRQ(RTC_IRQn);
 }
 
+bool rtc_is_configured(void) {
+    return LL_RCC_GetRTCClockSource() != LL_RCC_RTC_CLKSOURCE_NONE;
+}
+
 void rtc_reset(void) {
     LL_RCC_ForceBackupDomainReset();
     LL_RCC_ReleaseBackupDomainReset();
 
-    LL_RCC_LSE_Enable();
-    while (!LL_RCC_LSE_IsReady());
-
-    LL_RCC_SetRTCClockSource(LL_RCC_RTC_CLKSOURCE_LSE);
+    LL_RCC_SetRTCClockSource(LL_RCC_RTC_CLKSOURCE_LSI);
     LL_RCC_EnableRTC();
-    while (!LL_RCC_IsEnabledRTC());
 
     rtc_write_start();
     rtc_init_start();
@@ -90,8 +95,6 @@ void rtc_reset(void) {
 }
 
 void rtc_write_status(uint8_t value) {
-    // TODO: POWER
-
     uint32_t cr = RTC->CR;
     uint32_t old_cr = cr;
     cr = (cr & ~(RTC_CR_FMT | RTC_CR_ALRAE | RTC_CR_ALRAIE)) | ((value & S3511A_1224) ? 0 : RTC_CR_FMT);
@@ -112,10 +115,17 @@ void rtc_write_status(uint8_t value) {
 }
 
 uint8_t rtc_read_status(void) {
-    // TODO: INTME, INTFE, POWER
+    uint8_t result = 0x00;
+    if (!rtc_is_configured()) {
+        rtc_reset();
+        result |= S3511A_POWER_LOST;
+    }
+
+    // TODO: INTME, INTFE
     
     uint32_t cr = RTC->CR;
-    return ((cr & RTC_CR_FMT) ? 0 : S3511A_1224)
+    return result
+        | ((cr & RTC_CR_FMT) ? 0 : S3511A_1224)
         | ((cr & RTC_CR_ALRAE) ? S3511A_INTAE : 0);
 }
 
