@@ -168,7 +168,7 @@ module RTC(
     end
 
     always @(posedge SClk) begin
-       if (is_eighth_bit && ~cmd[0]) begin
+       if (is_eighth_bit && cmd[0]) begin
             data_recv <= ShiftRegNext;
             if (UseWrittenData)
                 data_src_RX <= data_src_RX ^ 1;
