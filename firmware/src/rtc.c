@@ -144,10 +144,10 @@ void rtc_write_datetime(const uint8_t *buffer, bool date) {
         buffer += 4;
     }
     uint32_t tr = 0;
-    tr |= (buffer[4] & 0x1F) << 16;
-    tr |= (buffer[4] & 0x80) << 15;
-    tr |= (buffer[5] & 0x7F) << 8;
-    tr |= (buffer[6] & 0x7F);
+    tr |= (buffer[0] & 0x1F) << 16;
+    tr |= (buffer[0] & 0x80) << 15;
+    tr |= (buffer[1] & 0x7F) << 8;
+    tr |= (buffer[2] & 0x7F);
     RTC->TR = tr;
 
     rtc_init_end();
@@ -165,9 +165,9 @@ void rtc_read_datetime(uint8_t *buffer, bool date) {
         buffer[3] = (dow == 7 ? 0 : dow);
         buffer += 4;
     }
-    buffer[4] = ((tr >> 16) & 0x3F) | ((tr >> 15) & 0x80);
-    buffer[5] = tr >> 8;
-    buffer[6] = tr;
+    buffer[0] = ((tr >> 16) & 0x3F) | ((tr >> 15) & 0x80);
+    buffer[1] = tr >> 8;
+    buffer[2] = tr;
 }
 
 void rtc_write_alarm(uint8_t hour, uint8_t minute) {

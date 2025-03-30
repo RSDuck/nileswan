@@ -53,9 +53,6 @@ void mcu_spi_disable_dma_rx(void) {
 }
 
 void mcu_spi_enable_dma_tx(const void *address, uint32_t length) {
-    LL_SPI_DisableIT_TXE(MCU_PERIPH_SPI);
-    while (!LL_SPI_IsActiveFlag_TXE(MCU_PERIPH_SPI));
-
     LL_DMA_ConfigAddresses(DMA1, MCU_DMA_CHANNEL_SPI_TX,
         (uint32_t) address, LL_SPI_DMA_GetRegAddr(MCU_PERIPH_SPI),
         LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
@@ -116,6 +113,7 @@ void DMA1_Channel2_3_IRQHandler(void) {
 
         if (spi_mode == MCU_SPI_MODE_NATIVE) {
             LL_SPI_SetRxFIFOThreshold(MCU_PERIPH_SPI, LL_SPI_RX_FIFO_TH_HALF);
+            LL_SPI_TransmitData8(SPI1, 0xFF);
         }
 
         LL_SPI_EnableIT_RXNE(MCU_PERIPH_SPI);
@@ -126,7 +124,6 @@ void DMA1_Channel2_3_IRQHandler(void) {
 
         mcu_spi_disable_dma_rx();
         
-        LL_SPI_EnableIT_TXE(MCU_PERIPH_SPI);
         if (spi_mode == MCU_SPI_MODE_NATIVE) {
             spi_native_idx = 2;
         } else {
@@ -136,10 +133,6 @@ void DMA1_Channel2_3_IRQHandler(void) {
 }
 
 void SPI1_IRQHandler(void) {
-    if (LL_SPI_IsActiveFlag_TXE(SPI1)) {
-        LL_SPI_TransmitData8(SPI1, 0xFF);
-    }
-
     if (LL_SPI_IsActiveFlag_RXNE(SPI1)) {
         if (spi_mode == MCU_SPI_MODE_NATIVE) {
             uint8_t byte = LL_SPI_ReceiveData8(MCU_PERIPH_SPI);
@@ -149,6 +142,7 @@ void SPI1_IRQHandler(void) {
             uint16_t cmd = byte | (LL_SPI_ReceiveData8(MCU_PERIPH_SPI) << 8);
             LL_SPI_DisableIT_RXNE(MCU_PERIPH_SPI);
             LL_SPI_SetRxFIFOThreshold(MCU_PERIPH_SPI, LL_SPI_RX_FIFO_TH_QUARTER);
+            LL_SPI_TransmitData8(SPI1, 0xFF);
             int rx_length = spi_native_start_command_rx(cmd);
             if (rx_length) {
                 mcu_spi_enable_dma_rx(spi_rx_buffer, rx_length);
@@ -156,7 +150,6 @@ void SPI1_IRQHandler(void) {
                 cdc_debug("spi/native: starting command %04X (%d bytes)\r\n", cmd, rx_length);
 #endif
             } else {
-                LL_SPI_EnableIT_TXE(MCU_PERIPH_SPI);
                 spi_native_idx = 2;
             }
         } else if (spi_mode == MCU_SPI_MODE_EEPROM) {

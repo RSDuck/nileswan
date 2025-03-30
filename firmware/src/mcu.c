@@ -95,8 +95,9 @@ void mcu_update_clock_speed(void) {
             // 2 MHz for slow EEPROM emulation
             msi_range = LL_RCC_MSIRANGE_5;
             freq = 2 * 1000 * 1000;
-        } else {
+        } else if (mcu_spi_get_mode() == MCU_SPI_MODE_NATIVE) {
             // 8 MHz for non-USB mode
+            // TODO: lower requirements for RTC mode
             msi_range = LL_RCC_MSIRANGE_7;
             freq = 8 * 1000 * 1000;
         }
