@@ -107,8 +107,8 @@ module nileswan(
 
         .UseSlowClk(use_slow_clk),
 
-        .WriteSPICntLo(write_spi_cnt_lo & IOWrite),
-        .WriteSPICntHi(write_spi_cnt_hi & IOWrite),
+        .WriteSPICntLo(write_spi_cnt_lo),
+        .WriteSPICntHi(write_spi_cnt_hi),
         .WriteTXBuffer(write_txbuf),
 
         .SPIClkRunning(spi_clk_running[0]),
@@ -250,11 +250,11 @@ module nileswan(
             reg_out = ``value``; \
             reg_ack = 1; \
         end
-    
+
     `define readExternalReg(value, ext, enable) \
         begin \
             reg_out = ``value``; \
-            ``ext`` = 1; \
+            ``ext`` = IOWrite; \
             reg_ack = 1; \
         end
 
