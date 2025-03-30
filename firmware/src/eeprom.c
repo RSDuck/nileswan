@@ -83,6 +83,8 @@ void eeprom_write_data(const void *buffer, uint32_t address, uint32_t length) {
 }
 
 uint16_t eeprom_exch_word(uint16_t w) {
+    mcu_fpga_start_busy();
+
     if (write_command) {
         uint8_t cmd = (write_command >> command_bits) & 0x1F;
 #ifdef CONFIG_FULL_EEPROM_EMULATION
@@ -98,6 +100,7 @@ uint16_t eeprom_exch_word(uint16_t w) {
             }
         }
         write_command = 0;
+        mcu_fpga_finish_busy();
         return 0xFFFF;
     }
 
@@ -106,15 +109,18 @@ uint16_t eeprom_exch_word(uint16_t w) {
 #ifdef CONFIG_FULL_EEPROM_EMULATION
     case 0x10: // WDS
         write_enabled = false;
+        mcu_fpga_finish_busy();
         return 0xFFFF;
 #endif
     case 0x12: // ERAL
         for (int i = 0; i <= address_mask; i++)
             nvram.eeprom_data[i] = 0xFFFF;
+        mcu_fpga_finish_busy();
         return 0xFFFF;
 #ifdef CONFIG_FULL_EEPROM_EMULATION
     case 0x13: // WEN
         write_enabled = true;
+        mcu_fpga_finish_busy();
         return 0xFFFF;
 #endif
     case 0x11: // WRAL
@@ -129,6 +135,7 @@ uint16_t eeprom_exch_word(uint16_t w) {
     case 0x19:
     case 0x1A:
     case 0x1B: // READ
+        mcu_fpga_finish_busy();
         return nvram.eeprom_data[w & address_mask];
 #endif
     case 0x1C:
@@ -140,6 +147,7 @@ uint16_t eeprom_exch_word(uint16_t w) {
 #endif
             nvram.eeprom_data[w & address_mask] = 0xFFFF;
     default:
+        mcu_fpga_finish_busy();
         return 0xFFFF;
     }
 }

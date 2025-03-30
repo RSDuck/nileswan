@@ -83,18 +83,15 @@ void mcu_update_clock_speed(void) {
     uint32_t msi_range;
     uint32_t freq;
 
-    LL_PWR_SetRegulVoltageScaling(LL_PWR_REGU_VOLTAGE_SCALE1);
-    while (LL_PWR_IsActiveFlag_VOS());
-
     msi_range = LL_RCC_MSIRANGE_8;
     freq = 16 * 1000 * 1000;
 
     // If SPI and USB don't require a 16MHz clock...
     if (usb_init_status == USB_INIT_STATUS_OFF && mcu_spi_get_freq() == MCU_SPI_FREQ_384KHZ) {
         if (mcu_spi_get_mode() == MCU_SPI_MODE_EEPROM) {
-            // 2 MHz for slow EEPROM emulation
-            msi_range = LL_RCC_MSIRANGE_5;
-            freq = 2 * 1000 * 1000;
+            // 1 MHz for slow EEPROM emulation
+            msi_range = LL_RCC_MSIRANGE_4;
+            freq = 1 * 1000 * 1000;
         } else if (mcu_spi_get_mode() == MCU_SPI_MODE_NATIVE) {
             // 8 MHz for non-USB mode
             // TODO: lower requirements for RTC mode
@@ -120,13 +117,29 @@ void mcu_update_clock_speed(void) {
     }
 #endif
 
+    if (msi_range >= LL_RCC_MSIRANGE_5) {
+        LL_PWR_DisableLowPowerRunMode();
+        while (LL_PWR_IsEnabledLowPowerRunMode());
+
+        if (msi_range >= LL_RCC_MSIRANGE_8) {
+            LL_PWR_SetRegulVoltageScaling(LL_PWR_REGU_VOLTAGE_SCALE1);
+            while (LL_PWR_IsActiveFlag_VOS());
+        }
+    }
+
     while (!LL_RCC_MSI_IsReady());
     LL_RCC_MSI_SetRange(msi_range);
 
+    if (msi_range < LL_RCC_MSIRANGE_8) {
+        LL_PWR_SetRegulVoltageScaling(LL_PWR_REGU_VOLTAGE_SCALE2);
+
+        if (msi_range < LL_RCC_MSIRANGE_5) {
+            LL_PWR_EnableLowPowerRunMode();
+        }
+    }
+
     LL_SetSystemCoreClock(freq);
     LL_Init1msTick(freq);
-
-    LL_FLASH_SetLatency(LL_FLASH_LATENCY_0);
 }
 
 void mcu_init(void) {
@@ -139,6 +152,7 @@ void mcu_init(void) {
     LL_RCC_MSI_EnableRangeSelection();
 
     mcu_update_clock_speed();
+    LL_FLASH_SetLatency(LL_FLASH_LATENCY_0);
 
     LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_MSI);
     while(LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_MSI);

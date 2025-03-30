@@ -166,7 +166,6 @@ void SPI1_IRQHandler(void) {
                 spi_native_idx = 2;
             }
         } else if (spi_mode == MCU_SPI_MODE_EEPROM) {
-            mcu_fpga_start_busy();
             uint16_t data = LL_SPI_ReceiveData16(MCU_PERIPH_SPI);
 #ifdef CONFIG_DEBUG_SPI_EEPROM_CMD
             cdc_debug_write_hex16(data);
@@ -176,7 +175,6 @@ void SPI1_IRQHandler(void) {
 #else
             eeprom_exch_word(data);
 #endif
-            mcu_fpga_finish_busy();
         } else if (spi_mode == MCU_SPI_MODE_RTC) {
             LL_SPI_DisableIT_RXNE(MCU_PERIPH_SPI);
             mcu_fpga_start_busy();
