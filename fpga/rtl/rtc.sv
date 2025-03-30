@@ -168,7 +168,7 @@ module RTC(
     end
 
     always @(posedge SClk) begin
-       if (is_eighth_bit && cmd[0]) begin
+       if (is_eighth_bit && ~cmd[0]) begin
             data_recv <= ShiftRegNext;
             if (UseWrittenData)
                 data_src_RX <= data_src_RX ^ 1;
@@ -204,11 +204,12 @@ module RTC(
                 // only start upon a valid command
                 && WriteData[4]
                 && WriteData[3:1] != 6
-                && WriteData[3:1] != 7) begin
+                && WriteData[3:1] != 7
+                && ~StartRTCCmd) begin
             start_cmd[0] <= start_cmd[0] ^ 1;
-
-            cmd <= WriteData[3:0];
         end
+        if (SelRTCCtrl)
+            cmd <= WriteData[3:0];
     end
 
     always @(posedge nWE) begin
