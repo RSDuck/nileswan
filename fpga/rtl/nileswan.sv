@@ -171,6 +171,8 @@ module nileswan(
         .nOE(nOE),
         .WriteData(Data[7:0]),
 
+        .MCUReadyFallingEdge(MCUReadyFallingEdge),
+
         .SelRTCData(sel_rtc_data),
         .SelRTCCtrl(sel_rtc_ctrl),
 
