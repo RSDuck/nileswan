@@ -30,12 +30,16 @@ module cartserial_bench ();
     wire[7:0] rtc_data;
     wire[7:0] rtc_ctrl;
 
+    reg ready_falling_edge = 0;
+
     wire spi_reg_cs, spi_clk_running, spi_clk_stretch;
     RTC spi (
         .SClk(sclk),
         .nWE(nWE),
         .nOE(nOE),
         .WriteData(write_data),
+
+        .MCUReadyFallingEdge(ready_falling_edge),
 
         .SelRTCData(sel_rtc_data),
         .SelRTCCtrl(sel_rtc_ctrl),
@@ -60,7 +64,17 @@ module cartserial_bench ();
 
         .OutSPIDo(spi_do),
         .OutSPIClk(spi_clk));
-    
+
+    task ack_rtc_cmd();
+        while (testdev_rx_queue.size() < 8) begin
+            #(sclk_half_period);
+        end
+        #(sclk_half_period*5);
+        ready_falling_edge = 1;
+        #(sclk_half_period*3);
+        ready_falling_edge = 0;
+    endtask 
+
     integer i;
     `make_spi_dev(testdev, TestDev, spi_cs, spi_clk, spi_di, spi_do)
 
@@ -75,6 +89,8 @@ module cartserial_bench ();
         writeReg(8'h10);
         sel_rtc_ctrl = 0;
 
+        ack_rtc_cmd();
+
         while (rtc_ctrl[4]) begin
             #(sclk_half_period);
         end
@@ -88,6 +104,8 @@ module cartserial_bench ();
         sel_rtc_ctrl = 1;
         writeReg(8'h13);
         sel_rtc_ctrl = 0;
+
+        ack_rtc_cmd();
 
         while (rtc_ctrl[4]) begin
             #(sclk_half_period);
@@ -113,6 +131,8 @@ module cartserial_bench ();
         sel_rtc_ctrl = 1;
         writeReg(8'h18);
         sel_rtc_ctrl = 0;
+
+        ack_rtc_cmd();
 
         while (~rtc_ctrl[7]) begin
             #(sclk_half_period);
@@ -154,6 +174,8 @@ module cartserial_bench ();
         sel_rtc_ctrl = 1;
         writeReg(8'h15);
         sel_rtc_ctrl = 0;
+
+        ack_rtc_cmd();
 
         while (~rtc_ctrl[7]) begin
             #(sclk_half_period);

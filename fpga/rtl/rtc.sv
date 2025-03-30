@@ -16,6 +16,8 @@ module RTC(
     output SPIDo,
     output nMCUSel,
 
+    input MCUReadyFallingEdge,
+
     output SPIClkRunning,
     output SPIClkStretch
 );
@@ -58,7 +60,8 @@ module RTC(
         state_LowerCS,
         state_RaiseCS,
         state_Byte0Bit0 = 8,
-        state_Byte1Bit0 = state_Byte0Bit0+8,
+        state_MCUWait = state_Byte0Bit0+8,
+        state_Byte1Bit0 = state_MCUWait+1,
         state_WaitData1 = state_Byte1Bit0+8,
         state_Byte2Bit0 = state_WaitData1+1,
         state_WaitData2 = state_Byte2Bit0+8,
@@ -83,7 +86,7 @@ module RTC(
     always_comb begin
         case (cmd)
         cmd_RTCResetW,
-        cmd_RTCResetR: cmd_final_state = state_Byte0Bit0+7;
+        cmd_RTCResetR: cmd_final_state = state_MCUWait;
         cmd_RTCStatusW,
         cmd_RTCStatusR: cmd_final_state = state_Byte1Bit0+7;
         cmd_RTCData0W,
@@ -112,11 +115,19 @@ module RTC(
         state_RaiseCS: begin
             spi_state <= state_Idle;
         end
-        state_Byte0Bit0+7, state_Byte1Bit0+7, state_Byte2Bit0+7,
+        state_MCUWait: begin
+            if (MCUReadyFallingEdge) begin
+                if (cmd_final_state == state_MCUWait)
+                    spi_state <= state_RaiseCS;
+                else
+                    spi_state <= state_Byte1Bit0;
+            end
+        end
+        state_Byte1Bit0+7, state_Byte2Bit0+7,
                 state_Byte3Bit0+7, state_Byte4Bit0+7, state_Byte5Bit0+7,
                 state_Byte6Bit0+7, state_Byte7Bit0+7: begin
 
-            if (spi_state != state_Byte0Bit0+7 && ~Ready)
+            if (~Ready)
                 ready_bit_sclk <= ready_bit_sclk ^ 1;
 
             if (spi_state == cmd_final_state)
@@ -148,9 +159,9 @@ module RTC(
         default: is_eighth_bit = 0;
         endcase
         case (spi_state)
-        state_WaitData1, state_WaitData2, state_WaitData3,
-                state_WaitData4, state_WaitData5,
-                state_WaitData6:
+        state_MCUWait, state_WaitData1, state_WaitData2,
+                state_WaitData3, state_WaitData4,
+                state_WaitData5, state_WaitData6:
             wait_for_next_byte = 1;
         default: wait_for_next_byte = 0;
         endcase
