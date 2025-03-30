@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stm32u0xx_ll_gpio.h>
 #include <stm32u0xx_ll_pwr.h>
 
 #include "mcu.h"
@@ -182,10 +183,12 @@ void mcu_init(void) {
     LL_GPIO_SetPinSpeed(GPIOA, MCU_PIN_FPGA_IRQ, LL_GPIO_SPEED_FREQ_LOW);
     LL_GPIO_SetPinMode(GPIOA, MCU_PIN_FPGA_IRQ, LL_GPIO_MODE_INPUT);
 
+    // BUSY is only pulled high, never low
+    LL_GPIO_SetOutputPin(GPIOA, MCU_PIN_FPGA_BUSY);
     LL_GPIO_SetPinOutputType(GPIOA, MCU_PIN_FPGA_BUSY, LL_GPIO_OUTPUT_PUSHPULL);
     LL_GPIO_SetPinPull(GPIOA, MCU_PIN_FPGA_BUSY, LL_GPIO_PULL_NO);
     LL_GPIO_SetPinSpeed(GPIOA, MCU_PIN_FPGA_BUSY, LL_GPIO_SPEED_FREQ_LOW);
-    LL_GPIO_SetPinMode(GPIOA, MCU_PIN_FPGA_BUSY, LL_GPIO_MODE_INPUT);
+    LL_GPIO_SetPinMode(GPIOA, MCU_PIN_FPGA_BUSY, LL_GPIO_MODE_ANALOG);
 
     // Initialize VBUS sensing
     LL_GPIO_SetPinPull(GPIOB, MCU_PIN_USB_POWER, LL_GPIO_PULL_DOWN);
@@ -218,8 +221,6 @@ void mcu_init(void) {
     LL_mDelay(1);
     __mcu_bat_on_power_change();
     mcu_usb_set_enabled(true);
-
-    LL_GPIO_ResetOutputPin(GPIOA, MCU_PIN_FPGA_BUSY);
 
     while (!LL_PWR_IsEnabledBkUpAccess());
 }

@@ -64,6 +64,19 @@ void mcu_shutdown(void);
 void mcu_usb_power_task(void);
 
 /**
+ * @brief Signal to the FPGA that the MCU is currently busy. 
+ */
+static inline void mcu_fpga_start_busy(void) {
+    LL_GPIO_SetPinMode(GPIOA, MCU_PIN_FPGA_BUSY, LL_GPIO_MODE_OUTPUT);
+}
+/**
+ * @brief Signal to the FPGA that the MCU is no longer busy. 
+ */
+static inline void mcu_fpga_finish_busy(void) {
+    LL_GPIO_SetPinMode(GPIOA, MCU_PIN_FPGA_BUSY, LL_GPIO_MODE_ANALOG);
+}
+
+/**
  * @brief Set whether or not the USB port should be enabled (on the MCU side).
  * The USB hardware will only be activated if the USB port is enabled and an USB
  * cable is physically connected to a host.

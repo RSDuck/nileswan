@@ -83,7 +83,7 @@ static void mcu_spi_dma_finish(void) {
 
         mcu_spi_enable_dma_tx(spi_tx_buffer, len + 2);
     } else if (spi_mode == MCU_SPI_MODE_RTC) {
-        LL_GPIO_SetOutputPin(GPIOA, MCU_PIN_FPGA_BUSY);
+        mcu_fpga_start_busy();
         int len = rtc_finish_command_rx(spi_rx_buffer, spi_tx_buffer);
 #ifdef CONFIG_DEBUG_SPI_NATIVE_CMD
         cdc_debug(", returning %d bytes\r\n", len);
@@ -93,7 +93,7 @@ static void mcu_spi_dma_finish(void) {
         } else {
             LL_SPI_EnableIT_RXNE(MCU_PERIPH_SPI);
         }
-        LL_GPIO_ResetOutputPin(GPIOA, MCU_PIN_FPGA_BUSY);
+        mcu_fpga_finish_busy();
     }
 }
 
@@ -154,7 +154,7 @@ void SPI1_IRQHandler(void) {
                 spi_native_idx = 2;
             }
         } else if (spi_mode == MCU_SPI_MODE_EEPROM) {
-            LL_GPIO_SetOutputPin(GPIOA, MCU_PIN_FPGA_BUSY);
+            mcu_fpga_start_busy();
             uint16_t data = LL_SPI_ReceiveData16(MCU_PERIPH_SPI);
 #ifdef CONFIG_DEBUG_SPI_EEPROM_CMD
             cdc_debug_write_hex16(data);
@@ -164,10 +164,10 @@ void SPI1_IRQHandler(void) {
 #else
             eeprom_exch_word(data);
 #endif
-            LL_GPIO_ResetOutputPin(GPIOA, MCU_PIN_FPGA_BUSY);
+            mcu_fpga_finish_busy();
         } else if (spi_mode == MCU_SPI_MODE_RTC) {
             LL_SPI_DisableIT_RXNE(MCU_PERIPH_SPI);
-            LL_GPIO_SetOutputPin(GPIOA, MCU_PIN_FPGA_BUSY);
+            mcu_fpga_start_busy();
             uint8_t cmd = LL_SPI_ReceiveData8(MCU_PERIPH_SPI);
 #ifdef CONFIG_DEBUG_SPI_RTC_CMD
             cdc_debug_write_hex16(cmd);
@@ -178,7 +178,7 @@ void SPI1_IRQHandler(void) {
             } else {
                 mcu_spi_dma_finish();
             }
-            LL_GPIO_ResetOutputPin(GPIOA, MCU_PIN_FPGA_BUSY);
+            mcu_fpga_finish_busy();
         }
     }
 }
