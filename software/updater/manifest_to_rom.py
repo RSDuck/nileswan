@@ -28,7 +28,7 @@ with open(args.input_rom, 'rb') as file:
     updater_base_data = file.read()
 
 rule_data = bytearray()
-file_position = 0x10000 - ((len(updater_base_data) + 15) >> 4)
+start_segment = 0x10000 - ((len(updater_base_data) + 15) >> 4)
 data_at_position = {}
 
 crc16 = crc.Calculator(crc.Configuration(
@@ -69,15 +69,15 @@ with open(args.manifest, 'r') as rules:
                 data = file.read()
 
             flash_position = int(rule_map['AT'])
-            data = pad(data, flash_position > 0)
+            data = pad(data, flash_position >= 0)
             if flash_position < 0:
                 flash_position = (-flash_position) - len(data)
 
-            file_position = file_position - ((len(data) + 15) >> 4)
-            data_at_position[file_position] = data
+            start_segment = start_segment - ((len(data) + 15) >> 4)
+            data_at_position[start_segment] = data
 
             rule_data += bytearray(struct.pack("<BHHIH",
-                0x01, file_position, len(data), flash_position, crc16.checksum(data)))
+                0x01, start_segment, len(data), flash_position, crc16.checksum(data)))
         elif rule_name == 'PACKED_FLASH':
             # TODO: Pad to flash sector size (or detect issue)
             subprocess.run(["rm", "temp.bin"])
@@ -94,11 +94,11 @@ with open(args.manifest, 'r') as rules:
             if flash_position < 0:
                 flash_position = (-flash_position) - len(data)
 
-            file_position = file_position - ((len(data) + 15) >> 4)
-            data_at_position[file_position] = data
+            start_segment = start_segment - ((len(data) + 15) >> 4)
+            data_at_position[start_segment] = data
 
             rule_data += bytearray(struct.pack("<BHHIH",
-                0x02, file_position, len(unpacked_data), flash_position, crc16.checksum(unpacked_data)))
+                0x02, start_segment, len(unpacked_data), flash_position, crc16.checksum(unpacked_data)))
         elif rule_name == 'VERSION':
             version[0] = int(rule_map['VERSION'])
             version[1] = int(rule_map['MINOR'])
@@ -110,27 +110,30 @@ with open(args.manifest, 'r') as rules:
 rule_header = bytearray(struct.pack("<HHH", version[0], version[1], version[2]))
 rule_data = rule_header + rule_data
 
-file_position = (file_position - ((len(rule_data) + 4 + 15) >> 4)) & 0xFF00
-rule_position = file_position
-if file_position > 0xE000:
-    file_position = 0xE000
+start_segment = (start_segment - ((len(rule_data) + 4 + 15) >> 4)) & 0xFF00
+start_segment_rounded = start_segment
+if start_segment_rounded >= 0xE000:
+    start_segment_rounded = 0xE000
+elif start_segment_rounded >= 0xC000:
+    start_segment_rounded = 0xC000
+elif start_segment_rounded >= 0x8000:
+    start_segment_rounded = 0x8000
+else:
+    start_segment_rounded = 0x0000
 
-# FIXME!!
-file_position = 0x0000
-
-file_length = (0x10000 - file_position) * 16
+file_length = (0x10000 - start_segment_rounded) * 16
 
 with open(args.output_rom, 'wb') as file:
     file.write(b'\xFF' * (file_length - len(updater_base_data)))
     file.write(updater_base_data)
 
     file.seek(file_length - 16 + 6)
-    file.write(struct.pack("<B", rule_position >> 8))
+    file.write(struct.pack("<B", start_segment >> 8))
 
-    file.seek((rule_position - file_position) * 16)
+    file.seek((start_segment - start_segment_rounded) * 16)
     file.write(struct.pack("<HH", len(rule_data), crc16.checksum(rule_data)))
     file.write(rule_data)
 
     for k, v in data_at_position.items():
-        file.seek((k - file_position) * 16)
+        file.seek((k - start_segment_rounded) * 16)
         file.write(v)

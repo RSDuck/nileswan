@@ -15,16 +15,11 @@
  * with Nileswan Updater. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <nile/flash.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <wonderful.h>
 #include <ws.h>
-#include <ws/display.h>
-#include <ws/hardware.h>
-#include <ws/keypad.h>
-#include <ws/system.h>
 #include <wsx/zx0.h>
 #include "crc16.h"
 #include "manifest.h"
@@ -59,7 +54,7 @@ void run_update_manifest(bool verify) {
 
 	int part = 0;
 	while (*cmd_ptr) {
-		text_scroll_up_middle(true);	
+		text_scroll_up_middle(true);
 		++part;
 
 		switch (*cmd_ptr) {
@@ -73,6 +68,7 @@ void run_update_manifest(bool verify) {
 
 				text_printf(screen_1, 0, TEXT_CENTERED, 9, verify ? verifying_part : unpacking_part, part);
 				// Extract data to SRAM
+				outportw(IO_BANK_2003_RAM, 0);
 				if (cmd->cmd == UM_CMD_PACKED_FLASH) {
 					wsx_zx0_decompress(UNPACK_BUFFER, MK_FP(cmd->load_segment, 0));
 				} else {
@@ -113,6 +109,7 @@ void run_update_manifest(bool verify) {
 					while (start_address < end_address) {
 						uint32_t len = end_address - start_address;
 						if (len > 256) len = 256;
+						outportw(IO_BANK_2003_RAM, 0);
 						memcpy(flash_buffer, UNPACK_BUFFER + i, len);
 						if (!nile_flash_write_page(flash_buffer, start_address, len)) {
 							updater_flash_error();
@@ -120,6 +117,7 @@ void run_update_manifest(bool verify) {
 						if (!nile_flash_read(verify_buffer, start_address, len)) {
 							updater_flash_error();
 						}
+						outportw(IO_BANK_2003_RAM, 0);
 						if (memcmp(verify_buffer, UNPACK_BUFFER + i, len)) {
 							updater_flash_error();
 						}
@@ -178,8 +176,7 @@ void main(void) {
 	ws_system_model_t model = ws_system_get_model();
 
 	nile_io_unlock();
-	nile_clear_seg_mask();
-	outportw(IO_BANK_2003_RAM, 0);
+	nile_bank_unlock();
 
 	nile_flash_wake();
 
