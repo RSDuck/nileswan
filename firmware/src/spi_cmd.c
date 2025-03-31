@@ -112,24 +112,18 @@ int spi_native_finish_command_rx(uint8_t *rx, uint8_t *tx) {
         return tud_cdc_read(tx, arg_to_len(arg));
     case MCU_SPI_CMD_USB_CDC_WRITE: {
         if (!mcu_usb_is_powered()) {
-            tx[0] = 0;
-            tx[1] = 0;
+            *((uint16_t*) tx) = 0;
         } else {
-            uint16_t v16 = tud_cdc_write(rx, arg_to_len(arg));
-            tx[0] = v16;
-            tx[1] = v16 >> 8;
+            *((uint16_t*) tx) = tud_cdc_write(rx, arg_to_len(arg));
             tud_cdc_write_flush();
         }
         return 2;
     }
     case MCU_SPI_CMD_USB_CDC_AVAILABLE: {
         if (!mcu_usb_is_powered()) {
-            tx[0] = 0;
-            tx[1] = 0;
+            *((uint16_t*) tx) = 0;
         } else {
-            uint16_t v16 = tud_cdc_available();
-            tx[0] = v16;
-            tx[1] = v16 >> 8;
+            *((uint16_t*) tx) = tud_cdc_available();
         }
         return 2;
     }

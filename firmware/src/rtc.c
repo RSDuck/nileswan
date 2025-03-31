@@ -21,6 +21,10 @@
 
 static uint8_t rtc_curr_cmd;
 
+bool rtc_is_processing_command(void) {
+    return rtc_curr_cmd != 0;
+}
+
 int rtc_start_command_rx(uint8_t cmd) {
     rtc_curr_cmd = cmd;
 
@@ -184,7 +188,9 @@ void rtc_write_alarm(uint8_t hour, uint8_t minute) {
 }
 
 int rtc_finish_command_rx(uint8_t *rx, uint8_t *tx) {
-    switch (rtc_curr_cmd & 0xF) {
+    uint8_t cmd = rtc_curr_cmd;
+    rtc_curr_cmd = 0;
+    switch (cmd & 0xF) {
     case 0:
     case 1: /* Reset */
         rtc_reset();
@@ -211,15 +217,13 @@ int rtc_finish_command_rx(uint8_t *rx, uint8_t *tx) {
         rtc_write_alarm(rx[0], rx[1]);
         return 0;
     case 9:
-        tx[0] = 0xFF;
-        tx[1] = 0xFF;
+        *((uint16_t*) tx) = 0xFFFF;
         rtc_write_alarm(tx[0], tx[1]);
         return 2;
     case 10: /* ?? */
         return 0;
     case 11:
-        tx[0] = 0xFF;
-        tx[1] = 0xFF;
+        *((uint16_t*) tx) = 0xFFFF;
         return 2;
     default:
         return 0;
