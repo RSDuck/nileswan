@@ -65,8 +65,8 @@ module cartserial_bench ();
         .OutSPIDo(spi_do),
         .OutSPIClk(spi_clk));
 
-    task ack_rtc_cmd();
-        while (testdev_rx_queue.size() < 8) begin
+    task wait_spi_and_ack(input[7:0] recv_size);
+        while (testdev_rx_queue.size() < recv_size) begin
             #(sclk_half_period);
         end
         #(sclk_half_period*5);
@@ -89,7 +89,7 @@ module cartserial_bench ();
         writeReg(8'h10);
         sel_rtc_ctrl = 0;
 
-        ack_rtc_cmd();
+        wait_spi_and_ack(8);
 
         while (rtc_ctrl[4]) begin
             #(sclk_half_period);
@@ -105,7 +105,9 @@ module cartserial_bench ();
         writeReg(8'h13);
         sel_rtc_ctrl = 0;
 
-        ack_rtc_cmd();
+        wait_spi_and_ack(8);
+
+        wait_spi_and_ack(16);
 
         while (rtc_ctrl[4]) begin
             #(sclk_half_period);
@@ -132,7 +134,7 @@ module cartserial_bench ();
         writeReg(8'h18);
         sel_rtc_ctrl = 0;
 
-        ack_rtc_cmd();
+        wait_spi_and_ack(8);
 
         while (~rtc_ctrl[7]) begin
             #(sclk_half_period);
@@ -149,6 +151,8 @@ module cartserial_bench ();
         sel_rtc_data = 1;
         writeReg(8'h33);
         sel_rtc_data = 0;
+
+        wait_spi_and_ack(8);
 
         while (rtc_ctrl[4]) begin
             #(sclk_half_period);
@@ -175,7 +179,7 @@ module cartserial_bench ();
         writeReg(8'h15);
         sel_rtc_ctrl = 0;
 
-        ack_rtc_cmd();
+        wait_spi_and_ack(8);
 
         while (~rtc_ctrl[7]) begin
             #(sclk_half_period);
@@ -247,6 +251,8 @@ module cartserial_bench ();
         sel_rtc_data = 0;
         assert (rtc_data == 8'hFF)
         else   $error("Wrong data in RTC data register %x", rtc_data);
+
+        wait_spi_and_ack(8);
 
         while (~rtc_ctrl[7]) begin
             #(sclk_half_period);

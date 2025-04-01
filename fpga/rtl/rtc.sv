@@ -56,9 +56,10 @@ module RTC(
     wire Ready = ready_bit_sclk ^ ready_bit_nOE ^ ready_bit_nWE;
 
     typedef enum reg[6:0] {
-        state_Idle,
-        state_LowerCS,
-        state_RaiseCS,
+        state_Idle = 0,
+        state_LowerCS = 1,
+        state_RaiseCS = 2,
+        state_RaiseCSSetReady = 3,
         state_Byte0Bit0 = 8,
         state_MCUWait = state_Byte0Bit0+8,
         state_Byte1Bit0 = state_MCUWait+1,
@@ -115,6 +116,14 @@ module RTC(
         state_RaiseCS: begin
             spi_state <= state_Idle;
         end
+        state_RaiseCSSetReady: begin
+            if (MCUReadyFallingEdge) begin
+                spi_state <= state_Idle;
+
+                if (~Ready)
+                    ready_bit_sclk <= ready_bit_sclk ^ 1;
+            end
+        end
         state_MCUWait: begin
             if (MCUReadyFallingEdge) begin
                 if (cmd_final_state == state_MCUWait)
@@ -127,13 +136,14 @@ module RTC(
                 state_Byte3Bit0+7, state_Byte4Bit0+7, state_Byte5Bit0+7,
                 state_Byte6Bit0+7, state_Byte7Bit0+7: begin
 
-            if (~Ready)
-                ready_bit_sclk <= ready_bit_sclk ^ 1;
-
-            if (spi_state == cmd_final_state)
-                spi_state <= state_RaiseCS;
-            else
+            if (spi_state == cmd_final_state) begin
+                spi_state <= state_RaiseCSSetReady;
+            end else begin
                 spi_state <= spi_state + 1;
+
+                if (~Ready)
+                    ready_bit_sclk <= ready_bit_sclk ^ 1;
+            end
         end
         state_WaitData1, state_WaitData2, state_WaitData3,
                 state_WaitData4, state_WaitData5,
@@ -186,12 +196,7 @@ module RTC(
         end
     end
 
-    /*
-        Already let Busy bit go down while the state machine
-        isn't in idle state yet so that happens simultaneously
-        with the Ready bit to go high for the last byte.
-    */
-    wire Busy = StartRTCCmd|(spi_state != state_Idle && spi_state != state_RaiseCS);
+    wire Busy = StartRTCCmd|(spi_state != state_Idle);
 
     assign RTCData = UseWrittenData ? data_written : data_recv;
     assign RTCCtrl = {Ready, 2'b00, Busy, cmd[3:0]};
@@ -200,7 +205,7 @@ module RTC(
     always @(posedge SClk) begin
         if (spi_state == state_LowerCS)
             cs = 0;
-        else if (spi_state == state_RaiseCS)
+        else if (spi_state == state_RaiseCS || spi_state == state_RaiseCSSetReady)
             cs = 1;
     end
     assign nMCUSel = cs;

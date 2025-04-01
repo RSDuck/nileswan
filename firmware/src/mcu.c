@@ -92,7 +92,7 @@ void mcu_update_clock_speed(void) {
             // 1 MHz for slow EEPROM emulation
             msi_range = LL_RCC_MSIRANGE_4;
             freq = 1 * 1000 * 1000;
-        } else if (mcu_spi_get_mode() == MCU_SPI_MODE_NATIVE) {
+        } else {
             // 4 MHz for non-USB mode
             msi_range = LL_RCC_MSIRANGE_6;
             freq = 4 * 1000 * 1000;
