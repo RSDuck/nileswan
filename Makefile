@@ -74,18 +74,18 @@ ipl1: libnile-ipl1
 	cd software/ipl1 && make
 
 recovery: libnile
-	cd software/recovery && make
+	cd software/userland && make PROGRAM=recovery
 
 updater: libnile
-	cd software/updater && make
+	cd software/userland && make PROGRAM=updater
 
-$(FLASHBIN): fpga ipl1 recovery $(MANIFEST) software/updater/manifest_to_bin.py
+$(FLASHBIN): fpga ipl1 recovery $(MANIFEST) software/userland/manifest_to_bin.py
 	@mkdir -p $(@D)
-	python3 software/updater/manifest_to_bin.py $(MANIFEST) $@
+	python3 software/userland/manifest_to_bin.py $(MANIFEST) $@
 
-$(UPDATEWS): fpga ipl1 recovery updater $(MANIFEST) software/updater/manifest_to_rom.py
+$(UPDATEWS): fpga ipl1 recovery updater $(MANIFEST) software/userland/manifest_to_rom.py
 	@mkdir -p $(@D)
-	python3 software/updater/manifest_to_rom.py software/updater/updater_base.ws $(MANIFEST) $@
+	python3 software/userland/manifest_to_rom.py software/userland/updater.wsc $(MANIFEST) $@
 
 fpga: ipl0
 	cd fpga && make
@@ -103,6 +103,6 @@ clean:
 	cd software/libnile && rm -rf build
 	cd software/ipl0 && make clean
 	cd software/ipl1 && make clean
-	cd software/recovery && make clean
-	cd software/updater && make clean
+	cd software/userland && make PROGRAM=recovery clean
+	cd software/userland && make PROGRAM=updater clean
 	cd fpga && make clean

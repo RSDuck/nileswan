@@ -3,21 +3,17 @@
 # SPDX-FileContributor: Adrian "asie" Siekierka, 2023
 
 WONDERFUL_TOOLCHAIN ?= /opt/wonderful
+PROGRAM ?= recovery
 TARGET = wswan/medium
 include $(WONDERFUL_TOOLCHAIN)/target/$(TARGET)/makedefs.mk
-
-# Metadata
-# --------
-
-NAME		:= recovery
 
 # Source code paths
 # -----------------
 
-INCLUDEDIRS	:= include
-SOURCEDIRS	:= src
-ASSETDIRS	:= assets
-CBINDIRS	:= cbin
+INCLUDEDIRS	:= include/shared include/$(PROGRAM) build/$(PROGRAM)
+SOURCEDIRS	:= src/shared src/$(PROGRAM)
+ASSETDIRS	:= assets/shared assets/$(PROGRAM)
+CBINDIRS	:= cbin/shared cbin/$(PROGRAM)
 
 # Defines passed to all files
 # ---------------------------
@@ -34,10 +30,10 @@ LIBDIRS		:= $(WF_TARGET_DIR) \
 # Build artifacts
 # ---------------
 
-BUILDDIR	:= build
-ELF		:= build/$(NAME).elf
-ELF_STAGE1	:= build/$(NAME)_stage1.elf
-ROM		:= $(NAME).wsc
+BUILDDIR	:= build/$(PROGRAM)
+ELF		:= build/$(PROGRAM).elf
+ELF_STAGE1	:= build/$(PROGRAM)_stage1.elf
+ROM		:= $(PROGRAM).wsc
 
 # Verbose flag
 # ------------
@@ -81,7 +77,7 @@ CFLAGS		+= -std=gnu11 $(WARNFLAGS) $(DEFINES) $(WF_ARCH_CFLAGS) \
 LDFLAGS		:= -T$(WF_LDSCRIPT) $(LIBDIRSFLAGS) \
 		   $(WF_ARCH_LDFLAGS) $(LIBS)
 
-BUILDROMFLAGS	:= --trim
+BUILDROMFLAGS	:= -c wfconfig.$(PROGRAM).toml --trim
 
 # Intermediate build files
 # ------------------------

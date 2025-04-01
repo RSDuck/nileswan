@@ -22,7 +22,7 @@
 #include <ws.h>
 #include <wsx/zx0.h>
 #include "text.h"
-#include "../build/assets/tiles.h"
+#include "assets/updater/tiles.h"
 
 __attribute__((section(".iramx_screen.1")))
 ws_screen_cell_t screen_1[32 * 18];

@@ -1,7 +1,7 @@
 #include <string.h>
 #include <wonderful.h>
 #include <ws.h>
-#include "../build/assets/fonts.h"
+#include "assets/shared/fonts.h"
 
 #include "iram.h"
 

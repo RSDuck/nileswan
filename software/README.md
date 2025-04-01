@@ -34,11 +34,15 @@ the on-cartridge button at boot. This is still being worked on.
 
 Common library for nileswan functionality, developed in a separate repository.
 
-## recovery
+## userland
 
-Larger recovery program which can optionally be launched from `ipl1/safe`.
+Cartridge-layout programs using shared minimal user interface code.
 
-## updater
+### recovery
+
+Larger recovery program which can optionally be launched through `ipl1/safe`.
+
+### updater
 
 This is the firmware updater program source code. It can be combined with a
 manifest file to create an on-console flashable firmware upgrade.
