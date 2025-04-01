@@ -2,8 +2,8 @@
 #include <ws.h>
 #include <nile.h>
 #include <nilefs.h>
-#include "../console.h"
-#include "../strings.h"
+#include "console.h"
+#include "strings.h"
 
 FATFS fs;
 

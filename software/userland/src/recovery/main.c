@@ -17,23 +17,6 @@
 #include "ops/id_print.h"
 #include "ops/mcu_setup.h"
 
-volatile uint16_t vbl_ticks;
-
-__attribute__((assume_ss_data, interrupt))
-void __far vblank_int_handler(void) {
-        ws_hwint_ack(HWINT_VBLANK);
-        vbl_ticks++;
-        vblank_input_update();
-}
-
-void wait_for_vblank(void) {
-        uint16_t vbl_ticks_last = vbl_ticks;
-
-        while (vbl_ticks == vbl_ticks_last) {
-                cpu_halt();
-        }
-}
-
 // Reserve 0x2000 bytes of space for BIOS window
 __attribute__((section(".rom0_ffff_e000.bios_pad")))
 volatile uint8_t bios_pad[0x1FF0] = {0x00};

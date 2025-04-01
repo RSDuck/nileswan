@@ -1,9 +1,9 @@
 #include "ieeprom.h"
 #include <nile.h>
 #include <ws/system.h>
-#include "../console.h"
-#include "../main.h"
-#include "../strings.h"
+#include "console.h"
+#include "main.h"
+#include "strings.h"
 
 #define WORD_0X82_CUSTOM_SPLASH (IEEP_C_OPTIONS1_CUSTOM_SPLASH << 8)
 static const uint8_t __far swancrystal_factory_tft_data[] = {

@@ -4,8 +4,8 @@
 #include <ws/display.h>
 #include <ws/system.h>
 #include "console.h"
+#include "config.h"
 #include "iram.h"
-#include "strings.h"
 #include "vwf8.h"
 
 static uint8_t __wf_rom tile_border[16] = {
@@ -18,6 +18,8 @@ static uint8_t __wf_rom tile_border[16] = {
 	0xFF, 0xFF,
 	0xFF, 0x00
 };
+static const char __wf_rom s_ok[] = "[OK]";
+static const char __wf_rom s_fail[] = "[FAIL]";
 
 #define TILE_LINE(y) MEM_TILE((y)*28)
 #define HEADER_TILE_LINE TILE_LINE(16)
@@ -79,16 +81,22 @@ static inline void console_ui_init(void) {
 
 void console_init(void) {
     console_ui_init();
+#ifdef CONFIG_CONSOLE_SERIAL
     ws_serial_open(SERIAL_BAUD_38400);
+#endif
     console_clear();
 }
 
+#ifdef CONFIG_CONSOLE_SERIAL
 static void serial_puts(const char __far* str) {
     while (*str) {
         ws_serial_putc(*str);
         str++;
     }
 }
+#else
+#define serial_puts(...) {}
+#endif
 
 void console_draw_header(const char __far* str) {
     int width = vwf8_get_string_width(str);
@@ -100,6 +108,7 @@ void console_draw_header(const char __far* str) {
 void console_print_header(const char __far* str) {
     console_draw_header(str);
 
+#ifdef CONFIG_CONSOLE_SERIAL
     // Print to serial
     ws_serial_putc('=');
     ws_serial_putc('=');
@@ -110,6 +119,7 @@ void console_print_header(const char __far* str) {
     ws_serial_putc('=');
     ws_serial_putc('\r');
     ws_serial_putc('\n');
+#endif
 }
 
 uint8_t console_x;
@@ -135,8 +145,10 @@ static void console_draw_newline(void) {
 void console_print_newline(void) { 
     console_draw_newline();
 
+#ifdef CONFIG_CONSOLE_SERIAL
     ws_serial_putc('\r');
     ws_serial_putc('\n');
+#endif
 }
 
 #define CONSOLE_STACK_BUFFER_LENGTH 81
@@ -185,20 +197,26 @@ new_line:
         if (flags & CONSOLE_FLAG_CENTER) {
             x = (DISPLAY_WIDTH_PX - width) >> 1;
         } else if (flags & CONSOLE_FLAG_RIGHT) {
+#ifdef CONFIG_CONSOLE_SERIAL
             if (!(flags & CONSOLE_FLAG_NO_SERIAL)) {
                 ws_serial_putc(' ');
             }
+#endif
             x = (DISPLAY_WIDTH_PX - width);
         }
     }
 
     while (*str) {
         if (*str == '\n') {
+#ifdef CONFIG_CONSOLE_SERIAL
             if (flags & CONSOLE_FLAG_NO_SERIAL) {
                 console_draw_newline();
             } else {
                 console_print_newline();
             }
+#else
+            console_draw_newline();
+#endif
             str++;
             flags &= ~(CONSOLE_FLAG_RIGHT);
             goto new_line;
@@ -218,9 +236,11 @@ new_line:
     		    x = vwf8_draw_char(tile, *str, x);
             }
         }
+#ifdef CONFIG_CONSOLE_SERIAL
         if (!(flags & CONSOLE_FLAG_NO_SERIAL)) {
             ws_serial_putc(*str);
         }
+#endif
         str++;
 	}
     if (!(flags & (CONSOLE_FLAG_CENTER | CONSOLE_FLAG_RIGHT))) {

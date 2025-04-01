@@ -10,7 +10,7 @@ include $(WONDERFUL_TOOLCHAIN)/target/$(TARGET)/makedefs.mk
 # Source code paths
 # -----------------
 
-INCLUDEDIRS	:= include/shared include/$(PROGRAM) build/$(PROGRAM)
+INCLUDEDIRS	:= src/shared src/$(PROGRAM) build/$(PROGRAM)
 SOURCEDIRS	:= src/shared src/$(PROGRAM)
 ASSETDIRS	:= assets/shared assets/$(PROGRAM)
 CBINDIRS	:= cbin/shared cbin/$(PROGRAM)

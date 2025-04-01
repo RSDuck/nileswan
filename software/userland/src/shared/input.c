@@ -1,10 +1,24 @@
 #include <ws.h>
 #include "input.h"
-#include "main.h"
 
-extern volatile uint16_t vbl_ticks;
+volatile uint16_t vbl_ticks;
 
-uint16_t input_keys = 0;
+__attribute__((assume_ss_data, interrupt))
+void __far vblank_int_handler(void) {
+	ws_hwint_ack(HWINT_VBLANK);
+	vbl_ticks++;
+	vblank_input_update();
+}
+
+void wait_for_vblank(void) {
+	uint16_t vbl_ticks_last = vbl_ticks;
+
+	while (vbl_ticks == vbl_ticks_last) {
+			cpu_halt();
+	}
+}
+
+volatile uint16_t input_keys = 0;
 uint16_t input_keys_repressed = 0;
 uint16_t input_keys_released = 0;
 uint16_t input_pressed, input_held;

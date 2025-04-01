@@ -25,25 +25,35 @@
 #include "manifest.h"
 #include "nile.h"
 #include "nilefs.h"
-#include "text.h"
+#include "console.h"
+#include "input.h"
+#include "strings.h"
+
+#define IRAM_IMPLEMENTATION
+#include "iram.h"
 
 #define UNPACK_BUFFER ((uint8_t __far*) MK_FP(0x1000, 0x0000))
 
 uint8_t update_manifest_data[512];
 uint32_t flash_id;
 
-#include "strings.inc"
+static void update_halt(void) {
+	cpu_irq_disable();
+	while(1) cpu_halt();
+}
 
 static void updater_early_error(const char __far *text, uint16_t code) {
-	text_scroll_up_middle(true);
-	text_printf(screen_1, 0, TEXT_CENTERED, DISPLAY_HEIGHT >> 1, text, code);
-	while(1);
+	console_print_status(false);
+	console_print_newline();
+	console_printf(0, text, code);
+	update_halt();
 }
 
 static void updater_flash_error(void) {
-	text_scroll_up_middle(true);
-	text_puts(screen_1, 0, TEXT_CENTERED, 9, fatal_error);
-	while(1);
+	console_print_status(false);
+	console_print_newline();
+	console_print(0, s_fatal_error);
+	update_halt();
 }
 
 void run_update_manifest(bool verify) {
@@ -54,7 +64,6 @@ void run_update_manifest(bool verify) {
 
 	int part = 0;
 	while (*cmd_ptr) {
-		text_scroll_up_middle(true);
 		++part;
 
 		switch (*cmd_ptr) {
@@ -66,7 +75,7 @@ void run_update_manifest(bool verify) {
 				um_flash_cmd_t *cmd = (um_flash_cmd_t*) cmd_ptr;
 				cmd_ptr += sizeof(um_flash_cmd_t);
 
-				text_printf(screen_1, 0, TEXT_CENTERED, 9, verify ? verifying_part : unpacking_part, part);
+				console_printf(0, verify ? s_verifying_part : s_unpacking_part, part);
 				// Extract data to SRAM
 				outportw(IO_BANK_2003_RAM, 0);
 				if (cmd->cmd == UM_CMD_PACKED_FLASH) {
@@ -77,21 +86,22 @@ void run_update_manifest(bool verify) {
 				// Calculate CRC16 sum
 				uint16_t actual_crc = crc16(UNPACK_BUFFER, cmd->unpacked_length, 0);
 				if (actual_crc != cmd->expected_crc) {
-					text_scroll_up_middle(true);
-					text_printf(screen_1, 0, TEXT_CENTERED, DISPLAY_HEIGHT >> 1, crc_error_part, part);
-					text_scroll_up_middle(false);
-					text_printf(screen_1, 0, TEXT_CENTERED, DISPLAY_HEIGHT >> 1, crc_error_a_e, actual_crc, cmd->expected_crc);
-					while(1);
+					console_print_status(false);
+					console_print_newline();
+					console_printf(0, s_crc_error_part, part);
+					console_printf(0, s_crc_error_a_e, actual_crc, cmd->expected_crc);
+					update_halt();
 				}
 
 				uint32_t start_address = cmd->flash_address;
 				if (start_address & 0xFF) {
-					updater_early_error(corrupt_data, start_address & 0xFF);
+					updater_early_error(s_corrupt_data, start_address & 0xFF);
 				}
 
 				if (!verify) {
-					text_scroll_up_middle(true);
-					text_printf(screen_1, 0, TEXT_CENTERED, 9, erasing_part, part);
+					console_print_status(true);
+					console_print_newline();
+					console_printf(0, s_erasing_part, part);
 
 					uint32_t end_address = start_address + cmd->unpacked_length;
 					uint32_t erase_address = (start_address & ~0xFFF);
@@ -102,8 +112,9 @@ void run_update_manifest(bool verify) {
 						erase_address += 4096;
 					}
 
-					text_scroll_up_middle(true);
-					text_printf(screen_1, 0, TEXT_CENTERED, 9, flashing_part, part);
+					console_print_status(true);
+					console_print_newline();
+					console_printf(0, s_flashing_part, part);
 
 					uint32_t i = 0;
 					while (start_address < end_address) {
@@ -125,9 +136,12 @@ void run_update_manifest(bool verify) {
 						i += len;
 					}
 				}
+
+				console_print_status(true);
+				console_print_newline();
 			} break;
 			default:
-				updater_early_error(corrupt_data, *cmd_ptr);
+				updater_early_error(s_corrupt_data, *cmd_ptr);
 				break;
 		}
 	}
@@ -146,32 +160,33 @@ static bool flash_chip_supported(void) {
 }
 
 static const char __far version_template[] = "%d.%d.%d";
-static void print_version(um_version_t __far* version, int x, int y) {
-	text_printf(screen_1, 0, x, y, version_template, version->major, version->minor, version->patch);
+static void print_version(um_version_t __far* version) {
+	console_printf(0, version_template, version->major, version->minor, version->patch);
 }
 
 __attribute__((interrupt, assume_ss_data))
 void __far low_battery_nmi_handler(void) {
-	text_clear();
+	console_clear();
 	if (ws_system_color_active()) {
 		MEM_COLOR_PALETTE(0)[0] = 0x0F00;
 		MEM_COLOR_PALETTE(0)[1] = 0x0FFF;
 	} else {
 		outportw(IO_SCR_PAL(0), MONO_PAL_COLORS(7, 0, 2, 5));
 	}
-	text_put_screen(screen_1, 0, TEXT_CENTERED, (DISPLAY_HEIGHT - 2) >> 1,
-		2, low_battery_screen);
+	console_draw(0, 7, CONSOLE_FLAG_CENTER, s_low_battery);
 	while(1);
 }
 
-static void wait_for_key(uint16_t key) {
-	while (ws_keypad_scan());
-	while ((ws_keypad_scan() & key) != key);
-}
-
 void main(void) {
-	text_init();
-	text_puts(screen_1, 0, TEXT_CENTERED, DISPLAY_HEIGHT >> 1, initializing_updater);
+	cpu_irq_disable();
+	ws_hwint_set_handler(HWINT_IDX_VBLANK, vblank_int_handler);
+	ws_hwint_enable(HWINT_VBLANK);
+	cpu_irq_enable();
+
+	console_init();
+
+	console_draw_header(s_update_title);
+	console_print(0, s_initializing_updater);
 
 	ws_system_model_t model = ws_system_get_model();
 
@@ -182,8 +197,9 @@ void main(void) {
 
 	flash_id = nile_flash_read_id();
 	if (!flash_chip_supported()) {
-		text_scroll_up_middle(true);
-		text_printf(screen_1, 0, TEXT_CENTERED, DISPLAY_HEIGHT >> 1, unknown_flash_error, flash_id);
+		console_print_status(false);
+		console_print_newline();
+		console_printf(0, s_unknown_flash_error, flash_id);
 		while(1);
 	}
 
@@ -197,48 +213,51 @@ void main(void) {
 	uint16_t update_manifest_seg = (*((uint8_t __far*) MK_FP(0xF000, 0xFFF6))) << 8;
 	uint16_t __far* update_manifest_start = MK_FP(update_manifest_seg, 0);
 	if (update_manifest_start[0] > sizeof(update_manifest_data))
-		updater_early_error(corrupt_data, update_manifest_seg);
+		updater_early_error(s_corrupt_data, update_manifest_seg);
 	memset(update_manifest_data, 0, sizeof(update_manifest_data));
 	memcpy(update_manifest_data, update_manifest_start + 2, update_manifest_start[0]);
 	uint16_t actual_crc16 = crc16((const char*) update_manifest_data, update_manifest_start[0], 0);
 	if (actual_crc16 != update_manifest_start[1])
-		updater_early_error(corrupt_data, actual_crc16);
+		updater_early_error(s_corrupt_data, actual_crc16);
 
+	console_print_status(true);
+	console_print_newline();
 	run_update_manifest(true);
 
 	// Display update screen
-	text_clear();
-	text_put_screen(screen_1, 0,
-		1, (DISPLAY_HEIGHT - UPDATE_START_SCREEN_LINES) >> 1,
-		UPDATE_START_SCREEN_LINES,
-		update_start_screen);
-	print_version(&((um_header_t*) update_manifest_data)->version,
-		UPDATE_START_SCREEN_VER_X_OFFSET,
-		UPDATE_START_SCREEN_VER_Y_OFFSET + 1);
+	console_print_newline();
+	console_print(CONSOLE_FLAG_MONOSPACE, s_nileswan_header);
+	console_print(0, s_update_title);
+	console_print_newline();
+	console_print(0, s_update_version);
+	print_version(&((um_header_t*) update_manifest_data)->version);
+	console_print_newline();
+	console_print_newline();
+	console_print(0, s_update_disclaimer);
+	console_print_newline();
 	
-	// Wait for [A] key
-	wait_for_key(model == WS_MODEL_PCV2 ? KEY_PCV2_CIRCLE : KEY_A);
-
+	input_wait_key(KEY_A);
+	
 	outportb(IO_INT_NMI_CTRL, 0);
 	// == LOW BATTERY NMI DISABLED ==
 
-	text_clear();
+	console_print_newline();
 	run_update_manifest(false);
 	
-	text_clear();
-	text_put_screen(screen_1, 0,
-		1, (DISPLAY_HEIGHT - UPDATE_SUCCESS_SCREEN_LINES) >> 1,
-		UPDATE_SUCCESS_SCREEN_LINES,
-		ws_system_is_color() ? update_success_screen : update_successM_screen);
-
 	nile_flash_sleep();
 	outportb(IO_NILE_POW_CNT, 0);
 
+	console_print_newline();
+	console_print(0, s_update_success);
 	if (ws_system_is_color()) {
-		wait_for_key(model == WS_MODEL_PCV2 ? KEY_PCV2_CIRCLE : KEY_A);
+		console_print(0, s_press_a_shutdown);
+		console_print_newline();
+		input_wait_key(KEY_A);
 		outportb(IO_SYSTEM_CTRL3, SYSTEM_CTRL3_POWEROFF);
+	} else {
+		console_print(0, s_manual_shutdown);
+		console_print_newline();
 	}
 
-	cpu_irq_disable();
-	while(1) cpu_halt();
+	update_halt();
 }

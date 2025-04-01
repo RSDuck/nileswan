@@ -17,6 +17,10 @@ extern uint16_t input_pressed, input_held;
 #define KEY_ALEFT KEY_Y4
 #define KEY_ARIGHT KEY_Y2
 
+__attribute__((assume_ss_data, interrupt))
+void __far vblank_int_handler(void);
+void wait_for_vblank(void);
+
 void vblank_input_update(void);
 void input_reset(void);
 void input_update(void);

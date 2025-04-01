@@ -1,7 +1,7 @@
 #include "id_print.h"
 #include <nile.h>
-#include "../console.h"
-#include "../strings.h"
+#include "console.h"
+#include "strings.h"
 
 #define MCU_UID_BASE 0x1FFF6E50
 #define MCU_UID_SIZE 12

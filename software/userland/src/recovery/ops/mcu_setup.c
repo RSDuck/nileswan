@@ -1,8 +1,8 @@
 #include "mcu_setup.h"
 #include <ws.h>
 #include <nile.h>
-#include "../console.h"
-#include "../strings.h"
+#include "console.h"
+#include "strings.h"
 
 #define MCU_FLASH_OPTR_ADDR 0x40022020U
 
