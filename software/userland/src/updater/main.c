@@ -188,8 +188,6 @@ void main(void) {
 	console_draw_header(s_update_title);
 	console_print(0, s_initializing_updater);
 
-	ws_system_model_t model = ws_system_get_model();
-
 	nile_io_unlock();
 	nile_bank_unlock();
 

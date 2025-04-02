@@ -12,6 +12,7 @@ generated.*.ld
 *.ram
 *.ws
 *.wsc
+*.bfb
 
 compile_commands.json
 

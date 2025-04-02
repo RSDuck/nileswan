@@ -28,6 +28,24 @@ void console_press_any_key(void) {
 	input_wait_any_key();
 }
 
+void main_mfg(void) {
+	console_print_header(s_caps_initialization);
+	if (!op_mcu_setup_boot_flags()) return;
+
+	console_print_header(s_caps_test_suite);
+	if (!test_flash_fsm()) return;
+	if (!op_tf_card_test()) return;
+
+	console_print_header(s_caps_information);
+	console_print(CONSOLE_FLAG_MONOSPACE, s_mfg_test_success0);
+	console_print(CONSOLE_FLAG_MONOSPACE, s_mfg_test_success1);
+	console_print(CONSOLE_FLAG_MONOSPACE, s_mfg_test_success2);
+	console_print(CONSOLE_FLAG_MONOSPACE, s_mfg_test_success1);
+	console_print(CONSOLE_FLAG_MONOSPACE, s_mfg_test_success0);
+	console_print_newline();
+	if (!op_id_print()) return;
+}
+
 bool console_warranty_disclaimer(void) {
 	console_print(0, s_warranty_disclaimer);
 	input_wait_any_key();
@@ -41,7 +59,7 @@ static const char __wf_rom* __wf_rom menu_main[] = {
 	s_cartridge_tests,
 	s_setup_mcu_boot_flags,
 	s_print_cartridge_ids,
-	s_tf_card_test,
+	s_run_manufacturing_test,
 	NULL
 };
 
@@ -53,6 +71,7 @@ static const char __wf_rom* __wf_rom menu_ieeprom[] = {
 
 static const char __wf_rom* __wf_rom menu_cartridge_tests[] = {
 	s_flash_fsm_test,
+	s_tf_card_test,
 	NULL
 };
 
@@ -70,6 +89,16 @@ void main(void) {
 	nile_bank_unlock();
 
 	console_init();
+
+	outportw(IO_BANK_2003_RAM, NILE_SEG_RAM_IPC);
+	if (*((volatile uint16_t __far*) MK_FP(0x1000, 0x01FE)) == 0x3FA7) {
+		main_mfg();
+
+		console_print_newline();
+		console_print(CONSOLE_FLAG_NO_SERIAL, s_manual_shutdown);
+		cpu_irq_disable();
+		while(1) cpu_halt();
+	}
 
 	while (true) {
 		console_draw_header(s_nileswan_recovery);
@@ -99,6 +128,11 @@ void main(void) {
 				test_flash_fsm();
 				console_press_any_key();
 				break;
+			case 1:
+				console_clear();
+				op_tf_card_test();
+				console_press_any_key();
+				break;
 			}
 			break;
 		case 2:
@@ -113,7 +147,7 @@ void main(void) {
 			break;
 		case 4:
 			console_clear();
-			op_tf_card_test();
+			main_mfg();
 			console_press_any_key();
 			break;
 		}

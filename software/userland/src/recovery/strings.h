@@ -30,6 +30,8 @@ DEFINE_STRING(s_tf_card_test, "Mount external storage");
 DEFINE_STRING(s_tf_card_init, "Initializing storage...");
 DEFINE_STRING(s_error_code, "Error code %d");
 
+DEFINE_STRING(s_manual_shutdown, "The console may now be powered off.");
+
 DEFINE_STRING(s_model_unsupported, "This action is not supported on this console.\n");
 DEFINE_STRING(s_warranty_disclaimer, "This action modifies sensitive data.\nYou do so at your own risk.\n\nBy choosing to continue, you agree that the developers of this software will not be held responsible for any damage or loss resulting from the use of this action.\n\nDo you want to continue? A - Yes, other - No");
 
@@ -43,5 +45,13 @@ DEFINE_STRING(s_cartridge_tests, "Cartridge self-tests >");
 DEFINE_STRING(s_flash_fsm_test, "Flash FSM test");
 DEFINE_STRING(s_flash_fsm_test_no, "Flash FSM test #%d");
 DEFINE_STRING(s_flash_fsm_last_byte, "\nLast byte = %02X\n");
+
+DEFINE_STRING(s_caps_initialization, "INITIALIZATION");
+DEFINE_STRING(s_caps_test_suite, "TEST SUITE");
+DEFINE_STRING(s_caps_information, "INFORMATION");
+DEFINE_STRING(s_mfg_test_success0, "*********************\n");
+DEFINE_STRING(s_mfg_test_success1, "*                   *\n");
+DEFINE_STRING(s_mfg_test_success2, "* All tests passed! *\n");
+DEFINE_STRING(s_run_manufacturing_test, "Run manufacturing tests");
 
 #endif /* _STRINGS_H_ */

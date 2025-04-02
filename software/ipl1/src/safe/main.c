@@ -28,9 +28,10 @@ typedef enum {
 	MENU_OPTION_QUICK_TEST_16MB,
 	MENU_OPTION_QUICK_TEST_8MB,
 	MENU_OPTION_MEMORY_TEST,
-	MENU_OPTION_RETENTION,
 	MENU_OPTION_BOOT_RECOVERY_CURRENT,
 	MENU_OPTION_BOOT_RECOVERY_FACTORY,
+	MENU_OPTION_MANUFACTURING_TEST,
+	MENU_OPTION_RETENTION,
 	MENU_OPTION_SRAM_SPEED,
 	MENU_OPTIONS_COUNT
 } menu_option_t;
@@ -126,16 +127,16 @@ void run_quick_test(int psram_max_bank) {
 	wait_for_button();
 }
 
-void run_full_memory_test(void) {
+void run_full_memory_test(bool loop) {
 	clear_screen();
 	DRAW_STRING(3, 0, "PSRAM  Mem. Test  SRAM", 0);
 
-	while (true) {
+	do {
 		outportb(IO_CART_FLASH, 1);
 		ram_fault_test(SCREEN + (1 * 32), PSRAM_MAX_BANK_16MB + 1);
 		outportb(IO_CART_FLASH, 0);
 		ram_fault_test(SCREEN + (1 * 32) + 19, SRAM_MAX_BANK + 1);
-	}
+	} while(loop);
 }
 
 void run_read_memory_test(void) {
@@ -260,6 +261,7 @@ update_full_menu:
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_QUICK_TEST_16MB, "quick memory test (16MB)", 0);
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_QUICK_TEST_8MB, "quick memory test (8MB)", 0);
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_MEMORY_TEST, "full memory test", 0);
+	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_MANUFACTURING_TEST, "manufacturing test", 0);
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_RETENTION, "test SRAM after reboot", 0);
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_BOOT_RECOVERY_CURRENT, "boot recovery", 0);
 	DRAW_STRING_CENTERED(test_menu_y+MENU_OPTION_BOOT_RECOVERY_FACTORY, "boot factory recovery", 0);
@@ -302,7 +304,7 @@ update_dynamic_options:
 				goto update_full_menu;
 			} break;
 			case MENU_OPTION_MEMORY_TEST: {
-				while(1) run_full_memory_test();
+				run_full_memory_test(true);
 			} break;
 			case MENU_OPTION_RETENTION: {
 				run_read_memory_test();
@@ -323,6 +325,25 @@ update_dynamic_options:
 					try_boot_rom();
 				} else {
 					wait_for_button();
+				}
+				goto update_full_menu;
+			} break;
+			case MENU_OPTION_MANUFACTURING_TEST: {
+				clear_screen();
+				run_full_memory_test(false);
+				clear_screen();
+				if (!ipc_buf_test()) {
+					DRAW_STRING(1, 1, "IPC buffer error", 0);
+					wait_for_button();
+				} else {
+					// set magic byte
+					*((volatile uint16_t __far*) MK_FP(0x1000, 0x01FE)) = 0x3FA7;
+					// run factory recovery
+					if (load_spi_flash(0x10000, 3)) {
+						try_boot_rom();
+					} else {
+						wait_for_button();
+					}
 				}
 				goto update_full_menu;
 			} break;
