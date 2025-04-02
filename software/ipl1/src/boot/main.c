@@ -15,11 +15,10 @@
  * with Nileswan IPL1. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <nile/hardware.h>
 #include <stddef.h>
 #include <string.h>
+#include <wonderful.h>
 #include <ws.h>
-#include <ws/hardware.h>
 #include <wsx/zx0.h>
 #include <nile.h>
 #include <nilefs.h>
@@ -47,10 +46,9 @@ extern uint8_t diskio_detail_code;
 
 __attribute__((noreturn))
 static void report_fatfs_error(uint8_t result) {
-	// deinitialize hardware
-	outportw(IO_NILE_SPI_CNT, NILE_SPI_CLOCK_CART);
-	outportb(IO_NILE_POW_CNT, NILE_POW_MCU_RESET);
-	
+	uint8_t buffer[12];
+
+	// print FatFs error
     outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(7, 0, 2, 5));
     outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(7, 7, 7, 7));
 	mem_expand_8_16(SCREEN + (3 * 32) + 1, fatfs_error_header, sizeof(fatfs_error_header) - 1, 0x0100);
@@ -65,10 +63,24 @@ static void report_fatfs_error(uint8_t result) {
 		case FR_NO_FILESYSTEM: error_detail = "FAT filesystem not found"; break;
 	}
 	if (error_detail != NULL) {
-		mem_expand_8_16(SCREEN + ((17 - 2) * 32) + ((28 - strlen(error_detail)) >> 1), error_detail, strlen(error_detail), 0x0100);
+		mem_expand_8_16(SCREEN + (5 * 32) + ((28 - strlen(error_detail)) >> 1), error_detail, strlen(error_detail), 0x0100);
 	}
 
-	while(1);
+	// try fetching flash ID
+	nile_flash_wake();
+	result = nile_flash_read_uuid(buffer);
+	nile_flash_sleep();
+	if (result) {
+		for (int i = 0; i < 4; i++) {
+			print_hex_number(SCREEN + (15 * 32) + 6 + 4 * i, __builtin_bswap16(((uint16_t*) buffer)[i]));
+		}
+	}
+
+	// deinitialize hardware
+	outportw(IO_NILE_SPI_CNT, NILE_SPI_CLOCK_CART);
+	outportb(IO_NILE_POW_CNT, NILE_POW_MCU_RESET);
+	cpu_irq_disable();
+	while(1) cpu_halt();
 }
 
 static void update_progress(void) {
