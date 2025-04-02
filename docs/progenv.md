@@ -67,9 +67,12 @@ If SRAM is enabled SRAM (banks 0-7) may be selected when accessing the RAM area.
 | Bit(s) | Description |
 |------|------|
 |0-1|Emulated EEPROM size (0=128B, 1=1KB, 2=2KB, 3=no EEPROM connected (default))|
-|2-7|Unused/0|
+|2|Flash emulation enable (0=disabled (default), 1=enabled)|
+|3-7|Unused/0|
 
 See section on EEPROM for details on EEPROM size.
+
+When flash emulation the FPGA will provide minimal emulation of the programming sequences of parallel NOR flash memory for PSRAM accesses.
 
 ### Interrupts
 

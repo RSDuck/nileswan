@@ -57,6 +57,8 @@ module nileswan(
     reg enable_bandai2001_ex = 1'b1;
     reg enable_bandai2003_ex = 1'b1;
 
+    reg flash_emu_enabled = 1'b0;
+
     assign PSRAM_nZZ = 1'b1;
 
     reg[1:0] eeprom_size = eepromSize_NoEEPROM;
@@ -275,8 +277,9 @@ module nileswan(
                 enable_nileswan_ex,
                 enable_tf_power,
                 enable_fastclk};
-    
-    wire[7:0] EmuCnt = {6'h0,
+
+    wire[7:0] EmuCnt = {5'h0,
+                flash_emu_enabled,
                 eeprom_size};
 
     always_comb begin
@@ -387,6 +390,8 @@ module nileswan(
             EMU_CNT: begin
                 if (enable_nileswan_ex) begin
                     eeprom_size <= Data[1:0];
+
+                    flash_emu_enabled = Data[2];
                 end
             end
 
@@ -449,8 +454,63 @@ module nileswan(
     // save some LEs, SRAM ignores the banking bits above bit 2
     assign AddrExt[6:3] = addr_ext_masked_rom[6:3];
 
-    assign nPSRAM1Sel = ~(~nSel & nIO & psram_1_addr & (~nOE|~nWE));
-    assign nPSRAM2Sel = ~(~nSel & nIO & psram_2_addr & (~nOE|~nWE));
+    typedef enum reg[2:0] {
+        flashEmu_WaitAA,
+        flashEmu_Wait55,
+        flashEmu_Cmd,
+        flashEmu_FastMode,
+        flashEmu_FastModeWrite,
+        flashEmu_SingleWrite,
+        flashEmu_Erase
+    } FlashEmuState;
+
+    FlashEmuState flash_emu_state = flashEmu_WaitAA;
+
+    always @(posedge nWE) begin
+        if (~nSel & nIO & (psram_1_addr | psram_2_addr)) begin
+            case (flash_emu_state)
+            flashEmu_WaitAA:
+                if (Data[7:0] == 8'hAA) flash_emu_state <= flashEmu_Wait55;
+            flashEmu_Wait55:
+                if (Data[7:0] == 8'h55) flash_emu_state <= flashEmu_Cmd;
+                else flash_emu_state <= flashEmu_WaitAA;
+            flashEmu_Cmd:
+                case (Data[7:0])
+                8'h20: flash_emu_state <= flashEmu_FastMode;
+                8'hA0: flash_emu_state <= flashEmu_SingleWrite;
+                8'h10, 8'h30: flash_emu_state <= flashEmu_Erase;
+                default: flash_emu_state <= flashEmu_WaitAA;
+                endcase
+            flashEmu_FastMode:
+                case (Data[7:0])
+                8'hA0: flash_emu_state <= flashEmu_FastModeWrite;
+                8'h90: flash_emu_state <= flashEmu_WaitAA;
+                default: flash_emu_state <= flashEmu_FastMode;
+                endcase
+            flashEmu_FastModeWrite:
+                flash_emu_state <= flashEmu_FastMode;
+            flashEmu_SingleWrite:
+                flash_emu_state <= flashEmu_WaitAA;
+            flashEmu_Erase:
+                case (Data[7:0])
+                8'hAA: flash_emu_state <= flashEmu_Wait55;
+                default: flash_emu_state <= flashEmu_WaitAA;
+                endcase
+            endcase
+        end
+    end
+
+    wire flash_emu_pass_read = ~flash_emu_enabled | (flash_emu_state != flashEmu_Erase && flash_emu_state != flashEmu_FastMode);
+    wire flash_emu_pass_write = ~flash_emu_enabled |
+        (flash_emu_state == flashEmu_SingleWrite || flash_emu_state == flashEmu_FastModeWrite);
+
+    wire psram_sel_precond = ~nSel & nIO & ((~nOE & flash_emu_pass_read)|(~nWE & flash_emu_pass_write));
+
+    wire flash_emu_catch_read = ~flash_emu_pass_read & (psram_1_addr | psram_2_addr);
+    wire[7:0] flash_emu_read_val = flash_emu_state == flashEmu_Erase ? 8'hFF : 8'h00;
+
+    assign nPSRAM1Sel = ~(psram_sel_precond & psram_1_addr);
+    assign nPSRAM2Sel = ~(psram_sel_precond & psram_2_addr);
     assign nSRAMSel = ~(~nSel & nIO & sram_addr & (~nOE|~nWE));
 
     assign PSRAM_nLB = access_in_ram_area & AddrLo[0];
@@ -483,15 +543,17 @@ module nileswan(
     wire output_bootrom = nIO & bootrom_addr;
     wire output_ipcbuf = nIO & ipcbuf_addr;
     wire output_rxbuf = nIO & rxbuf_addr;
+    wire output_flash_emu = nIO & flash_emu_catch_read;
 
     reg[7:0] output_data_lo, output_data_hi;
     always_comb begin
-        casez ({output_ipcbuf, psram_hi_read, output_io_out, output_bootrom, output_rxbuf})
-        5'b1????: output_data_lo = ipc_read;
-        5'b?1???: output_data_lo = Data[15:8];
-        5'b??1??: output_data_lo = reg_out;
-        5'b???1?: output_data_lo = bootrom_read[7:0];
-        default: output_data_lo = rxbuf_read[7:0];
+        casez ({output_ipcbuf, psram_hi_read, output_io_out, output_bootrom, output_rxbuf, output_flash_emu})
+        6'b1?????: output_data_lo = ipc_read;
+        6'b?1????: output_data_lo = Data[15:8];
+        6'b??1???: output_data_lo = reg_out;
+        6'b???1??: output_data_lo = bootrom_read[7:0];
+        6'b????1?: output_data_lo = rxbuf_read[7:0];
+        default: output_data_lo = flash_emu_read_val;
         endcase
     end
     always_comb begin
@@ -508,7 +570,7 @@ module nileswan(
     // the other inputs /SEL, /OE, /WE do not fluctuate
     // thus the output should be stable
 
-    wire enable_output_lo = (sel_oe & (output_io_out | output_bootrom | output_ipcbuf | output_rxbuf)) | psram_hi_read;
+    wire enable_output_lo = (sel_oe & (output_io_out | output_bootrom | output_ipcbuf | output_rxbuf | output_flash_emu)) | psram_hi_read;
     wire enable_output_hi_on_oe = sel_oe & (output_bootrom | output_rxbuf);
     wire enable_output_hi_on_we = psram_hi_write;
 
