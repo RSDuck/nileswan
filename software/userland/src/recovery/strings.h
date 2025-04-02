@@ -39,4 +39,9 @@ DEFINE_STRING(s_disable_custom_splash, "Disable custom splash");
 DEFINE_STRING(s_custom_splash_already_disabled, "Custom splash already disabled!");
 DEFINE_STRING(s_restore_tft_data, "Restore TFT panel data");
 
+DEFINE_STRING(s_cartridge_tests, "Cartridge self-tests >");
+DEFINE_STRING(s_flash_fsm_test, "Flash FSM test");
+DEFINE_STRING(s_flash_fsm_test_no, "Flash FSM test #%d");
+DEFINE_STRING(s_flash_fsm_last_byte, "\nLast byte = %02X\n");
+
 #endif /* _STRINGS_H_ */

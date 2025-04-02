@@ -1,6 +1,8 @@
 #include "console.h"
 #include "ops/ieeprom.h"
 #include "ops/tf_card.h"
+#include "tests/flash_fsm.h"
+#include <nile/core.h>
 #include <string.h>
 #include <wonderful.h>
 #include <ws.h>
@@ -36,6 +38,7 @@ bool console_warranty_disclaimer(void) {
 
 static const char __wf_rom* __wf_rom menu_main[] = {
 	s_internal_eeprom_recovery,
+	s_cartridge_tests,
 	s_setup_mcu_boot_flags,
 	s_print_cartridge_ids,
 	s_tf_card_test,
@@ -48,6 +51,11 @@ static const char __wf_rom* __wf_rom menu_ieeprom[] = {
 	NULL
 };
 
+static const char __wf_rom* __wf_rom menu_cartridge_tests[] = {
+	s_flash_fsm_test,
+	NULL
+};
+
 void main(void) {
 	// FIXME: bios_pad[0] is used here solely to create a strong memory reference
 	// to dodge elf2rom's limited section garbage collector
@@ -57,6 +65,9 @@ void main(void) {
 	ws_hwint_set_handler(HWINT_IDX_VBLANK, vblank_int_handler);
 	ws_hwint_enable(HWINT_VBLANK);
 	cpu_irq_enable();
+
+	nile_io_unlock();
+	nile_bank_unlock();
 
 	console_init();
 
@@ -81,15 +92,26 @@ void main(void) {
 			break;
 		case 1:
 			console_clear();
+			console_draw_header(s_cartridge_tests);
+			switch (menu_run(menu_cartridge_tests)) {
+			case 0:
+				console_clear();
+				test_flash_fsm();
+				console_press_any_key();
+				break;
+			}
+			break;
+		case 2:
+			console_clear();
 			op_mcu_setup_boot_flags();
 			console_press_any_key();
 			break;
-		case 2:
+		case 3:
 			console_clear();
 			op_id_print();
 			console_press_any_key();
 			break;
-		case 3:
+		case 4:
 			console_clear();
 			op_tf_card_test();
 			console_press_any_key();

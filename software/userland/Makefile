@@ -34,6 +34,7 @@ BUILDDIR	:= build/$(PROGRAM)
 ELF		:= build/$(PROGRAM).elf
 ELF_STAGE1	:= build/$(PROGRAM)_stage1.elf
 ROM		:= $(PROGRAM).wsc
+ROM_NOTRIM	:= $(PROGRAM)_notrim.wsc
 
 # Verbose flag
 # ------------
@@ -77,7 +78,7 @@ CFLAGS		+= -std=gnu11 $(WARNFLAGS) $(DEFINES) $(WF_ARCH_CFLAGS) \
 LDFLAGS		:= -T$(WF_LDSCRIPT) $(LIBDIRSFLAGS) \
 		   $(WF_ARCH_LDFLAGS) $(LIBS)
 
-BUILDROMFLAGS	:= -c wfconfig.$(PROGRAM).toml --trim
+BUILDROMFLAGS	:= -c wfconfig.$(PROGRAM).toml
 
 # Intermediate build files
 # ------------------------
@@ -97,11 +98,15 @@ DEPS		:= $(OBJS:.o=.d)
 
 .PHONY: all clean
 
-all: $(ROM) compile_commands.json
+all: $(ROM) $(ROM_NOTRIM) compile_commands.json
 
 $(ROM) $(ELF): $(ELF_STAGE1)
 	@echo "  ROM     $@"
-	$(_V)$(BUILDROM) -o $(ROM) --output-elf $(ELF) $(BUILDROMFLAGS) $<
+	$(_V)$(BUILDROM) -o $(ROM) --output-elf $(ELF) $(BUILDROMFLAGS) --trim $<
+
+$(ROM_NOTRIM): $(ELF_STAGE1)
+	@echo "  ROM     $@"
+	$(_V)$(BUILDROM) -o $(ROM_NOTRIM) $(BUILDROMFLAGS) $<
 
 $(ELF_STAGE1): $(OBJS)
 	@echo "  LD      $@"
