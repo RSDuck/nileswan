@@ -237,8 +237,8 @@ keypadScan:
     db	0x00	; Maintenance
     db	0x42	; Developer ID
     db	0x01    ; Color
-    db	0x81	; Cart number + Disable IEEPROM write protect
-    db	0x00    ; Version
+    db	0x01	; Cart number
+    db	0x80    ; Version + Disable IEEPROM write protect
     db	0x00    ; ROM size
     db	0x05	; Save type
     dw	0x0004  ; Flags
