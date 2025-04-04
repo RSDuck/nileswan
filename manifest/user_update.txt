@@ -1,3 +1,4 @@
 VERSION 0 MINOR 1 PATCH 0
-PACKED_FLASH software/ipl1/ipl1.bin AT 262144 PAD 16384 APPEND_AA55 1
-PACKED_FLASH software/userland/recovery.wsc AT -524288
+PACKED_FLASH software/ipl1/boot.bin AT 262144 PAD 16384 APPEND_AA55 1
+FLASH software/userland/recovery.wsc AT -524288 PAD 256
+PACKED_FLASH fpga/nileswan.headerless.bin AT 524288 PAD 32768 APPEND_AA55 1

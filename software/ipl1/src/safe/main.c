@@ -20,7 +20,7 @@
 #include <ws.h>
 #include <nile.h>
 #include <wsx/zx0.h>
-#include "../../build/assets/tiles.h"
+#include "assets/tiles.h"
 #include "ipc.h"
 #include "util.h"
 

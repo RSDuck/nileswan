@@ -73,13 +73,16 @@ with open(args.manifest, 'r') as rules:
             if flash_position < 0:
                 flash_position = (-flash_position) - len(data)
 
+            # TODO: Pad to flash sector size (or detect issue)
+            if (flash_position & 0xFF) != 0:
+                raise Exception("File {rule[1]} cannot be flashed at unaligned position {flash_position}")
+
             start_segment = start_segment - ((len(data) + 15) >> 4)
             data_at_position[start_segment] = data
 
             rule_data += bytearray(struct.pack("<BHHIH",
                 0x01, start_segment, len(data), flash_position, crc16.checksum(data)))
         elif rule_name == 'PACKED_FLASH':
-            # TODO: Pad to flash sector size (or detect issue)
             subprocess.run(["rm", "temp.bin"])
             subprocess.run(["wf-zx0-salvador", "-v", rule[1], "temp.bin"])
             unpacked_data = None
@@ -93,6 +96,10 @@ with open(args.manifest, 'r') as rules:
             flash_position = int(rule_map['AT'])
             if flash_position < 0:
                 flash_position = (-flash_position) - len(data)
+
+            # TODO: Pad to flash sector size (or detect issue)
+            if (flash_position & 0xFF) != 0:
+                raise Exception("File {rule[1]} cannot be flashed at unaligned position {flash_position}")
 
             start_segment = start_segment - ((len(data) + 15) >> 4)
             data_at_position[start_segment] = data

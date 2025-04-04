@@ -22,7 +22,7 @@
 #include <wsx/zx0.h>
 #include <nile.h>
 #include <nilefs.h>
-#include "../../build/assets/tiles.h"
+#include "assets/tiles.h"
 #include "ipc.h"
 #include "util.h"
 
@@ -142,8 +142,20 @@ void main(void) {
 	nile_flash_sleep(); // Put flash chip to sleep
 	ipc_init();
 
+#ifndef PROGRAM_factory
+	// Start loading warmboot image
+	outportb(IO_NILE_WARMBOOT_CNT, 1);
+	// Configure HBlank timer to count down until 20ms have passed
+	outportw(IO_HBLANK_TIMER, 241);
+	outportw(IO_TIMER_CTRL, HBLANK_TIMER_ENABLE);
+#endif
+
 	ws_display_set_shade_lut(SHADE_LUT_DEFAULT);
+#ifndef PROGRAM_factory
+	outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(0, 3, 1, 2));
+#else
 	outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(0, 7, 2, 5));
+#endif
 	outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(0, 0, 0, 0));
 	wsx_zx0_decompress((uint16_t*) 0x3200, gfx_tiles);
 
@@ -164,6 +176,11 @@ void main(void) {
 	// Show screens
 	outportb(IO_SCR_BASE, SCR1_BASE(SCREEN) | SCR2_BASE(SCREEN));
 	outportw(IO_DISPLAY_CTRL, DISPLAY_SCR1_ENABLE | DISPLAY_SCR2_ENABLE | DISPLAY_SCR2_WIN_INSIDE);
+
+#ifndef PROGRAM_factory
+	while(inportw(IO_HBLANK_COUNTER));
+	outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(0, 7, 2, 5));
+#endif
 
 	uint8_t result;
 	if (!(result = load_menu())) {

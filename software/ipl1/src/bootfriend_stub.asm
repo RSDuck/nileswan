@@ -61,10 +61,14 @@ start:
 	retf
 
 ipl1_data:
-%ifdef SAFE
-	incbin "ipl1_safe.bin"
+%ifdef safe
+	incbin "safe.bin"
 %else
-	incbin "ipl1.bin"
+%ifdef factory
+	incbin "factory.bin"
+%else
+	incbin "boot.bin"
+%endif
 %endif
 
 ipl1_data_end:

@@ -3,8 +3,10 @@ include config.mk
 DISTDIR  ?= out/dist
 EMUDIR   ?= out/emulator
 MFGDIR   ?= out/manufacturing
-MANIFEST ?= manifest/full_update.txt
-UPDATEWS := $(DISTDIR)/fwupdate.ws
+MANIFEST ?= manifest/user_update.txt
+MANIFEST_FULL ?= manifest/full_update.txt
+FULLUPWS := $(DISTDIR)/firmware.factory.ws
+UPDATEWS := $(DISTDIR)/firmware.update.ws
 FLASHBIN := $(MFGDIR)/spi.bin
 EMUIPL0  := $(EMUDIR)/nileswan.ipl0
 EMUSPI   := $(EMUDIR)/nileswan.spi
@@ -12,11 +14,11 @@ EMUIMG   := $(EMUDIR)/nileswan.img
 MCUBIN   := $(DISTDIR)/NILESWAN/MCU.BIN
 EMUIMG_SIZE_MB ?= 512
 
-.PHONY: all dist dist-mfg dist-emu clean help firmware program-fpga program libnile libnile-ipl1 ipl0 ipl1 recovery updater fpga firmware/build/firmware.bin
+.PHONY: all dist dist-mfg dist-emu clean help firmware program-fpga program libnile libnile-ipl1 ipl0 ipl1-boot ipl1-factory ipl1-safe recovery updater fpga firmware/build/firmware.bin
 
 all: dist dist-mfg
 
-dist: $(UPDATEWS) $(MCUBIN)
+dist: $(FULLUPWS) $(UPDATEWS) $(MCUBIN)
 
 dist-mfg: $(FLASHBIN)
 
@@ -70,8 +72,14 @@ libnile-ipl1:
 ipl0:
 	cd software/ipl0 && make
 
-ipl1: libnile-ipl1
-	cd software/ipl1 && make
+ipl1-boot: libnile-ipl1
+	cd software/ipl1 && make PROGRAM=boot
+
+ipl1-factory: libnile-ipl1
+	cd software/ipl1 && make PROGRAM=factory
+
+ipl1-safe: libnile-ipl1
+	cd software/ipl1 && make PROGRAM=safe
 
 recovery: libnile
 	cd software/userland && make PROGRAM=recovery
@@ -79,11 +87,15 @@ recovery: libnile
 updater: libnile
 	cd software/userland && make PROGRAM=updater
 
-$(FLASHBIN): fpga ipl1 recovery $(MANIFEST) software/userland/manifest_to_bin.py
+$(FLASHBIN): fpga ipl1-boot ipl1-factory ipl1-safe recovery $(MANIFEST_FULL) software/userland/manifest_to_bin.py
 	@mkdir -p $(@D)
-	python3 software/userland/manifest_to_bin.py $(MANIFEST) $@
+	python3 software/userland/manifest_to_bin.py $(MANIFEST_FULL) $@
 
-$(UPDATEWS): fpga ipl1 recovery updater $(MANIFEST) software/userland/manifest_to_rom.py
+$(FULLUPWS): fpga ipl1-boot ipl1-factory ipl1-safe recovery updater $(MANIFEST_FULL) software/userland/manifest_to_rom.py
+	@mkdir -p $(@D)
+	python3 software/userland/manifest_to_rom.py software/userland/updater.wsc $(MANIFEST_FULL) $@
+
+$(UPDATEWS): fpga ipl1-boot ipl1-factory ipl1-safe recovery updater $(MANIFEST) software/userland/manifest_to_rom.py
 	@mkdir -p $(@D)
 	python3 software/userland/manifest_to_rom.py software/userland/updater.wsc $(MANIFEST) $@
 
@@ -102,7 +114,9 @@ clean:
 	-rm -rf firmware/build/build.ninja
 	cd software/libnile && rm -rf build
 	cd software/ipl0 && make clean
-	cd software/ipl1 && make clean
+	cd software/ipl1 && make PROGRAM=boot clean
+	cd software/ipl1 && make PROGRAM=factory clean
+	cd software/ipl1 && make PROGRAM=safe clean
 	cd software/userland && make PROGRAM=recovery clean
 	cd software/userland && make PROGRAM=updater clean
 	cd fpga && make clean

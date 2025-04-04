@@ -39,10 +39,10 @@ $(build_folder)/$(project).asc: $(build_folder)/$(project).json $(pcf_path)
 $(build_folder)/$(project).inserted.asc: $(build_folder)/$(project).asc $(build_folder)/bram_init.asc $(ipl0_path)
 	icebram -v $(build_folder)/bram_init.asc $(ipl0_path) <$< >$@
 
-$(build_folder)/$(project).headerless.bin: $(build_folder)/$(project).inserted.asc
+$(project).headerless.bin: $(build_folder)/$(project).inserted.asc
 	$(ICEPACK) -Fh -s $< $@
 
-$(project).bin: $(build_folder)/$(project).headerless.bin $(build_folder)/add_warmboot
+$(project).bin: $(project).headerless.bin $(build_folder)/add_warmboot
 	$(build_folder)/add_warmboot $< 0x80000 0x88000 0x90000 0x98000 $@
 
 ###############################################

@@ -6,21 +6,21 @@ WONDERFUL_TOOLCHAIN ?= /opt/wonderful
 TARGET = wswan/bootfriend
 include $(WONDERFUL_TOOLCHAIN)/target/$(TARGET)/makedefs.mk
 
-# Metadata
-# --------
-
-NAME_BOOT	:= ipl1
-NAME_SAFE	:= ipl1_safe
-
 # Source code paths
 # -----------------
 
-INCLUDEDIRS	:= src/boot src/safe src/shared
+PROGRAM ?= boot
+
+ifeq ($(PROGRAM),safe)
+SOURCEDIRS	:= src/safe src/shared
+else
+SOURCEDIRS	:= src/boot src/shared
+endif
 
 # Defines passed to all files
 # ---------------------------
 
-DEFINES		:=
+DEFINES		:= -DPROGRAM_$(PROGRAM)
 
 # Libraries
 # ---------
@@ -32,15 +32,11 @@ LIBDIRS		:= $(WF_TARGET_DIR) \
 # Build artifacts
 # ---------------
 
-BUILDDIR	:= build
-ELF_BOOT	:= build/$(NAME_BOOT).elf
-MAP_BOOT	:= build/$(NAME_BOOT).map
-EXE_BOOT	:= $(NAME_BOOT).bin
-BFB_BOOT	:= $(NAME_BOOT).bfb
-ELF_SAFE	:= build/$(NAME_SAFE).elf
-MAP_SAFE	:= build/$(NAME_SAFE).map
-EXE_SAFE	:= $(NAME_SAFE).bin
-BFB_SAFE	:= $(NAME_SAFE).bfb
+BUILDDIR	:= build/$(PROGRAM)
+ELF		:= build/$(PROGRAM).elf
+MAP		:= build/$(PROGRAM).map
+EXE		:= $(PROGRAM).bin
+BFB		:= $(PROGRAM).bfb
 
 # Verbose flag
 # ------------
@@ -54,20 +50,13 @@ endif
 # Source files
 # ------------
 
+INCLUDEDIRS	:= $(SOURCEDIRS) $(BUILDDIR)
+
 SOURCES_WFPROCESS	:= $(shell find -L assets -name "*.lua")
 INCLUDEDIRS		+= $(addprefix $(BUILDDIR)/,$(ASSETDIRS))
 
-SOURCES_SHARED		:= \
-	$(shell find -L src/shared -name "*.s") \
-	$(shell find -L src/shared -name "*.c")
-
-SOURCES_BOOT		:= \
-	$(shell find -L src/boot -name "*.s") \
-	$(shell find -L src/boot -name "*.c")
-	
-SOURCES_SAFE	:= \
-	$(shell find -L src/safe -name "*.s") \
-	$(shell find -L src/safe -name "*.c")
+SOURCES_S	:= $(shell find -L $(SOURCEDIRS) -name "*.s")
+SOURCES_C	:= $(shell find -L $(SOURCEDIRS) -name "*.c")
 
 # Compiler and linker flags
 # -------------------------
@@ -91,54 +80,37 @@ LDFLAGS		:= -Tlink.ld -Wl,--gc-sections $(LIBDIRSFLAGS) \
 # Intermediate build files
 # ------------------------
 
-OBJS_ASSETS	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_CBIN))) \
-		   $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_WFPROCESS)))
+OBJS_ASSETS	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_WFPROCESS)))
 
-OBJS_SHARED	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_SHARED)))
-OBJS_BOOT	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_BOOT)))
-OBJS_SAFE	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_SAFE)))
-OBJS		:= $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_BOOT) $(OBJS_SAFE)
+OBJS_SOURCES	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_S))) \
+		   $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_C)))
+
+OBJS		:= $(OBJS_ASSETS) $(OBJS_SOURCES)
 
 DEPS		:= $(OBJS:.o=.d)
 
 # Targets
 # -------
 
-.PHONY: all clean program
+.PHONY: all clean
 
-all: $(EXE_BOOT) $(EXE_SAFE) $(BFB_BOOT) $(BFB_SAFE) compile_commands.json
+all: $(EXE) $(BFB) compile_commands.json
 
-program: $(EXE_BOOT) $(EXE_SAFE)
-	iceprog -i 4 -o 160k $(EXE_BOOT)
-	iceprog -i 4 -o 176k $(EXE_SAFE)
-
-$(EXE_BOOT): $(ELF_BOOT)
+$(EXE): $(ELF)
 	@echo "  OBJCOPY $@"
 	$(_V)$(OBJCOPY) -O binary $< $@
 
-$(BFB_BOOT): $(EXE_BOOT) src/bootfriend_stub.asm
+$(BFB): $(EXE) src/bootfriend_stub.asm
 	@echo "  NASM    $@"
-	nasm -o $(BFB_BOOT) src/bootfriend_stub.asm
+	nasm -D$(PROGRAM) -o $(BFB) src/bootfriend_stub.asm
 
-$(EXE_SAFE): $(ELF_SAFE)
-	@echo "  OBJCOPY $@"
-	$(_V)$(OBJCOPY) -O binary $< $@
-
-$(BFB_SAFE): $(EXE_SAFE) src/bootfriend_stub.asm
-	@echo "  NASM    $@"
-	nasm -DSAFE -o $(BFB_SAFE) src/bootfriend_stub.asm
-
-$(ELF_BOOT): $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_BOOT) link.ld
+$(ELF): $(OBJS) link.ld
 	@echo "  LD      $@"
-	$(_V)$(CC) -o $(ELF_BOOT) $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_BOOT) $(LDFLAGS) -Wl,-Map,$(MAP_BOOT)
-
-$(ELF_SAFE): $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_SAFE) link.ld
-	@echo "  LD      $@"
-	$(_V)$(CC) -o $(ELF_SAFE) $(OBJS_ASSETS) $(OBJS_SHARED) $(OBJS_SAFE) $(LDFLAGS) -Wl,-Map,$(MAP_SAFE) 
+	$(_V)$(CC) -o $(ELF) $(OBJS) $(LDFLAGS) -Wl,-Map,$(MAP)
 
 clean:
 	@echo "  CLEAN"
-	$(_V)$(RM) $(EXE_BOOT) $(ELF_BOOT) $(EXE_SAFE) $(ELF_SAFE) $(BFB_BOOT) $(BFB_SAFE) $(BUILDDIR) compile_commands.json
+	$(_V)$(RM) $(EXE) $(ELF) $(BFB) $(BUILDDIR) compile_commands.json
 
 compile_commands.json: $(OBJS) | Makefile
 	@echo "  MERGE   compile_commands.json"
