@@ -1,28 +1,25 @@
-# Programming environment
-
-## I/O port map
-
+---
+title: 'I/O port interface'
+weight: 10
+---
 | Address|Width|    Name    | Description |
 |--------|-----|------------|-------------|
 | `0xE0` |  2  | SPI_CNT    | SPI control register |
 | `0xE2` |  1  | POW_CNT    | Power control |
-| `0xE3` |  1  | NILE_IRQ   | Controls nileswan IRQ |
 | `0xE4` |  2  | BANK_MASK  | Mask for bank index |
 | `0xE6` |  1  | EMU_CNT  | Controls EEPROM size |
 
-## I/O ports
-
-### SPI
+## SPI interface
 
 **`0xE0` - `SPI_CNT` (16 bit)**
 | Bit(s) | Description |
 |------|------|
 |0-8|SPI transfer length in bytes minus one|
 |9-10|Mode (0 = write, 1 = read, 2 = exchange, 3 = wait and read) |
-|11|Transfer speed (0 = 24 MHz "high frequency clock", 1 = 384 kHz from cartbus)|
-|12-13|Channel select/chip select (0=no device selected and output to TF channel, 1=select TF, 2=select flash, 3=select μC)|
+|11|Transfer speed (0 = 24 MHz "high frequency clock", 1 = cartridge bus clock, usually 384 KHz) |
+|12-13|Channel select/chip select (0 = no device selected and output to TF channel, 1 = select TF, 2 = select flash, 3 = select μC)|
 |14|Memory mapped RX and TX buffer index (0-1)|
-|15|Start/busy, when written (0=abort transfer, 1=start transfer), when read (0=idle, 1=transferring)|
+|15|Start/busy, when written (0 = abort transfer, 1 = start transfer), when read (0 = idle, 1 = transferring)|
 
 * In read mode all output serial bits are 1. The incoming bits are stored in the RX buffer.
 * In write mode bits from the TX buffer are output. The incoming serial bits are discarded.
@@ -35,26 +32,25 @@ All values besides the transfer abort are read only while a transfer is in progr
 
 Transfer aborting is not immediate for internal reasons and to allow the transfer to end cleanly on a byte boundary. After an abort is issued the busy bit will continue to be high until the abort is finally completed.
 
+For EEPROM or RTC SPI communication to work, the cartridge serial clock has to be selected.
 
-For EEPROM or RTC SPI communication to work the cartridge serial clock has to be selected.
-
-### Power/system control
+## Power/system control
 
 **`0xE2` - `POW_CNT` (8 bit)**
 | Bit(s) | Description |
 |------|------|
 |0|Enable 24 MHz high frequency clock. (0=off, 1=on (default))|
 |1|Enable TF power (0=off (default), 1=on)|
-|2|Enable nileswan exclusive I/O registers (0=off, 1=on (default))|
-|3|Enable Bandai 2001 exclusive I/O registers (0=off, 1=on (default))|
-|4|Enable Bandai 2003 exclusive I/O registers (0=off, 1=on (default))|
+|2|Enable nileswan I/O registers (0=off, 1=on (default))|
+|3|Enable 2001 mapper-specific I/O registers (0=off, 1=on (default))|
+|4|Enable 2003 mapper-specific I/O registers (0=off, 1=on (default))|
 |5|Pull μC BOOT0/μC busy high (0=no/μC may communicate via it, 1=yes)|
 |6|Enable SRAM (0=off, 1=on (default))|
 |7|μC reset line|
 
 If `0xFD` is written to `POW_CNT` it will reset the entire register even if nileswan registers are disabled. This way the nileswan registers can be brought back after disabling them.
 
-Disabling a range of I/O registers only changes the visibility. E.g. the upper banking bits of the Bandai 2003 mapper continue to apply even if the registers used to change them are not accessible anymore.
+Disabling a range of I/O registers only changes the visibility. E.g. the upper banking bits of the 2003 mapper continue to apply even if the registers used to change them are not accessible anymore.
 
 The μC reset line bit directly connects to the nRST pin of the microcontroller.
 
@@ -74,18 +70,7 @@ See section on EEPROM for details on EEPROM size.
 
 When flash emulation the FPGA will provide minimal emulation of the programming sequences of parallel NOR flash memory for PSRAM accesses.
 
-### Interrupts
-
-**`0xE3` - `NILE_IRQ` (8 bit)**
-| Bit(s) | Description |
-|------|------|
-|0|Enable SPI IRQ generation|
-|1|SPI IRQ status, when read (0 = no IRQ, 1 = IRQ), when written (0 = nothing, 1 = acknowledge IRQ)|
-|2-7|Unused/0|
-
-If SPI IRQ generation is enabled an IRQ will be generated whenever the the busy bit of `SPI_CNT` changes from 1 to 0. It is signalled and acknowledgeable via the SPI IRQ status bit.
-
-### Banking
+## Banking
 
 **`0xE4` - `BANK_MASK` (16 bit)**
 | Bit(s) | Description |
@@ -102,7 +87,7 @@ Bank mask is always applied to the extended ROM bank (starting from 0x40000).
 
 ## EEPROM
 
-If Bandai 2001 registers are enabled in `POW_CNT`, the registers associated with EEPROM (`0xC4`-`0xC8`) are accessible and writeable. The FPGA emulates the entire EEPROM including keeping its content of up to 2 KB in internal RAM.
+If 2001 mapper registers are enabled in `POW_CNT`, the registers associated with EEPROM (`0xC4`-`0xC8`) are accessible and writeable. The FPGA emulates the entire EEPROM including keeping its content of up to 2 KB in internal RAM.
 
 This is necessary as the interface does not provide an reliable way to tell when a read is done and thus typically software only relies on waiting for a fixed amount. The μC is unable to respond with such low latency.
 
@@ -112,7 +97,7 @@ To store save data across power cycles write and erase commands are additionally
 
 ## RTC
 
-Whenever Bandai 2003 registers are enabled via `POW_CNT` RTC registers can be accessed (`0xCA` and `0xCB`). It performs like a real Bandai 2003 and provides a serial interfaces specifically made for the S-3511A RTC chip. It is connected to the μC which emulates the S-3511A.
+Whenever 2003 mapper registers are enabled via `POW_CNT` RTC registers can be accessed (`0xCA` and `0xCB`). It performs like a real 2003 mapper and provides a serial interfaces specifically made for the S-3511A RTC chip. It is connected to the μC which emulates the S-3511A.
 
 ## Memory bank layout
 

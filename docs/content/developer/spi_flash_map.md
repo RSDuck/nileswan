@@ -1,6 +1,11 @@
-# SPI flash layout
+---
+title: 'SPI flash layout'
+weight: 25
+---
 
 ## Write-protected area
+
+This area should be typically write-protected when running software.
 
 |  Start   |   End    | Description  |
 |----------|----------|--------------|
@@ -9,7 +14,7 @@
 | 0x00C000 | 0x00FFFF | IPL1 (recovery) |
 | 0x010000 | 0x03FFFF | Recovery software (factory) |
 
-## Write-unprotected area
+## Non-write-protected area
 
 |  Start   |   End    | Description  |
 |----------|----------|--------------|
