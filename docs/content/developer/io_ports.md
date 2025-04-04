@@ -6,6 +6,7 @@ weight: 10
 |--------|-----|------------|-------------|
 | `0xE0` |  2  | SPI_CNT    | SPI control register |
 | `0xE2` |  1  | POW_CNT    | Power control |
+| `0xE3` |  1  | WARMBOOT_CNT | Trigger FPGA warmboot |
 | `0xE4` |  2  | BANK_MASK  | Mask for bank index |
 | `0xE6` |  1  | EMU_CNT  | Controls EEPROM size |
 
@@ -69,6 +70,16 @@ If SRAM is enabled SRAM (banks 0-7) may be selected when accessing the RAM area.
 See section on EEPROM for details on EEPROM size.
 
 When flash emulation the FPGA will provide minimal emulation of the programming sequences of parallel NOR flash memory for PSRAM accesses.
+
+** `0xE7` - `WARMBOOT_CNT`
+
+| Bit(s) | Description |
+|------|------|
+|0-1|Warmboot image to boot (0-3)|
+
+After writing the FPGA will load one of four FPGA cores from SPI flash depending on the value written. See SPI flash layout on where the images lie. The port is write-only.
+
+The port may only be written while not running code from the cartridge. After writing a wait of approximately 20 ms is necessary until the cartridge responds again.
 
 ## Banking
 

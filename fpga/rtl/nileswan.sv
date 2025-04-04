@@ -230,6 +230,15 @@ module nileswan(
     reg[7:0] reg_out = 0;
     reg reg_ack;
 
+    reg[1:0] warmboot_image = 2'b0;
+    reg warmboot_load = 1'b0;
+
+    SB_WARMBOOT warmboot (
+        .BOOT(warmboot_load),
+
+        .S0(warmboot_image[0]),
+        .S1(warmboot_image[1]));
+
     // Bandai 2001 chip
     localparam LINEAR_ADDR_OFF = 8'hC0;
     localparam RAM_BANK = 8'hC1;
@@ -256,6 +265,8 @@ module nileswan(
     // nileswan extension
     localparam BANK_MASK_LO = 8'hE4;
     localparam BANK_MASK_HI = 8'hE5;
+
+    localparam WARMBOOT_CNT = 8'hE3;
 
     localparam SPI_CNT_LO = 8'hE0;
     localparam SPI_CNT_HI = 8'hE1;
@@ -396,6 +407,13 @@ module nileswan(
                     enable_sram <= Data[6];
 
                     nmcu_reset <= Data[7];
+                end
+            end
+
+            WARMBOOT_CNT: begin
+                if (enable_nileswan_ex) begin
+                    warmboot_image <= Data[1:0];
+                    warmboot_load <= 1'b1;
                 end
             end
 

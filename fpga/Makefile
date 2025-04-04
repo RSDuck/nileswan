@@ -22,6 +22,11 @@ rtl_source_paths := $(wildcard rtl/*.sv)
 
 bram_seed := 123456
 
+$(build_folder)/add_warmboot: add_warmboot.nim
+	@echo "  NIM     $<"
+	@mkdir -p $(@D)
+	nim c --outdir:$(build_folder) $<
+
 $(build_folder)/bram_init.asc:
 	icebram -g -s $(bram_seed) 16 256 >$@
 
@@ -34,8 +39,11 @@ $(build_folder)/$(project).asc: $(build_folder)/$(project).json $(pcf_path)
 $(build_folder)/$(project).inserted.asc: $(build_folder)/$(project).asc $(build_folder)/bram_init.asc $(ipl0_path)
 	icebram -v $(build_folder)/bram_init.asc $(ipl0_path) <$< >$@
 
-$(project).bin: $(build_folder)/$(project).inserted.asc
+$(build_folder)/$(project).headerless.bin: $(build_folder)/$(project).inserted.asc
 	$(ICEPACK) -Fh -s $< $@
+
+$(project).bin: $(build_folder)/$(project).headerless.bin $(build_folder)/add_warmboot
+	$(build_folder)/add_warmboot $< 0x80000 0x88000 0x90000 0x98000 $@
 
 ###############################################
 #  Simulation
