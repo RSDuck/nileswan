@@ -13,8 +13,8 @@ nileswan emulates the following hardware:
 
 In addition, nileswan provides the following native hardware facilities for user homebrew:
 
-- SPI interface for storage and MCU communication
-- USB port usable for CDC serial transfers, via MCU
+- Removable storage card, via SPI interface
+- USB port for CDC serial transfers, via MCU and SPI interface
 
 ## Limitations
 

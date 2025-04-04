@@ -1,4 +1,4 @@
-; Copyright (c) 2024 Adrian Siekierka
+; Copyright (c) 2024, 2025 Adrian Siekierka
 ;
 ; Nileswan IPL0 is free software: you can redistribute it and/or modify it under
 ; the terms of the GNU General Public License as published by the Free
@@ -18,7 +18,7 @@
     bits 16
     cpu 186
 
-    ; This allows us to access IRAM as 0x0000~0x3FFF on the CS segment.
+    ; This allows us to access IRAM at addresses 0xC000~0xFFFF on the CS segment.
 NILE_IPL0_SEG            equ 0xf400
 NILE_IPL0_TMP_RAM        equ 0xf800 ; f400:f800 => 0000:3800
 NILE_IPL0_STACK          equ 0x0000 ; f400:0000 => 0000:4000
@@ -88,16 +88,23 @@ copyIoPortDataLoop:
     loop copyIoPortDataLoop
 
     ; == IPL1 loader ==
+    ; - if recovery key combo pressed: load recovery IPL1
+    ; - if on-cartridge button held: load factory IPL1
+    ; - otherwise: load regular IPL1
 
-    ; Vary IPL1 load location depending on a special keybind.
     call keypadScan
     and ax, (KEY_X3 | KEY_B)
     cmp ax, (KEY_X3 | KEY_B)
+    je bootIpl1Safe
+bootIpl1NonSafe:
+    cs test byte [0xBFF5], 0x80
     mov bx, NILE_FLASH_ADDR_IPL1 >> 8
-    jne postFlashAddr
-altFlashAddr:
-    mov bx, NILE_FLASH_ADDR_IPL1_SAFE >> 8
-postFlashAddr:
+    jz bootIpl1End
+    mov bx, NILE_FLASH_ADDR_IPL1_ORIG >> 8
+    jmp bootIpl1End
+bootIpl1Safe:
+    mov bx, NILE_FLASH_ADDR_IPL1_SAFE >> 8    
+bootIpl1End:
     call spiStartRead
 
     ; == IPL1 loader / Read loop ==
