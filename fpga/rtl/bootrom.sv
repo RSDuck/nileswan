@@ -4,6 +4,8 @@ module BootROM (
     input nOE,
     input[8:0] AddrLo,
 
+    input BypassSplash,
+
     output[15:0] ReadData
 );
 
@@ -19,7 +21,9 @@ module BootROM (
     end
 
     reg[15:0] read_data;
-    assign ReadData = read_data;
+
+    assign ReadData[14:0] = read_data[14:0];
+    assign ReadData[15] = BypassSplash && AddrLo[8:1] == 8'hFA ? 1'b1 : read_data[15];
 
     always @(negedge nOE) begin
         if (Sel)

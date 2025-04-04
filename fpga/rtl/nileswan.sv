@@ -43,8 +43,9 @@ module nileswan(
     output PSRAM_nZZ,
     
     output nMCUReset,
+    inout MCUReady,
     
-    inout MCUReady);
+    input Button);
 
     // POW_CNT
     reg enable_fastclk = 1'b1;
@@ -76,11 +77,22 @@ module nileswan(
 
     assign nCartInt = 1'b1;
 
+    wire mbc_seq_start;
     Dance dance (
         .AddrLo(AddrLo[7:0]),
         .AddrHi(AddrHi),
         .SClk(SClk),
-        .MBC(MBC));
+        .MBC(MBC),
+        .MBCSeqStart(mbc_seq_start));
+
+    reg[1:0] button_ff = 2'b0;
+    reg bypass_splash = 1'b0;
+    always @(posedge SClk) begin
+        button_ff <= {button_ff[0], Button};
+
+        if (mbc_seq_start)
+            bypass_splash <= ~button_ff[1];
+    end
 
     wire IOWrite = ~nSel & ~nIO;
     wire[7:0] RegAddr = {AddrHi, AddrLo[3:0]};
@@ -523,7 +535,9 @@ module nileswan(
         .nOE(nOE),
         .AddrLo(AddrLo),
         .Sel(~nSel & nIO & bootrom_addr),
-        .ReadData(bootrom_read));
+        .ReadData(bootrom_read),
+        
+        .BypassSplash(bypass_splash));
 
     wire[7:0] ipc_read;
     IPCRAM ipcram (

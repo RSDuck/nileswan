@@ -2,12 +2,15 @@ module Dance (
     input[7:0] AddrLo,
     input[3:0] AddrHi,
     input SClk,
-    output MBC);
+    output MBC,
+    output MBCSeqStart);
 
     wire address_change = AddrLo[3:0] == 4'h5 && AddrHi == 4'hA;
 
     reg read_A5 = 0;
     reg[4:0] state = 5'h0;
+
+    assign MBCSeqStart = state == 5'h1;
 
     always @(posedge SClk) begin
         if (address_change)
