@@ -91,6 +91,7 @@ static void update_progress(void) {
 
 static uint8_t load_menu(void) {
 	FIL fp;
+	uint16_t bw;
 
 	uint8_t result;
 	result = f_mount(&fs, "", 1);
@@ -116,7 +117,7 @@ static uint8_t load_menu(void) {
 		if (offset < 0x8000) {
 			update_progress();
 
-			if ((result = f_read(&fp, MK_FP(0x1000, offset), 0x8000 - offset, NULL)) != FR_OK) {
+			if ((result = f_read(&fp, MK_FP(0x1000, offset), 0x8000 - offset, &bw)) != FR_OK) {
 				return result;
 			}
 			offset = 0x8000;
@@ -124,7 +125,7 @@ static uint8_t load_menu(void) {
 
 		update_progress();
 
-		if ((result = f_read(&fp, MK_FP(0x1000, offset), -offset, NULL)) != FR_OK) {
+		if ((result = f_read(&fp, MK_FP(0x1000, offset), -offset, &bw)) != FR_OK) {
 			return result;
 		}
 
