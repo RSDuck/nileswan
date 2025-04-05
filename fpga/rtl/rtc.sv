@@ -40,6 +40,7 @@ module RTC(
         cmd_RTCInvalid7R
     } Command;
     Command cmd;
+    reg invalid_cmd = 1'b0;
 
     reg[1:0] start_cmd = 2'h0;
 
@@ -50,16 +51,17 @@ module RTC(
     reg data_src_RX = 0;
     wire UseWrittenData = data_src_nWE ^ data_src_RX;
 
-    reg ready_bit_sclk = 0;
-    reg ready_bit_nOE = 0, ready_bit_nWE = 0;
+    reg[1:0] req_ready_clear_nWE = 2'b0;
+    reg[1:0] req_ready_clear_nOE = 2'b0;
+    reg[1:0] req_ready_set = 2'b0;
 
-    wire Ready = ready_bit_sclk ^ ready_bit_nOE ^ ready_bit_nWE;
+    reg ready = 1'b0;
+    reg busy = 1'b0;
 
     typedef enum reg[6:0] {
         state_Idle = 0,
         state_LowerCS = 1,
         state_RaiseCS = 2,
-        state_RaiseCSSetReady = 3,
         state_Byte0Bit0 = 8,
         state_MCUWait = state_Byte0Bit0+8,
         state_Byte1Bit0 = state_MCUWait+1,
@@ -81,13 +83,13 @@ module RTC(
 
     wire Shifting = spi_state[6:3] != 0;
 
-    wire StartRTCCmd = start_cmd[1] ^ start_cmd[0];
+    wire StartRTCCmd = ^start_cmd;
 
     reg[6:0] cmd_final_state;
     always_comb begin
         case (cmd)
         cmd_RTCResetW,
-        cmd_RTCResetR: cmd_final_state = state_MCUWait;
+        cmd_RTCResetR: cmd_final_state = state_Byte0Bit0+7;
         cmd_RTCStatusW,
         cmd_RTCStatusR: cmd_final_state = state_Byte1Bit0+7;
         cmd_RTCData0W,
@@ -103,55 +105,60 @@ module RTC(
     end
 
     always @(posedge SClk) begin
+        if (^req_ready_clear_nWE) begin
+            ready <= 0;
+            req_ready_clear_nWE[1] <= req_ready_clear_nWE[0];
+        end
+        if (^req_ready_clear_nOE) begin
+            ready <= 0;
+            req_ready_clear_nOE[1] <= req_ready_clear_nOE[0];
+        end
+
         case (spi_state)
         state_Idle: begin
             if (StartRTCCmd) begin
                 spi_state <= state_LowerCS;
                 start_cmd[1] <= start_cmd[0];
+                busy <= 1;
             end
         end
         state_LowerCS: begin
             spi_state <= state_Byte0Bit0;
         end
         state_RaiseCS: begin
-            spi_state <= state_Idle;
-        end
-        state_RaiseCSSetReady: begin
-            if (MCUReadyFallingEdge) begin
+            //if (MCUReadyFallingEdge) begin
                 spi_state <= state_Idle;
 
-                if (~Ready)
-                    ready_bit_sclk <= ready_bit_sclk ^ 1;
-            end
+                ready <= 1;
+                busy <= 0;
+            //end
         end
         state_MCUWait: begin
-            if (MCUReadyFallingEdge) begin
-                if (cmd_final_state == state_MCUWait)
-                    spi_state <= state_RaiseCS;
-                else
-                    spi_state <= state_Byte1Bit0;
-            end
+            //if (MCUReadyFallingEdge) begin
+                spi_state <= state_Byte1Bit0;
+            //end
         end
-        state_Byte1Bit0+7, state_Byte2Bit0+7,
+        state_Byte0Bit0+7, state_Byte1Bit0+7, state_Byte2Bit0+7,
                 state_Byte3Bit0+7, state_Byte4Bit0+7, state_Byte5Bit0+7,
                 state_Byte6Bit0+7, state_Byte7Bit0+7: begin
 
             if (spi_state == cmd_final_state) begin
-                spi_state <= state_RaiseCSSetReady;
+                spi_state <= state_RaiseCS;
             end else begin
                 spi_state <= spi_state + 1;
 
-                if (~Ready)
-                    ready_bit_sclk <= ready_bit_sclk ^ 1;
+                if (spi_state != state_Byte0Bit0+7)
+                    ready <= 1;
             end
         end
         state_WaitData1, state_WaitData2, state_WaitData3,
                 state_WaitData4, state_WaitData5,
                 state_WaitData6: begin
 
-            if (~Ready)
+            if (~ready)
                 spi_state <= spi_state + 1;
         end
+        //state_Byte7Bit0+8: spi_state <= 
         default: spi_state <= spi_state + 1;
         endcase
     end
@@ -196,16 +203,17 @@ module RTC(
         end
     end
 
-    wire Busy = StartRTCCmd|(spi_state != state_Idle);
+    wire Busy = StartRTCCmd|busy;
+    wire Ready = ready & ~(^req_ready_clear_nOE | ^req_ready_clear_nWE);
 
     assign RTCData = UseWrittenData ? data_written : data_recv;
-    assign RTCCtrl = {Ready, 2'b00, Busy, cmd[3:0]};
+    assign RTCCtrl = {Ready, 2'b00, Busy|invalid_cmd, cmd[3:0]};
 
     reg cs = 1;
     always @(posedge SClk) begin
         if (spi_state == state_LowerCS)
             cs = 0;
-        else if (spi_state == state_RaiseCS || spi_state == state_RaiseCSSetReady)
+        else if (spi_state == state_RaiseCS)
             cs = 1;
     end
     assign nMCUSel = cs;
@@ -216,33 +224,32 @@ module RTC(
     assign SPIClkStretch = wait_for_next_byte;
 
     always @(posedge nWE) begin
-        if (SelRTCCtrl
-                // only start upon a valid command
-                && WriteData[4]
-                && WriteData[3:1] != 6
-                && WriteData[3:1] != 7
-                && ~StartRTCCmd) begin
-            start_cmd[0] <= start_cmd[0] ^ 1;
-        end
-        if (SelRTCCtrl)
+        if (SelRTCCtrl && ~Busy) begin
             cmd <= WriteData[3:0];
-    end
+            invalid_cmd <= 0;
+            if (WriteData[4]) begin
+                // only start upon a valid command
+                if (WriteData[3:1] != 6 && WriteData[3:1] != 7) begin
+                    start_cmd[0] <= start_cmd[0] ^ 1;
+                end else begin
+                    invalid_cmd <= 1;
+                end
+            end
+        end
 
-    always @(posedge nWE) begin
         if (SelRTCData) begin
             data_written <= WriteData;
             if (~UseWrittenData)
                 data_src_nWE <= data_src_nWE ^ 1;
-            
-            if (Ready)
-                ready_bit_nWE <= ready_bit_nWE ^ 1;
+
+            if (~cmd[0] | ~Busy)
+                req_ready_clear_nWE[0] <= req_ready_clear_nWE[0] ^ 1;
         end
     end
 
-    always @(negedge nOE) begin
-        if (SelRTCData) begin
-            if (Ready)
-                ready_bit_nOE <= ready_bit_nOE ^ 1;
+    always @(posedge nOE) begin
+        if (SelRTCData && (cmd[0] | ~Busy)) begin
+            req_ready_clear_nOE[0] <= req_ready_clear_nOE[0] ^ 1;
         end
     end
 endmodule
