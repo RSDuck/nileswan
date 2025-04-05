@@ -7,6 +7,39 @@
 
 #define SRAM_BYTE ((volatile uint8_t __far*) MK_FP(0x1000, 0x55AA))
 
+__attribute__((noinline, section(".data")))
+static void flash_fsm_write_slow(void) {
+    *SRAM_BYTE = 0xAA;
+    *SRAM_BYTE = 0x55;
+    *SRAM_BYTE = 0xA0;
+    *SRAM_BYTE = 0x22;
+}
+
+__attribute__((noinline, section(".data")))
+static void flash_fsm_write_fast(void) {
+    *SRAM_BYTE = 0xAA;
+    *SRAM_BYTE = 0x55;
+    *SRAM_BYTE = 0x20;
+    *SRAM_BYTE = 0xA0;
+    *SRAM_BYTE = 0x33;
+    *SRAM_BYTE = 0x90;
+}
+
+__attribute__((noinline, section(".data")))
+static uint8_t flash_fsm_erase(uint8_t cmd) {
+    *SRAM_BYTE = 0xAA;
+    *SRAM_BYTE = 0x55;
+    *SRAM_BYTE = 0x80;
+    *SRAM_BYTE = 0xAA;
+    *SRAM_BYTE = 0x55;
+    *SRAM_BYTE = cmd;
+    uint8_t result = *SRAM_BYTE;
+    *SRAM_BYTE = 0xAA;
+    *SRAM_BYTE = 0x55;
+    *SRAM_BYTE = 0x90;
+    return result;
+}
+
 bool test_flash_fsm(void) {
     bool result = false;
     console_print_header(s_flash_fsm_test);
@@ -31,10 +64,7 @@ bool test_flash_fsm(void) {
     // Test #2: Slow flash
     {
         console_printf(0, s_flash_fsm_test_no, 2);
-        *SRAM_BYTE = 0xAA;
-        *SRAM_BYTE = 0x55;
-        *SRAM_BYTE = 0xA0;
-        *SRAM_BYTE = 0x22;
+        flash_fsm_write_slow();
         if (!console_print_status(*SRAM_BYTE == 0x22)) goto done;
         console_print_newline();    
     }
@@ -42,12 +72,7 @@ bool test_flash_fsm(void) {
     // Test #3: Fast flash
     {
         console_printf(0, s_flash_fsm_test_no, 3);
-        *SRAM_BYTE = 0xAA;
-        *SRAM_BYTE = 0x55;
-        *SRAM_BYTE = 0x20;
-        *SRAM_BYTE = 0xA0;
-        *SRAM_BYTE = 0x33;
-        *SRAM_BYTE = 0x90;
+        flash_fsm_write_fast();
         if (!console_print_status(*SRAM_BYTE == 0x33)) goto done;
         console_print_newline();    
     }
@@ -55,27 +80,12 @@ bool test_flash_fsm(void) {
     // Test #4, #5, #6: "Erase"
     {
         console_printf(0, s_flash_fsm_test_no, 4);
-        *SRAM_BYTE = 0xAA;
-        *SRAM_BYTE = 0x55;
-        *SRAM_BYTE = 0x80;
-        *SRAM_BYTE = 0xAA;
-        *SRAM_BYTE = 0x55;
-        *SRAM_BYTE = 0x30;
-        if (!console_print_status(*SRAM_BYTE == 0xFF)) goto done;
+        if (!console_print_status(flash_fsm_erase(0x30) == 0xFF)) goto done;
         console_print_newline();    
         console_printf(0, s_flash_fsm_test_no, 5);
-        *SRAM_BYTE = 0xAA;
-        *SRAM_BYTE = 0x55;
-        *SRAM_BYTE = 0x80;
-        *SRAM_BYTE = 0xAA;
-        *SRAM_BYTE = 0x55;
-        *SRAM_BYTE = 0x10;
-        if (!console_print_status(*SRAM_BYTE == 0xFF)) goto done;
+        if (!console_print_status(flash_fsm_erase(0x10) == 0xFF)) goto done;
         console_print_newline();     
         console_printf(0, s_flash_fsm_test_no, 6);
-        *SRAM_BYTE = 0xAA;
-        *SRAM_BYTE = 0x55;
-        *SRAM_BYTE = 0x90; 
         if (!console_print_status(*SRAM_BYTE == 0x33)) goto done;
         console_print_newline();     
     }
