@@ -174,11 +174,11 @@ This area is used for inter-process communication by software that targets the n
     bttt tttt
     |||| ||||
     |+++-++++- TF card type
-    |          - 0: no card
-    |          - 1: MMCv3
-    |          - 2: MMCv4 (> 2 GB)
-    |          - 3: TF
-    |          - 4: TF (> 2 GB)
+    |          - 0x00: no card
+    |          - 0x01: MMC (older)
+    |          - 0x02: MMC (newer)
+    |          - 0x04: TF (older)
+    |          - 0x08: TF (newer)
     +--------- Card uses block instead of byte addressing
 
 When disabling removable storage card power, this byte should also be set to `0`; otherwise, filesystem drivers may fail to work correctly.
