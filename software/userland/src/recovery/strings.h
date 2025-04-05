@@ -54,4 +54,12 @@ DEFINE_STRING(s_mfg_test_success1, "*                   *\n");
 DEFINE_STRING(s_mfg_test_success2, "* All tests passed! *\n");
 DEFINE_STRING(s_run_manufacturing_test, "Run manufacturing tests");
 
+DEFINE_STRING(s_benchmark_card_read, "Benchmark TF card read");
+DEFINE_STRING(s_benchmark_card_write, "Benchmark TF card write");
+DEFINE_STRING(s_benchmark_preparing_test_file, "Preparing test file... ");
+DEFINE_STRING(s_benchmark_reading_bytes, "Reading %d bytes... ");
+DEFINE_STRING(s_benchmark_writing_bytes, "Writing %d bytes... ");
+DEFINE_STRING(s_benchmark_data_read_mismatch, "Data read mismatch");
+DEFINE_STRING(s_benchmark_hblanks, "%d hbl (%d KB/s)");
+
 #endif /* _STRINGS_H_ */

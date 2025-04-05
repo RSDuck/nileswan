@@ -57,8 +57,10 @@ bool console_warranty_disclaimer(void) {
 static const char __wf_rom* __wf_rom menu_main[] = {
 	s_internal_eeprom_recovery,
 	s_cartridge_tests,
-	s_setup_mcu_boot_flags,
 	s_print_cartridge_ids,
+	s_benchmark_card_read,
+	s_benchmark_card_write,
+	s_setup_mcu_boot_flags,
 	s_run_manufacturing_test,
 	NULL
 };
@@ -137,15 +139,25 @@ void main(void) {
 			break;
 		case 2:
 			console_clear();
-			op_mcu_setup_boot_flags();
+			op_id_print();
 			console_press_any_key();
 			break;
 		case 3:
 			console_clear();
-			op_id_print();
+			op_tf_card_benchmark_read();
 			console_press_any_key();
 			break;
 		case 4:
+			console_clear();
+			op_tf_card_benchmark_write();
+			console_press_any_key();
+			break;
+		case 5:
+			console_clear();
+			op_mcu_setup_boot_flags();
+			console_press_any_key();
+			break;
+		case 6:
 			console_clear();
 			main_mfg();
 			console_press_any_key();
