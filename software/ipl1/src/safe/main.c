@@ -221,7 +221,8 @@ void try_boot_rom(void) {
 }
 
 void main(void) {
-	ipc_init();
+	outportw(IO_BANK_2003_RAM, NILE_SEG_RAM_IPC);
+	ipc_init(MEM_NILE_IPC);
 
 	bool sram_io_speed_limit = true;
 

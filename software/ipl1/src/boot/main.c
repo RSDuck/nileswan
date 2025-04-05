@@ -140,17 +140,24 @@ const uint8_t swan_logo_map[] = {0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
 void main(void) {
 	outportb(IO_SYSTEM_CTRL2, 0x00); // Disable SRAM/IO wait states
 	nile_flash_sleep(); // Put flash chip to sleep
-	ipc_init();
+
+	// Back up IPC (without user area)
+	outportw(IO_BANK_2003_RAM, NILE_SEG_RAM_IPC);
+	memcpy((void __far*) SCREEN, MEM_NILE_IPC, 0xE0);
 
 #ifndef PROGRAM_factory
 	// Start loading warmboot image
-	outportb(IO_NILE_WARMBOOT_CNT, 1);
+	outportb(IO_NILE_WARMBOOT_CNT, 0);
 	// Configure HBlank timer to count down until 20ms have passed
 	outportw(IO_HBLANK_TIMER, 241);
 	outportw(IO_TIMER_CTRL, HBLANK_TIMER_ENABLE);
 #endif
 
-	ws_display_set_shade_lut(SHADE_LUT_DEFAULT);
+	// Initialize IPC in backup
+	ipc_init((nile_ipc_t __far*) SCREEN);
+
+	outportw(IO_LCD_SHADE_01, SHADE_LUT_DEFAULT & 0xFF);
+	outportw(IO_LCD_SHADE_45, SHADE_LUT_DEFAULT >> 16);
 #ifndef PROGRAM_factory
 	outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(0, 3, 1, 2));
 #else
@@ -159,13 +166,6 @@ void main(void) {
 	outportw(IO_SCR_PAL_3, MONO_PAL_COLORS(0, 0, 0, 0));
 	wsx_zx0_decompress((uint16_t*) 0x3200, gfx_tiles);
 
-	// Initialize screen 1
-	memset(SCREEN, 0x6, (32 * 19 - 4) * sizeof(uint16_t));
-	mem_expand_8_16(SCREEN + (8 * 32) + 12, swan_logo_map, 4, 0x100);
-	mem_expand_8_16(SCREEN + (9 * 32) + 12, swan_logo_map + 4, 4, 0x100);
-	mem_expand_8_16(SCREEN + (10 * 32) + 12, swan_logo_map + 8, 4, 0x100);
-	outportw(IO_SCR1_SCRL_X, (13 * 8 - 4) << 8);
-
 	// Initialize screen 2
 	for (int i = 0; i < 28; i++)
 		SCREEN[32 * 19 + i] = ((uint8_t) '-') | 0x100;
@@ -173,14 +173,25 @@ void main(void) {
 	outportw(IO_SCR2_WIN_X1, (6 | (PROGRESS_BAR_Y << 5)) << 3);
 	outportw(IO_SCR2_WIN_X2, ((6 | ((PROGRESS_BAR_Y + 8) << 5)) << 3) - 0x101);
 
-	// Show screens
-	outportb(IO_SCR_BASE, SCR1_BASE(SCREEN) | SCR2_BASE(SCREEN));
-	outportw(IO_DISPLAY_CTRL, DISPLAY_SCR1_ENABLE | DISPLAY_SCR2_ENABLE | DISPLAY_SCR2_WIN_INSIDE);
-
 #ifndef PROGRAM_factory
 	while(inportw(IO_HBLANK_COUNTER));
 	outportw(IO_SCR_PAL_0, MONO_PAL_COLORS(0, 7, 2, 5));
 #endif
+
+	// Restore IPC
+	outportw(IO_BANK_2003_RAM, NILE_SEG_RAM_IPC);
+	memcpy(MEM_NILE_IPC, (void __far*) SCREEN, 0xE0);
+
+	// Initialize screen 1
+	memset(SCREEN, 0x6, (32 * 19 - 4) * sizeof(uint16_t));
+	mem_expand_8_16(SCREEN + (8 * 32) + 12, swan_logo_map, 4, 0x100);
+	mem_expand_8_16(SCREEN + (9 * 32) + 12, swan_logo_map + 4, 4, 0x100);
+	mem_expand_8_16(SCREEN + (10 * 32) + 12, swan_logo_map + 8, 4, 0x100);
+	outportw(IO_SCR1_SCRL_X, (13 * 8 - 4) << 8);
+
+	// Show screens
+	outportb(IO_SCR_BASE, SCR1_BASE(SCREEN) | SCR2_BASE(SCREEN));
+	outportw(IO_DISPLAY_CTRL, DISPLAY_SCR1_ENABLE | DISPLAY_SCR2_ENABLE | DISPLAY_SCR2_WIN_INSIDE);
 
 	uint8_t result;
 	if (!(result = load_menu())) {

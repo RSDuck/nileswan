@@ -12,7 +12,7 @@ weight: 10
 
 ## SPI interface
 
-**`0xE0` - `SPI_CNT` (16 bit)**
+**`0xE0` - `SPI_CNT` (16-bit, read/write)**
 | Bit(s) | Description |
 |------|------|
 |0-8|SPI transfer length in bytes minus one|
@@ -37,7 +37,8 @@ For EEPROM or RTC SPI communication to work, the cartridge serial clock has to b
 
 ## Power/system control
 
-**`0xE2` - `POW_CNT` (8 bit)**
+**`0xE2` - `POW_CNT` (8-bit, read/write)**
+
 | Bit(s) | Description |
 |------|------|
 |0|Enable 24 MHz high frequency clock. (0=off, 1=on (default))|
@@ -49,27 +50,33 @@ For EEPROM or RTC SPI communication to work, the cartridge serial clock has to b
 |6|Enable SRAM (0=off, 1=on (default))|
 |7|μC reset line|
 
-If `0xFD` is written to `POW_CNT` it will reset the entire register even if nileswan registers are disabled. This way the nileswan registers can be brought back after disabling them.
+If `0xFD` is written to `POW_CNT` it will reset the entire register even if nileswan registers are disabled. This allows unlocking the nileswan I/O ports after they have been disabled.
 
-Disabling a range of I/O registers only changes the visibility. E.g. the upper banking bits of the 2003 mapper continue to apply even if the registers used to change them are not accessible anymore.
+Disabling a range of I/O registers only changes their visibility; it does not disable their functiion. E.g. the upper banking bits of the 2003 mapper continue to apply even if the registers used to change them are not accessible anymore.
 
-The μC reset line bit directly connects to the nRST pin of the microcontroller.
+The μC reset line bit is connected directly to the nRST pin of the microcontroller.
 
 μC BOOT0 controls whether the microcontroller starts from bootloader ROM or programmable flash (see STM32 documentation). The line is shared with busy line for emulated EEPROM operations and is open drain idling at low.
 
 If SRAM is enabled SRAM (banks 0-7) may be selected when accessing the RAM area.
 
-** `0xE3` - `WARMBOOT_CNT`
+**`0xE3` - `WARMBOOT_CNT` (8-bit, write)**
 
 | Bit(s) | Description |
 |------|------|
 |0-1|Warmboot image to boot (0-3)|
 
-After writing the FPGA will load one of four FPGA cores from SPI flash depending on the value written. See SPI flash layout on where the images lie. The port is write-only.
+After writing the FPGA will load one of four FPGA cores from SPI flash depending on the value written. The core image locations are documented in the SPI flash layout.
 
-The port may only be written while not running code from the cartridge. After writing a wait of approximately 20 milliseconds is necessary until the cartridge responds again.
+It may only be written while not running code from the cartridge. After writing, a wait of approximately 20 milliseconds is necessary until the cartridge responds again.
 
-** `0xE6` - `EMU_CNT`
+{{< hint type=important >}}
+If your FPGA core image does not [enable](https://github.com/YosysHQ/icestorm/pull/332) a faster frequency range,
+the wait may need to be as high as 53 milliseconds.
+{{< /hint >}}
+
+
+**`0xE6` - `EMU_CNT` (8-bit, read/write)**
 
 | Bit(s) | Description |
 |------|------|
@@ -83,7 +90,7 @@ When flash emulation the FPGA will provide minimal emulation of the programming 
 
 ## Banking
 
-**`0xE4` - `BANK_MASK` (16 bit)**
+**`0xE4` - `BANK_MASK` (16-bit, read/write)**
 | Bit(s) | Description |
 |------|------|
 |0-8|Mask to be applied to ROM bank index|
@@ -173,6 +180,8 @@ This area is used for inter-process communication by software that targets the n
     |          - 3: TF
     |          - 4: TF (> 2 GB)
     +--------- Card uses block instead of byte addressing
+
+When disabling removable storage card power, this byte should also be set to `0`; otherwise, filesystem drivers may fail to work correctly.
 
 ### ROM bank 510, RAM bank 15: SPI buffers
 

@@ -18,6 +18,6 @@
 #ifndef _IPC_H_
 #define _IPC_H_
 
-void ipc_init(void);
+void ipc_init(nile_ipc_t __far* ipc);
 
 #endif /* _IPC_H_ */
