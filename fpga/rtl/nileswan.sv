@@ -397,10 +397,9 @@ module nileswan(
                     enable_fastclk <= Data[0];
                     enable_tf_power <= Data[1];
 
-                    // disabled until it is ensured software handles then correctly
-                    /*enable_nileswan_ex <= Data[2];
+                    enable_nileswan_ex <= Data[2];
                     enable_bandai2001_ex <= Data[3];
-                    enable_bandai2003_ex <= Data[4];*/
+                    enable_bandai2003_ex <= Data[4];
 
                     pull_high_boot0 <= Data[5];
 
