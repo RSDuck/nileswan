@@ -40,6 +40,7 @@ crc16 = crc.Calculator(crc.Configuration(
     reverse_output=False,
 ))
 
+MAXIMUM_PART_SIZE = 49152
 FLASH_SECTOR_SIZE = 256
 version = [9, 9, 9]
 
@@ -52,6 +53,14 @@ def pad(data, right):
     else:
         data = b'\xFF'*diff + data
     return data
+
+def split_data_by_part_size(flash_position, data):
+    while len(data) > MAXIMUM_PART_SIZE:
+        yield (flash_position, data[0:MAXIMUM_PART_SIZE])
+        flash_position += MAXIMUM_PART_SIZE
+        data = data[MAXIMUM_PART_SIZE:]
+
+    yield (flash_position, data)
 
 with open(args.manifest, 'r') as rules:
     for line in rules:
@@ -73,15 +82,15 @@ with open(args.manifest, 'r') as rules:
             if flash_position < 0:
                 flash_position = (-flash_position) - len(data)
 
-            # TODO: Pad to flash sector size (or detect issue)
-            if (flash_position & 0xFF) != 0:
-                raise Exception("File {rule[1]} cannot be flashed at unaligned position {flash_position}")
+            for (flash_position, data) in split_data_by_part_size(flash_position, data):
+                if (flash_position & 0xFF) != 0:
+                    raise Exception("File {rule[1]} cannot be flashed at unaligned position {flash_position}")
 
-            start_segment = start_segment - ((len(data) + 15) >> 4)
-            data_at_position[start_segment] = data
+                start_segment = start_segment - ((len(data) + 15) >> 4)
+                data_at_position[start_segment] = data
 
-            rule_data += bytearray(struct.pack("<BHHIH",
-                0x01, start_segment, len(data), flash_position, crc16.checksum(data)))
+                rule_data += bytearray(struct.pack("<BHHIH",
+                    0x01, start_segment, len(data), flash_position, crc16.checksum(data)))
         elif rule_name == 'PACKED_FLASH':
             subprocess.run(["rm", "temp.bin"])
             subprocess.run(["wf-zx0-salvador", "-v", rule[1], "temp.bin"])
@@ -97,6 +106,8 @@ with open(args.manifest, 'r') as rules:
             if flash_position < 0:
                 flash_position = (-flash_position) - len(data)
 
+            if len(unpacked_data) > 65535:
+                raise Exception("File {rule[1]} size too large ({len(unpacked_data)} > 65535)")
             # TODO: Pad to flash sector size (or detect issue)
             if (flash_position & 0xFF) != 0:
                 raise Exception("File {rule[1]} cannot be flashed at unaligned position {flash_position}")

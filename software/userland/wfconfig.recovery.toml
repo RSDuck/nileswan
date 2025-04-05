@@ -8,7 +8,7 @@ color = false
 rtc = false
 vertical = false
 
-rom_banks = 8
+rom_banks = 4
 # mapper = "2003"
 # rom_speed = 1
 # rom_bus_width = 16
