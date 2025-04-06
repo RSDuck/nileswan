@@ -105,16 +105,12 @@ module RTC(
     end
 
     reg falling_edge_registered = 1'b0;
-    reg[5:0] falling_edge_counter = 6'b0;
     always @(posedge SClk) begin
         if (state == state_LowerCS || state == state_SendData0) begin
             falling_edge_registered <= 1'b0;
-            falling_edge_counter <= 1'b0;
         end
-        else if ((MCUReadyFallingEdge && falling_edge_counter == 0) || falling_edge_counter != 0) begin
-            falling_edge_counter <= falling_edge_counter + 1;
-            if (falling_edge_counter == 6'h3F)
-                falling_edge_registered <= 1'b1;
+        else if (MCUReadyFallingEdge) begin
+            falling_edge_registered <= 1'b1;
         end
     end
 
