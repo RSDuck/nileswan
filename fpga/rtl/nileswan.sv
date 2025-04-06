@@ -65,10 +65,18 @@ module nileswan(
     reg[1:0] eeprom_size = eepromSize_NoEEPROM;
 
     reg pull_high_boot0 = 1'b0;
-    assign MCUReady = pull_high_boot0 ? 1'b1 : 1'bZ;
-    reg[2:0] mcu_ready_edge = 2'h0;
+    wire mcu_ready;
+    SB_IO #(
+        .PIN_TYPE(6'b101001), // PIN_INPUT, PIN_OUTPUT_TRISTATE
+        .IO_STANDARD("SB_LVCMOS")
+    ) mcu_ready_iob (
+        .PACKAGE_PIN(MCUReady),
+        .D_OUT_0(1'b1),
+        .D_IN_0(mcu_ready),
+        .OUTPUT_ENABLE(pull_high_boot0));
+    reg[2:0] mcu_ready_edge = 3'h0;
     always @(posedge SClk) begin
-        mcu_ready_edge <= {mcu_ready_edge[1:0], MCUReady};
+        mcu_ready_edge <= {mcu_ready_edge[1:0], mcu_ready};
     end
     wire MCUReadyFallingEdge = mcu_ready_edge[2] & ~mcu_ready_edge[1];
 

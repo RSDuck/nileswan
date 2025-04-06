@@ -69,7 +69,7 @@ module cartserial_bench ();
         while (testdev_rx_queue.size() < recv_size) begin
             #(sclk_half_period);
         end
-        #(sclk_half_period*5);
+        #(sclk_half_period*25);
         ready_falling_edge = 1;
         #(sclk_half_period*3);
         ready_falling_edge = 0;
@@ -120,7 +120,7 @@ module cartserial_bench ();
         assert (rtc_data == 8'hEE) 
         else   $error("Wrong data in RTC data register %x", rtc_data);
 
-        // RTC write status
+        // RTC write misc
         sel_rtc_data = 1;
         writeReg(8'h22);
         sel_rtc_data = 0;
@@ -135,11 +135,6 @@ module cartserial_bench ();
         sel_rtc_ctrl = 0;
 
         wait_spi_and_ack(8);
-
-        while (~rtc_ctrl[7]) begin
-            #(sclk_half_period);
-        end
-
         compareTestDevRX(8'hF8);
 
         while (~rtc_ctrl[7]) begin
@@ -159,10 +154,6 @@ module cartserial_bench ();
         end
 
         compareTestDevRX(8'h33);
-
-        sel_rtc_data = 1;
-        writeReg(8'h00);
-        sel_rtc_data = 0;
 
         // RTC read status
         pushTestDevTx(8'h11);
