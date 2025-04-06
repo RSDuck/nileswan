@@ -17,6 +17,7 @@
 
 #include "mcu.h"
 #include <stm32u0xx_ll_rcc.h>
+#include <stm32u0xx_ll_rtc.h>
 #include "rtc.h"
 
 static uint8_t rtc_curr_cmd;
@@ -165,13 +166,13 @@ void rtc_read_datetime(uint8_t *buffer, bool date) {
         uint8_t dow = (dr >> 13) & 0x7;
         buffer[0] = dr >> 16;
         buffer[1] = (dr >> 8) & 0x1F;
-        buffer[2] = dr;
+        buffer[2] = dr & 0x3F;
         buffer[3] = (dow == 7 ? 0 : dow);
         buffer += 4;
     }
     buffer[0] = ((tr >> 16) & 0x3F) | ((tr >> 15) & 0x80);
-    buffer[1] = tr >> 8;
-    buffer[2] = tr;
+    buffer[1] = (tr >> 8) & 0x7F;
+    buffer[2] = tr & 0x7F;
 }
 
 void rtc_write_alarm(uint8_t hour, uint8_t minute) {

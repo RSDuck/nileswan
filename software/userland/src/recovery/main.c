@@ -2,6 +2,7 @@
 #include "ops/ieeprom.h"
 #include "ops/tf_card.h"
 #include "tests/flash_fsm.h"
+#include "tests/rtc.h"
 #include <nile/core.h>
 #include <string.h>
 #include <wonderful.h>
@@ -72,6 +73,7 @@ static const char __wf_rom* __wf_rom menu_ieeprom[] = {
 
 static const char __wf_rom* __wf_rom menu_cartridge_tests[] = {
 	s_flash_fsm_test,
+	s_rtc_stability_test,
 	NULL
 };
 
@@ -92,7 +94,9 @@ void main(void) {
 	ws_hwint_enable(HWINT_VBLANK);
 	cpu_irq_enable();
 
+	// FIXME: nile_io_unlock() pulls BOOT0 line high
 	nile_io_unlock();
+	outportb(IO_NILE_POW_CNT, 0xDD);
 	nile_bank_unlock();
 
 	console_init();
@@ -170,6 +174,11 @@ option_loop:
 			case 0:
 				console_clear();
 				test_flash_fsm();
+				console_press_any_key();
+				break;
+			case 1:
+				console_clear();
+				test_rtc_stability(0);
 				console_press_any_key();
 				break;
 			}

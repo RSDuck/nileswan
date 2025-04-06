@@ -46,6 +46,14 @@ DEFINE_STRING(s_flash_fsm_test, "Flash FSM test");
 DEFINE_STRING(s_flash_fsm_test_no, "Flash FSM test #%d");
 DEFINE_STRING(s_flash_fsm_last_byte, "\nLast byte = %02X\n");
 
+DEFINE_STRING(s_press_b_to_abort, " (press B to abort)");
+DEFINE_STRING(s_rtc_stability_test, "RTC stability test");
+DEFINE_STRING(s_rebooting_mcu, "Rebooting MCU...");
+DEFINE_STRING(s_resetting_rtc, "Resetting RTC...");
+DEFINE_STRING(s_rtc_stability_read_failed, " read failed @ %d (error %d)");
+DEFINE_STRING(s_rtc_stability_value_mismatch, " mismatch @ %d: %08lX then %08lX");
+DEFINE_STRING(s_rtc_stability_value_invalid, " invalid value @ %d: %08lX");
+
 DEFINE_STRING(s_caps_initialization, "INITIALIZATION");
 DEFINE_STRING(s_caps_test_suite, "TEST SUITE");
 DEFINE_STRING(s_caps_information, "INFORMATION");
