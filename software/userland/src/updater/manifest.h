@@ -23,13 +23,20 @@
 #include <wonderful.h>
 
 #define UM_CMD_END 0x00
-#define UM_CMD_FLASH 0x01
-#define UM_CMD_PACKED_FLASH 0x02
+#define UM_CMD_FLASH 0x02
+#define UM_CMD_PACKED_FLASH 0x03
+#define UM_CMD_MCU_FLASH 0x04
+#define UM_CMD_MCU_PACKED_FLASH 0x05
+#define UM_ID 0x5746
 
 typedef struct __attribute__((packed)) {
+	uint16_t id;
 	uint16_t major;
 	uint16_t minor;
 	uint16_t patch;
+	uint8_t reserved[4];
+	uint8_t commit_id[20];
+	uint8_t digest[32];
 } um_version_t;
 
 typedef struct __attribute__((packed)) {

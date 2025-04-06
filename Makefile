@@ -91,11 +91,11 @@ $(FLASHBIN): fpga ipl1 ipl1-factory ipl1-safe recovery $(MANIFEST_FULL) software
 	@mkdir -p $(@D)
 	python3 software/userland/manifest_to_bin.py $(MANIFEST_FULL) $@
 
-$(FULLUPWS): fpga ipl1 ipl1-factory ipl1-safe recovery updater $(MANIFEST_FULL) software/userland/manifest_to_rom.py
+$(FULLUPWS): fpga firmware ipl1 ipl1-factory ipl1-safe recovery updater $(MANIFEST_FULL) software/userland/manifest_to_rom.py
 	@mkdir -p $(@D)
 	python3 software/userland/manifest_to_rom.py software/userland/updater.wsc $(MANIFEST_FULL) $@
 
-$(UPDATEWS): fpga ipl1 ipl1-factory ipl1-safe recovery updater $(MANIFEST) software/userland/manifest_to_rom.py
+$(UPDATEWS): fpga firmware ipl1 recovery updater $(MANIFEST) software/userland/manifest_to_rom.py
 	@mkdir -p $(@D)
 	python3 software/userland/manifest_to_rom.py software/userland/updater.wsc $(MANIFEST) $@
 
