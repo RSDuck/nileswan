@@ -50,7 +50,7 @@ For EEPROM or RTC SPI communication to work, the cartridge serial clock has to b
 |6|Enable SRAM (0=off, 1=on (default))|
 |7|μC reset line|
 
-If `0xFD` is written to `POW_CNT` it will reset the entire register even if nileswan registers are disabled. This allows unlocking the nileswan I/O ports after they have been disabled.
+If `0xDD` is written to `POW_CNT` it will reset the entire register even if nileswan registers are disabled. This allows unlocking the nileswan I/O ports after they have been disabled.
 
 Disabling a range of I/O registers only changes their visibility; it does not disable their functiion. E.g. the upper banking bits of the 2003 mapper continue to apply even if the registers used to change them are not accessible anymore.
 

@@ -395,7 +395,7 @@ module nileswan(
             end
 
             POW_CNT: begin
-                if (enable_nileswan_ex || Data[7:0] == 8'hFD) begin
+                if (enable_nileswan_ex || Data[7:0] == 8'hDD) begin
                     enable_fastclk <= Data[0];
                     enable_tf_power <= Data[1];
 
