@@ -9,11 +9,11 @@
 #include "input.h"
 #include "strings.h"
 
-static int32_t fetch_rtc_time(void) {
+static int32_t fetch_rtc_time(uint8_t cmd) {
     // if RTC active, fail RTC fetch
     uint8_t ctrl = inportb(IO_CART_RTC_CTRL);
     if (ctrl & CART_RTC_ACTIVE) return -1000 - ctrl;
-    outportb(IO_CART_RTC_CTRL, CART_RTC_CMD_TIME | CART_RTC_READ | CART_RTC_ACTIVE);
+    outportb(IO_CART_RTC_CTRL, cmd);
 
     int32_t result = 0;
     while (true) {
@@ -24,11 +24,11 @@ static int32_t fetch_rtc_time(void) {
             result = (result << 8) | inportb(IO_CART_RTC_DATA);
         }
     } 
-    return result;
+    return result & 0xFFFFFF;
 }
 
 static bool test_rtc_stability_run(void) {
-    int32_t first_time = fetch_rtc_time();
+    int32_t first_time = fetch_rtc_time(0x17);
     if (first_time < 0) {
         console_printf(0, s_rtc_stability_read_failed, -1, (int16_t) first_time);
         console_print_status(false);
@@ -43,14 +43,15 @@ static bool test_rtc_stability_run(void) {
     }
     for (uint16_t i = 0; i < 3456; i++) {
         // Fetch RTC time
-        int32_t next_time = fetch_rtc_time();
+        uint8_t cmd = (i & 1) ? 0x15 : 0x17;
+        int32_t next_time = fetch_rtc_time(cmd);
         if (next_time < 0) {
             console_printf(0, s_rtc_stability_read_failed, i, (int16_t) next_time);
             console_print_status(false);
             console_print_newline();
             return false;
         }
-        if (next_time & 0x408080) {
+        if (next_time & 0xFF408080) {
             console_printf(0, s_rtc_stability_value_invalid, i, next_time);
             console_print_status(false);
             console_print_newline();
