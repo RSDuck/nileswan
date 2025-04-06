@@ -160,6 +160,9 @@ void rtc_write_datetime(const uint8_t *buffer, bool date) {
 }
 
 void rtc_read_datetime(uint8_t *buffer, bool date) {
+    LL_RTC_ClearFlag_RS(RTC);
+    while (!LL_RTC_IsActiveFlag_RS(RTC));
+
     uint32_t tr = RTC->TR;
     if (date) {
         uint32_t dr = RTC->DR;
