@@ -26,8 +26,8 @@ DEFINE_STRING(s_print_cartridge_ids, "Print cartridge IDs");
 DEFINE_STRING(s_flash_jedec_id, "SPI flash JEDEC ID = ");
 DEFINE_STRING(s_flash_uuid, "SPI flash UUID = ");
 DEFINE_STRING(s_mcu_uuid, "MCU UUID = ");
-DEFINE_STRING(s_tf_card_test, "Mount external storage");
 DEFINE_STRING(s_tf_card_init, "Initializing storage...");
+DEFINE_STRING(s_tf_card_fs_init, "Initializing filesystem...");
 DEFINE_STRING(s_error_code, "Error code %d");
 
 DEFINE_STRING(s_manual_shutdown, "The console may now be powered off.");
@@ -41,7 +41,7 @@ DEFINE_STRING(s_disable_custom_splash, "Disable custom splash");
 DEFINE_STRING(s_custom_splash_already_disabled, "Custom splash already disabled!");
 DEFINE_STRING(s_restore_tft_data, "Restore TFT panel data");
 
-DEFINE_STRING(s_cartridge_tests, "Cartridge self-tests >");
+DEFINE_STRING(s_cartridge_tests, "Cartridge self-test >");
 DEFINE_STRING(s_flash_fsm_test, "Flash FSM test");
 DEFINE_STRING(s_flash_fsm_test_no, "Flash FSM test #%d");
 DEFINE_STRING(s_flash_fsm_last_byte, "\nLast byte = %02X\n");
@@ -54,8 +54,10 @@ DEFINE_STRING(s_mfg_test_success1, "*                   *\n");
 DEFINE_STRING(s_mfg_test_success2, "* All tests passed! *\n");
 DEFINE_STRING(s_run_manufacturing_test, "Run manufacturing tests");
 
-DEFINE_STRING(s_benchmark_card_read, "Benchmark TF card read");
-DEFINE_STRING(s_benchmark_card_write, "Benchmark TF card write");
+DEFINE_STRING(s_tf_card_mgmt, "Storage card management >");
+DEFINE_STRING(s_tf_card_mount, "Mount storage card");
+DEFINE_STRING(s_benchmark_card_read, "Benchmark card read");
+DEFINE_STRING(s_benchmark_card_write, "Benchmark card write");
 DEFINE_STRING(s_benchmark_preparing_test_file, "Preparing test file... ");
 DEFINE_STRING(s_benchmark_reading_bytes, "Reading %d bytes... ");
 DEFINE_STRING(s_benchmark_writing_bytes, "Writing %d bytes... ");

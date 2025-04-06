@@ -10,16 +10,33 @@
 
 FATFS fs;
 
+DSTATUS disk_initialize(BYTE pdrv);
+
+
+
 bool op_tf_card_init(bool force) {
     char blank = 0;
     int result;
 
     // Already initialized?
-    if (fs.fs_type && !force) {
-        goto done;
+    if (fs.fs_type) {
+        if (!force) {
+            goto done;
+        } else {
+            nilefs_eject();
+        }
     }
 
     console_print(0, s_tf_card_init);
+    result = disk_initialize(0);
+    console_print_status(result == 0);
+    console_print_newline();
+
+    if (result != 0) {
+        return false;
+    }
+
+    console_print(0, s_tf_card_fs_init);
     result = f_mount(&fs, &blank, 1);
     console_print_status(result == FR_OK);
     if (result != FR_OK) {
@@ -37,7 +54,7 @@ done:
 }
 
 bool op_tf_card_test(void) {
-    bool result = op_tf_card_init(true);
+    bool result = op_tf_card_init(false);
     
     // Maybe return information about the card?
 
@@ -110,7 +127,7 @@ bool op_tf_card_benchmark_read(void) {
         return false;
     }
 
-    if (!op_tf_card_init(true)) return false;
+    if (!op_tf_card_init(false)) return false;
     console_print(0, s_benchmark_preparing_test_file);
     if (!tf_card_handle_error(tf_card_test_open(&file))) return false;
     console_print_status(true);
@@ -157,7 +174,7 @@ bool op_tf_card_benchmark_write(void) {
         return false;
     }
 
-    if (!op_tf_card_init(true)) return false;
+    if (!op_tf_card_init(false)) return false;
     console_print(0, s_benchmark_preparing_test_file);
     if (!tf_card_handle_error(tf_card_test_open(&file))) return false;
     console_print_status(true);

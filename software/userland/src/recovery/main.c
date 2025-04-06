@@ -56,11 +56,10 @@ bool console_warranty_disclaimer(void) {
 
 static const char __wf_rom* __wf_rom menu_main[] = {
 	s_internal_eeprom_recovery,
-	s_cartridge_tests,
+	s_tf_card_mgmt,
 	s_print_cartridge_ids,
-	s_benchmark_card_read,
-	s_benchmark_card_write,
 	s_setup_mcu_boot_flags,
+	s_cartridge_tests,
 	s_run_manufacturing_test,
 	NULL
 };
@@ -73,7 +72,13 @@ static const char __wf_rom* __wf_rom menu_ieeprom[] = {
 
 static const char __wf_rom* __wf_rom menu_cartridge_tests[] = {
 	s_flash_fsm_test,
-	s_tf_card_test,
+	NULL
+};
+
+static const char __wf_rom* __wf_rom menu_card_mgmt[] = {
+	s_tf_card_mount,
+	s_benchmark_card_read,
+	s_benchmark_card_write,
 	NULL
 };
 
@@ -104,11 +109,15 @@ void main(void) {
 
 	while (true) {
 		console_draw_header(s_nileswan_recovery);
-		switch (menu_run(menu_main)) {
+		int option = menu_run(menu_main);
+		int suboption;
+option_loop:
+		switch (option) {
 		case 0:
 			console_clear();
 			console_draw_header(s_internal_eeprom_recovery);
-			switch (menu_run(menu_ieeprom)) {
+			suboption = menu_run(menu_ieeprom);
+			switch (suboption) {
 			case 0:
 				console_clear();
 				op_ieeprom_disable_custom_splash();
@@ -120,23 +129,29 @@ void main(void) {
 				console_press_any_key();
 				break;
 			}
-			break;
+			if (suboption >= 0) goto option_loop; else break;
 		case 1:
 			console_clear();
-			console_draw_header(s_cartridge_tests);
-			switch (menu_run(menu_cartridge_tests)) {
+			console_draw_header(s_tf_card_mgmt);
+			suboption = menu_run(menu_card_mgmt);
+			switch (suboption) {
 			case 0:
 				console_clear();
-				test_flash_fsm();
+				op_tf_card_init(true);
 				console_press_any_key();
 				break;
 			case 1:
 				console_clear();
-				op_tf_card_test();
+				op_tf_card_benchmark_read();
+				console_press_any_key();
+				break;
+			case 2:
+				console_clear();
+				op_tf_card_benchmark_write();
 				console_press_any_key();
 				break;
 			}
-			break;
+			if (suboption >= 0) goto option_loop; else break;
 		case 2:
 			console_clear();
 			op_id_print();
@@ -144,20 +159,22 @@ void main(void) {
 			break;
 		case 3:
 			console_clear();
-			op_tf_card_benchmark_read();
+			op_mcu_setup_boot_flags();
 			console_press_any_key();
 			break;
 		case 4:
 			console_clear();
-			op_tf_card_benchmark_write();
-			console_press_any_key();
-			break;
+			console_draw_header(s_cartridge_tests);
+			suboption = menu_run(menu_cartridge_tests);
+			switch (suboption) {
+			case 0:
+				console_clear();
+				test_flash_fsm();
+				console_press_any_key();
+				break;
+			}
+			if (suboption >= 0) goto option_loop; else break;
 		case 5:
-			console_clear();
-			op_mcu_setup_boot_flags();
-			console_press_any_key();
-			break;
-		case 6:
 			console_clear();
 			main_mfg();
 			console_press_any_key();
