@@ -422,8 +422,8 @@ module nileswan(
                 if (enable_nileswan_ex) begin
                     eeprom_size <= Data[1:0];
 
-                    enable_flash_emu = Data[2];
-                    enable_rom_8bit_bus = Data[3];
+                    enable_flash_emu <= Data[2];
+                    enable_rom_8bit_bus <= Data[3];
                 end
             end
 
