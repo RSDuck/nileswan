@@ -58,7 +58,8 @@ module nileswan(
     reg enable_bandai2001_ex = 1'b1;
     reg enable_bandai2003_ex = 1'b1;
 
-    reg flash_emu_enabled = 1'b0;
+    reg enable_flash_emu = 1'b0;
+    reg enable_rom_8bit = 1'b0;
 
     assign PSRAM_nZZ = 1'b1;
 
@@ -309,8 +310,9 @@ module nileswan(
                 enable_tf_power,
                 enable_fastclk};
 
-    wire[7:0] EmuCnt = {5'h0,
-                flash_emu_enabled,
+    wire[7:0] EmuCnt = {4'h0,
+                enable_rom_8bit_bus,
+                enable_flash_emu,
                 eeprom_size};
 
     always_comb begin
@@ -428,7 +430,8 @@ module nileswan(
                 if (enable_nileswan_ex) begin
                     eeprom_size <= Data[1:0];
 
-                    flash_emu_enabled = Data[2];
+                    enable_flash_emu <= Data[2];
+                    enable_rom_8bit_bus <= Data[3];
                 end
             end
 
@@ -537,8 +540,9 @@ module nileswan(
         end
     end
 
-    wire flash_emu_pass_read = ~flash_emu_enabled | (flash_emu_state != flashEmu_Erase && flash_emu_state != flashEmu_FastMode);
-    wire flash_emu_pass_write = ~flash_emu_enabled |
+    wire flash_emu_pass_read = ~enable_flash_emu | ~access_in_ram_area |
+        (flash_emu_state != flashEmu_Erase && flash_emu_state != flashEmu_FastMode);
+    wire flash_emu_pass_write = ~enable_flash_emu | ~access_in_ram_area |
         (flash_emu_state == flashEmu_SingleWrite || flash_emu_state == flashEmu_FastModeWrite);
 
     wire psram_sel_precond = ~nSel & nIO & ((~nOE & flash_emu_pass_read)|(~nWE & flash_emu_pass_write));
@@ -546,12 +550,14 @@ module nileswan(
     wire flash_emu_catch_read = ~flash_emu_pass_read & (psram_1_addr | psram_2_addr);
     wire[7:0] flash_emu_read_val = flash_emu_state == flashEmu_Erase ? 8'hFF : 8'h00;
 
+    wire access_in_8bit_area = access_in_ram_area | enable_rom_8bit_bus;
+
     assign nPSRAM1Sel = ~(psram_sel_precond & psram_1_addr);
     assign nPSRAM2Sel = ~(psram_sel_precond & psram_2_addr);
     assign nSRAMSel = ~(~nSel & nIO & sram_addr & (~nOE|~nWE));
 
-    assign PSRAM_nLB = access_in_ram_area & AddrLo[0];
-    assign PSRAM_nUB = access_in_ram_area & ~AddrLo[0];
+    assign PSRAM_nLB = access_in_8bit_area & AddrLo[0];
+    assign PSRAM_nUB = access_in_8bit_area & ~AddrLo[0];
 
     assign write_txbuf = ~nSel & nIO & txbuf_addr;
 
@@ -576,7 +582,7 @@ module nileswan(
     wire sel_oe = ~nSel & ~nOE;
 
     wire psram_hi_write = access_in_ram_area & ~(nPSRAM1Sel & nPSRAM2Sel) & ~nWE & AddrLo[0];
-    wire psram_hi_read = access_in_ram_area & ~(nPSRAM1Sel & nPSRAM2Sel) & ~nOE & AddrLo[0];
+    wire psram_hi_read = access_in_8bit_area & ~(nPSRAM1Sel & nPSRAM2Sel) & ~nOE & AddrLo[0];
 
     wire output_io_out = ~nIO & reg_ack;
     wire output_bootrom = nIO & bootrom_addr;

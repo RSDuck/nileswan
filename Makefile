@@ -14,7 +14,7 @@ EMUIMG   := $(EMUDIR)/nileswan.img
 MCUBIN   := $(DISTDIR)/NILESWAN/MCU.BIN
 EMUIMG_SIZE_MB ?= 512
 
-.PHONY: all dist dist-mfg dist-emu clean help firmware program-fpga program libnile libnile-ipl1 ipl0 ipl1-boot ipl1-factory ipl1-safe recovery updater fpga firmware/build/firmware.bin
+.PHONY: all dist dist-mfg dist-emu clean help firmware program-fpga program libnile-clean libnile libnile-ipl1 ipl0-clean ipl0 ipl1-clean ipl1 ipl1-factory ipl1-safe recovery-clean recovery updater-clean updater fpga-clean fpga firmware/build/firmware.bin
 
 all: dist dist-mfg
 
@@ -72,7 +72,7 @@ libnile-ipl1:
 ipl0:
 	cd software/ipl0 && make
 
-ipl1-boot: libnile-ipl1
+ipl1: libnile-ipl1
 	cd software/ipl1 && make PROGRAM=boot
 
 ipl1-factory: libnile-ipl1
@@ -87,15 +87,15 @@ recovery: libnile
 updater: libnile
 	cd software/userland && make PROGRAM=updater
 
-$(FLASHBIN): fpga ipl1-boot ipl1-factory ipl1-safe recovery $(MANIFEST_FULL) software/userland/manifest_to_bin.py
+$(FLASHBIN): fpga ipl1 ipl1-factory ipl1-safe recovery $(MANIFEST_FULL) software/userland/manifest_to_bin.py
 	@mkdir -p $(@D)
 	python3 software/userland/manifest_to_bin.py $(MANIFEST_FULL) $@
 
-$(FULLUPWS): fpga ipl1-boot ipl1-factory ipl1-safe recovery updater $(MANIFEST_FULL) software/userland/manifest_to_rom.py
+$(FULLUPWS): fpga firmware ipl1 ipl1-factory ipl1-safe recovery updater $(MANIFEST_FULL) software/userland/manifest_to_rom.py
 	@mkdir -p $(@D)
 	python3 software/userland/manifest_to_rom.py software/userland/updater.wsc $(MANIFEST_FULL) $@
 
-$(UPDATEWS): fpga ipl1-boot ipl1-factory ipl1-safe recovery updater $(MANIFEST) software/userland/manifest_to_rom.py
+$(UPDATEWS): fpga firmware ipl1 recovery updater $(MANIFEST) software/userland/manifest_to_rom.py
 	@mkdir -p $(@D)
 	python3 software/userland/manifest_to_rom.py software/userland/updater.wsc $(MANIFEST) $@
 
@@ -108,15 +108,27 @@ program-fpga: fpga
 program: $(FLASHBIN)
 	iceprog $<
 
-clean:
-	rm -rf out
-	-cd firmware/build && ninja clean
-	-rm -rf firmware/build/build.ninja
-	cd software/libnile && rm -rf build
+ipl0-clean:
 	cd software/ipl0 && make clean
+
+ipl1-clean:
 	cd software/ipl1 && make PROGRAM=boot clean
 	cd software/ipl1 && make PROGRAM=factory clean
 	cd software/ipl1 && make PROGRAM=safe clean
+
+recovery-clean:
 	cd software/userland && make PROGRAM=recovery clean
+
+updater-clean:
 	cd software/userland && make PROGRAM=updater clean
+
+libnile-clean: ipl1-clean recovery-clean updater-clean
+	cd software/libnile && rm -rf build
+
+fpga-clean:
 	cd fpga && make clean
+
+clean: fpga-clean ipl0-clean libnile-clean
+	rm -rf out
+	-cd firmware/build && ninja clean
+	-rm -rf firmware/build/build.ninja

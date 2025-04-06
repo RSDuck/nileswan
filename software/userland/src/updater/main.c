@@ -15,6 +15,7 @@
  * with Nileswan Updater. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <nile/mcu.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -36,6 +37,9 @@
 
 uint8_t update_manifest_data[512];
 uint32_t flash_id;
+bool mcu_restarted = false;
+int update_part;
+bool update_verify;
 
 static void update_halt(void) {
 	cpu_irq_disable();
@@ -56,15 +60,162 @@ static void updater_flash_error(void) {
 	update_halt();
 }
 
-void run_update_manifest(bool verify) {
+static void extract_um_cmd_flash(um_flash_cmd_t *cmd) {
+	console_printf(0, update_verify ? s_verifying_part : s_unpacking_part, update_part);
+	// Extract data to SRAM
+	outportw(IO_BANK_2003_RAM, 0);
+	if (cmd->cmd == UM_CMD_PACKED_FLASH) {
+		wsx_zx0_decompress(UNPACK_BUFFER, MK_FP(cmd->load_segment, 0));
+	} else {
+		memcpy(UNPACK_BUFFER, MK_FP(cmd->load_segment, 0), cmd->unpacked_length);
+	}
+	// Calculate CRC16 sum
+	uint16_t actual_crc = crc16(UNPACK_BUFFER, cmd->unpacked_length, 0);
+	if (actual_crc != cmd->expected_crc) {
+		console_print_status(false);
+		console_print_newline();
+		console_printf(0, s_crc_error_part, update_part);
+		console_printf(0, s_crc_error_a_e, actual_crc, cmd->expected_crc);
+		update_halt();
+	}
+}
+
+static void run_um_cmd_flash(um_flash_cmd_t *cmd) {
 	uint8_t flash_buffer[256];
 	uint8_t verify_buffer[256];
+
+	extract_um_cmd_flash(cmd);
+
+	uint32_t start_address = cmd->flash_address;
+	if (start_address & 0xFF) {
+		updater_early_error(s_corrupt_data, start_address & 0xFF);
+	}
+
+	if (!update_verify) {
+		console_print_status(true);
+		console_print_newline();
+		console_printf(0, s_erasing_part, update_part);
+
+		uint32_t end_address = start_address + cmd->unpacked_length;
+		uint32_t erase_address = (start_address & ~0xFFF);
+		while (erase_address < end_address) {
+			if (!nile_flash_erase_part(NILE_FLASH_CMD_ERASE_4K, erase_address)) {
+				updater_flash_error();
+			}
+			erase_address += 4096;
+		}
+
+		console_print_status(true);
+		console_print_newline();
+		console_printf(0, s_flashing_part, update_part);
+
+		uint32_t i = 0;
+		while (start_address < end_address) {
+			uint32_t len = end_address - start_address;
+			if (len > sizeof(flash_buffer)) len = sizeof(flash_buffer);
+
+			outportw(IO_BANK_2003_RAM, 0);
+			memcpy(flash_buffer, UNPACK_BUFFER + i, len);
+			if (!nile_flash_write_page(flash_buffer, start_address, len)) {
+				updater_flash_error();
+			}
+			if (!nile_flash_read(verify_buffer, start_address, len)) {
+				updater_flash_error();
+			}
+
+			outportw(IO_BANK_2003_RAM, 0);
+			if (memcmp(verify_buffer, UNPACK_BUFFER + i, len)) {
+				updater_flash_error();
+			}
+
+			start_address += len;
+			i += len;
+		}
+	}
+
+	console_print_status(true);
+	console_print_newline();
+}
+
+static void run_um_cmd_mcu_flash(um_flash_cmd_t *cmd) {
+	uint8_t flash_buffer[128];
+	uint8_t verify_buffer[128];
+
+	extract_um_cmd_flash(cmd);
+
+	uint32_t start_address = cmd->flash_address;
+	if (start_address & (NILE_MCU_FLASH_PAGE_SIZE - 1)) {
+		updater_early_error(s_corrupt_data, start_address & (NILE_MCU_FLASH_PAGE_SIZE - 1));
+	}
+
+	if (!mcu_restarted) {
+		console_print_status(true);
+		console_print_newline();
+		console_print(0, s_rebooting_mcu);
+
+		if (!nile_mcu_reset(true)) {
+			updater_flash_error();
+		}
+
+		mcu_restarted = true;
+	}
+
+	if (!update_verify) {
+		console_print_status(true);
+		console_print_newline();
+		console_printf(0, s_erasing_part, update_part);
+
+		uint32_t end_address = start_address + cmd->unpacked_length;
+		uint16_t page_start = start_address / NILE_MCU_FLASH_PAGE_SIZE;
+		uint16_t page_count = (end_address + NILE_MCU_FLASH_PAGE_SIZE - 1 - start_address) / NILE_MCU_FLASH_PAGE_SIZE;
+
+		if (!nile_mcu_boot_erase_memory(page_start, page_count))
+			updater_flash_error();
+
+		console_print_status(true);
+		console_print_newline();
+		console_printf(0, s_flashing_part, update_part);
+
+		start_address += NILE_MCU_FLASH_START;
+		end_address += NILE_MCU_FLASH_START;
+
+		uint32_t i = 0;
+		while (start_address < end_address) {
+			uint32_t len = end_address - start_address;
+			if (len > sizeof(flash_buffer)) len = sizeof(flash_buffer);
+
+			outportw(IO_BANK_2003_RAM, 0);
+			memcpy(flash_buffer, UNPACK_BUFFER + i, len);
+			if (!nile_mcu_boot_write_memory(start_address, flash_buffer, len)) {
+				updater_flash_error();
+			}
+			if (!nile_mcu_boot_read_memory(start_address, verify_buffer, len)) {
+				updater_flash_error();
+			}
+
+			outportw(IO_BANK_2003_RAM, 0);
+			if (memcmp(verify_buffer, UNPACK_BUFFER + i, len)) {
+				updater_flash_error();
+			}
+
+			start_address += len;
+			i += len;
+		}
+	}
+
+	console_print_status(true);
+	console_print_newline();
+}
+
+void run_update_manifest(bool verify) {
 	uint8_t *cmd_ptr = update_manifest_data;
 	cmd_ptr += sizeof(um_header_t);
 
-	int part = 0;
+	update_verify = verify;
+	update_part = 0;
+
 	while (*cmd_ptr) {
-		++part;
+		++update_part;
 
 		switch (*cmd_ptr) {
 			case UM_CMD_END:
@@ -74,71 +225,14 @@ void run_update_manifest(bool verify) {
 			{
 				um_flash_cmd_t *cmd = (um_flash_cmd_t*) cmd_ptr;
 				cmd_ptr += sizeof(um_flash_cmd_t);
-
-				console_printf(0, verify ? s_verifying_part : s_unpacking_part, part);
-				// Extract data to SRAM
-				outportw(IO_BANK_2003_RAM, 0);
-				if (cmd->cmd == UM_CMD_PACKED_FLASH) {
-					wsx_zx0_decompress(UNPACK_BUFFER, MK_FP(cmd->load_segment, 0));
-				} else {
-					memcpy(UNPACK_BUFFER, MK_FP(cmd->load_segment, 0), cmd->unpacked_length);
-				}
-				// Calculate CRC16 sum
-				uint16_t actual_crc = crc16(UNPACK_BUFFER, cmd->unpacked_length, 0);
-				if (actual_crc != cmd->expected_crc) {
-					console_print_status(false);
-					console_print_newline();
-					console_printf(0, s_crc_error_part, part);
-					console_printf(0, s_crc_error_a_e, actual_crc, cmd->expected_crc);
-					update_halt();
-				}
-
-				uint32_t start_address = cmd->flash_address;
-				if (start_address & 0xFF) {
-					updater_early_error(s_corrupt_data, start_address & 0xFF);
-				}
-
-				if (!verify) {
-					console_print_status(true);
-					console_print_newline();
-					console_printf(0, s_erasing_part, part);
-
-					uint32_t end_address = start_address + cmd->unpacked_length;
-					uint32_t erase_address = (start_address & ~0xFFF);
-					while (erase_address < end_address) {
-						if (!nile_flash_erase_part(NILE_FLASH_CMD_ERASE_4K, erase_address)) {
-							updater_flash_error();
-						}
-						erase_address += 4096;
-					}
-
-					console_print_status(true);
-					console_print_newline();
-					console_printf(0, s_flashing_part, part);
-
-					uint32_t i = 0;
-					while (start_address < end_address) {
-						uint32_t len = end_address - start_address;
-						if (len > 256) len = 256;
-						outportw(IO_BANK_2003_RAM, 0);
-						memcpy(flash_buffer, UNPACK_BUFFER + i, len);
-						if (!nile_flash_write_page(flash_buffer, start_address, len)) {
-							updater_flash_error();
-						}
-						if (!nile_flash_read(verify_buffer, start_address, len)) {
-							updater_flash_error();
-						}
-						outportw(IO_BANK_2003_RAM, 0);
-						if (memcmp(verify_buffer, UNPACK_BUFFER + i, len)) {
-							updater_flash_error();
-						}
-						start_address += len;
-						i += len;
-					}
-				}
-
-				console_print_status(true);
-				console_print_newline();
+				run_um_cmd_flash(cmd);
+			} break;
+			case UM_CMD_MCU_FLASH:
+			case UM_CMD_MCU_PACKED_FLASH:
+			{
+				um_flash_cmd_t *cmd = (um_flash_cmd_t*) cmd_ptr;
+				cmd_ptr += sizeof(um_flash_cmd_t);
+				run_um_cmd_mcu_flash(cmd);
 			} break;
 			default:
 				updater_early_error(s_corrupt_data, *cmd_ptr);
@@ -159,9 +253,10 @@ static bool flash_chip_supported(void) {
 	return false;
 }
 
-static const char __far version_template[] = "%d.%d.%d";
+static const char __far version_template[] = "%d.%d.%d (%08lx)";
 static void print_version(um_version_t __far* version) {
-	console_printf(0, version_template, version->major, version->minor, version->patch);
+	console_printf(0, version_template, version->major, version->minor, version->patch,
+		__builtin_bswap32(*((uint32_t*) version->commit_id)));
 }
 
 __attribute__((interrupt, assume_ss_data))

@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License along
 # with Nileswan Updater. If not, see <https://www.gnu.org/licenses/>.
 
-import argparse, crc, os, struct, subprocess, sys
+import argparse, crc, hashlib, os, struct, subprocess, sys
 
 parser = argparse.ArgumentParser(prog='manifest_to_rom', description='Create updater ROM from manifest')
 parser.add_argument('input_rom', help='Input ROM file (updater_base.ws)')
@@ -42,7 +42,23 @@ crc16 = crc.Calculator(crc.Configuration(
 
 MAXIMUM_PART_SIZE = 49152
 FLASH_SECTOR_SIZE = 256
-version = [9, 9, 9]
+version = {
+    "major": 0,
+    "minor": 1,
+    "patch": 0,
+    "commit": "0000000000000000000000000000000000000000",
+    "digest": "0000000000000000000000000000000000000000000000000000000000000000"
+}
+
+digest_hash = hashlib.new("sha256")
+
+try:
+    git_out = subprocess.run(["git", "rev-parse", "--short=40", "HEAD"], stdout=subprocess.PIPE)
+    commit_out = git_out.stdout.decode("utf-8").strip()
+    if len(commit_out) == 40:
+        version["commit"] = commit_out
+except e:
+    pass
 
 def pad(data, right):
     diff = FLASH_SECTOR_SIZE - int(len(data) % FLASH_SECTOR_SIZE)
@@ -90,7 +106,7 @@ with open(args.manifest, 'r') as rules:
                 data_at_position[start_segment] = data
 
                 rule_data += bytearray(struct.pack("<BHHIH",
-                    0x01, start_segment, len(data), flash_position, crc16.checksum(data)))
+                    0x02, start_segment, len(data), flash_position, crc16.checksum(data)))
         elif rule_name == 'PACKED_FLASH':
             subprocess.run(["rm", "temp.bin"])
             subprocess.run(["wf-zx0-salvador", "-v", rule[1], "temp.bin"])
@@ -116,16 +132,32 @@ with open(args.manifest, 'r') as rules:
             data_at_position[start_segment] = data
 
             rule_data += bytearray(struct.pack("<BHHIH",
-                0x02, start_segment, len(unpacked_data), flash_position, crc16.checksum(unpacked_data)))
-        elif rule_name == 'VERSION':
-            version[0] = int(rule_map['VERSION'])
-            version[1] = int(rule_map['MINOR'])
-            version[2] = int(rule_map['PATCH'])
+                0x03, start_segment, len(unpacked_data), flash_position, crc16.checksum(unpacked_data)))
+        elif rule_name == 'MCU_FLASH':
+            data = None
+            with open(rule_map['MCU_FLASH'], 'rb') as file:
+                data = file.read()
+
+            flash_position = int(rule_map['AT'])
+
+            for (flash_position, data) in split_data_by_part_size(flash_position, data):
+                if (flash_position & 0x7FF) != 0:
+                    raise Exception("File {rule[1]} cannot be flashed at unaligned position {flash_position}")
+
+                start_segment = start_segment - ((len(data) + 15) >> 4)
+                data_at_position[start_segment] = data
+
+                rule_data += bytearray(struct.pack("<BHHIH",
+                    0x04, start_segment, len(data), flash_position, crc16.checksum(data)))
         else:
             raise Exception(f"Unknown rule: {rule[0]}")
     rule_data.append(0)
 
-rule_header = bytearray(struct.pack("<HHH", version[0], version[1], version[2]))
+for k, v in data_at_position.items():
+    digest_hash.update(v)
+version["digest"] = digest_hash.hexdigest()
+
+rule_header = bytearray(struct.pack("<BBHHHHH", 70, 87, version["major"], version["minor"], version["patch"], 0, 0)) + bytearray.fromhex(version["commit"]) + bytearray.fromhex(version["digest"])
 rule_data = rule_header + rule_data
 
 start_segment = (start_segment - ((len(rule_data) + 4 + 15) >> 4)) & 0xFF00

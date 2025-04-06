@@ -82,7 +82,8 @@ the wait may need to be as high as 53 milliseconds.
 |------|------|
 |0-1|Emulated EEPROM size (0=128B, 1=1KB, 2=2KB, 3=no EEPROM connected (default))|
 |2|Flash emulation enable (0=disabled (default), 1=enabled)|
-|3-7|Unused/0|
+|3|Emulated ROM bus width (0=16-bit (default), 1=8-bit)|
+|4-7|Unused/0|
 
 See section on EEPROM for details on EEPROM size.
 

@@ -1,0 +1,5 @@
+CompileFlags:
+  Add: [-D__CLANGD__, -Wno-unknown-attributes]
+  Remove: [-M*, -m*]
+Diagnostics:
+  Suppress: "anyx86_interrupt_attribute"

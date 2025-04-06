@@ -23,7 +23,8 @@ DEFINE_STRING(s_fatal_error, "Fatal error");
 DEFINE_STRING(s_crc_error_part, "CRC error #%d\n");
 DEFINE_STRING(s_crc_error_a_e, "A: %04X E: %04X\n");
 DEFINE_STRING(s_unknown_flash_error, "Unknown flash %lX");
-DEFINE_STRING(s_corrupt_data, "Corrupt data! %04X");
+DEFINE_STRING(s_corrupt_data, "Corrupt data! %04X");;
+DEFINE_STRING(s_rebooting_mcu, "Rebooting MCU");
 
 DEFINE_STRING(s_low_battery, "Low battery! Update not possible.");
 
