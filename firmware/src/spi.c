@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stm32u0xx_ll_rcc.h>
 
 #include "mcu.h"
 #include "tusb.h"
@@ -228,6 +229,10 @@ void mcu_spi_init(mcu_spi_mode_t mode) {
     mcu_spi_disable_dma_rx();
 
     mcu_spi_disable();
+
+    // Force SPI reset to clear TX queue
+    LL_APB1_GRP2_ForceReset(LL_APB1_GRP2_PERIPH_SPI1);
+    LL_APB1_GRP2_ReleaseReset(LL_APB1_GRP2_PERIPH_SPI1);
 
     // Initialize SPI
     MCU_PERIPH_SPI->CR1 = LL_SPI_MODE_SLAVE | LL_SPI_MSB_FIRST | LL_SPI_FULL_DUPLEX
