@@ -529,8 +529,9 @@ module nileswan(
         end
     end
 
-    wire flash_emu_pass_read = ~flash_emu_enabled | (flash_emu_state != flashEmu_Erase && flash_emu_state != flashEmu_FastMode);
-    wire flash_emu_pass_write = ~flash_emu_enabled |
+    wire flash_emu_pass_read = ~flash_emu_enabled | ~access_in_ram_area |
+        (flash_emu_state != flashEmu_Erase && flash_emu_state != flashEmu_FastMode);
+    wire flash_emu_pass_write = ~flash_emu_enabled | ~access_in_ram_area |
         (flash_emu_state == flashEmu_SingleWrite || flash_emu_state == flashEmu_FastModeWrite);
 
     wire psram_sel_precond = ~nSel & nIO & ((~nOE & flash_emu_pass_read)|(~nWE & flash_emu_pass_write));
