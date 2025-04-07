@@ -104,6 +104,7 @@ void rtc_reset(void) {
 
 void rtc_write_status(uint8_t value) {
     uint32_t cr = RTC->CR;
+
     uint32_t old_cr = cr;
     cr = (cr & ~(RTC_CR_FMT | RTC_CR_ALRAE | RTC_CR_ALRAIE)) | ((value & S3511A_1224) ? 0 : RTC_CR_FMT);
     if ((value & (S3511A_INTAE | S3511A_INTFE | S3511A_INTME)) == S3511A_INTAE) {
@@ -118,17 +119,48 @@ void rtc_write_status(uint8_t value) {
     rtc_write_start();
     if (init_required) rtc_init_start();
     RTC->CR = cr;
+    uint32_t tr = RTC->TR;
+
+    // Perform 12<->24-hour time conversion
     if ((old_cr & RTC_CR_FMT) && !(cr & RTC_CR_FMT)) {
         // 12-hour -> 24-hour 
-        if ((RTC->TR & 0x3F0000) == 0x120000) {
-            RTC->TR &= ~0x3F0000;
+        if ((tr & 0x3F0000) == 0x120000) {
+            // 12:00 AM, 12:00 PM
+            tr &= ~0x3F0000;
+            if (tr & RTC_TR_PM) {
+                tr |= 0x120000;
+            }
+        } else if (tr & RTC_TR_PM) {
+            // 1:00 - 11:00 PM
+            if ((tr & 0x3F0000) == 0x080000 || (tr & 0x3F0000) == 0x090000) {
+                tr += 0x180000;
+            } else {
+                tr += 0x120000;
+            }
         }
+        tr &= ~RTC_TR_PM;
+        RTC->TR = tr;
     } else if (!(old_cr & RTC_CR_FMT) && (cr & RTC_CR_FMT)) {
         // 24-hour -> 12-hour
-        if ((RTC->TR & 0x3F0000) == 0x000000) {
-            RTC->TR |= 0x120000;
+        tr &= ~RTC_TR_PM;
+        if ((tr & 0x3F0000) == 0x000000) {
+            // 0:00
+            tr |= 0x120000;
+        } else if ((tr & 0x3F0000) == 0x120000) {
+            // 12:00
+            tr |= RTC_TR_PM;
+        } else if ((tr & 0x3F0000) > 0x120000) {
+            // 13:00 - 23:00
+            if ((tr & 0x3F0000) == 0x200000 || (tr & 0x3F0000) == 0x210000) {
+                tr -= 0x180000;
+            } else {
+                tr -= 0x120000;
+            }
+            tr |= RTC_TR_PM;
         }
+        RTC->TR = tr;
     }
+
     if (init_required) rtc_init_end();
     rtc_write_end();
 }

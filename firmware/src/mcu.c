@@ -93,9 +93,9 @@ void mcu_update_clock_speed(void) {
             msi_range = LL_RCC_MSIRANGE_4;
             freq = 1 * 1000 * 1000;
         } else {
-            // 4 MHz for non-USB mode
-            msi_range = LL_RCC_MSIRANGE_6;
-            freq = 4 * 1000 * 1000;
+            // 8 MHz for non-USB mode
+            msi_range = LL_RCC_MSIRANGE_7;
+            freq = 8 * 1000 * 1000;
         }
     }
 
