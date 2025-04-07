@@ -96,6 +96,8 @@ void rtc_reset(void) {
     RTC->CR = RTC_CR_FMT | RTC_CR_BYPSHAD;
     RTC->CALR |= RTC_CALR_LPCAL;
     RTC->ALRMAR = RTC_ALRMAR_MSK1 | RTC_ALRMAR_MSK4;
+    RTC->DR = 0x00E101;
+    RTC->TR = 0x120000;
     rtc_init_end();
     rtc_write_end();
 }
@@ -116,6 +118,17 @@ void rtc_write_status(uint8_t value) {
     rtc_write_start();
     if (init_required) rtc_init_start();
     RTC->CR = cr;
+    if ((old_cr & RTC_CR_FMT) && !(cr & RTC_CR_FMT)) {
+        // 12-hour -> 24-hour 
+        if ((RTC->TR & 0x3F0000) == 0x120000) {
+            RTC->TR &= ~0x3F0000;
+        }
+    } else if (!(old_cr & RTC_CR_FMT) && (cr & RTC_CR_FMT)) {
+        // 24-hour -> 12-hour
+        if ((RTC->TR & 0x3F0000) == 0x000000) {
+            RTC->TR |= 0x120000;
+        }
+    }
     if (init_required) rtc_init_end();
     rtc_write_end();
 }
@@ -135,7 +148,7 @@ uint8_t rtc_read_status(void) {
         | ((cr & RTC_CR_ALRAE) ? S3511A_INTAE : 0);
 }
 
-void rtc_write_datetime(const uint8_t *buffer, bool date) {
+void rtc_write_datetime(uint8_t *buffer, bool date) {
     rtc_write_start();
     rtc_init_start();
 
@@ -149,8 +162,32 @@ void rtc_write_datetime(const uint8_t *buffer, bool date) {
         RTC->DR = dr;
         buffer += 4;
     }
+
+    if (RTC->CR & RTC_CR_FMT) {
+        // convert 00 -> 12 for 12-hour writes
+        if ((buffer[0] & 0x1F) == 0x00) {
+            buffer[0] |= 0x12;
+        } else if ((buffer[0] & 0x1F) >= 0x12) {
+            buffer[0] &= ~0x1F;
+        }
+    } else {
+        if ((buffer[0] & 0x3F) >= 0x24) {
+            buffer[0] &= ~0x3F;
+        }
+    }
+    if ((buffer[1] & 0x7F) >= 0x60) {
+        buffer[1] = 0;
+    }
+    // FIXME: The S-3511A will allow a seconds value between 0x60 .. 0x7F
+    // for one second, then skip to the next value. The MCU RTC will,
+    // instead, happily tick all the way to 0x7F. Setting 0x59 means the
+    // value becomes correct for these edge cases after one second.
+    if ((buffer[2] & 0x7F) >= 0x60) {
+        buffer[2] = 0x59;
+    }
+    
     uint32_t tr = 0;
-    tr |= (buffer[0] & 0x1F) << 16;
+    tr |= (buffer[0] & 0x3F) << 16;
     tr |= (buffer[0] & 0x80) << 15;
     tr |= (buffer[1] & 0x7F) << 8;
     tr |= (buffer[2] & 0x7F);
@@ -182,6 +219,13 @@ void rtc_read_datetime(uint8_t *buffer, bool date) {
     buffer[0] = ((tr >> 16) & 0x3F) | ((tr >> 15) & 0x80);
     buffer[1] = (tr >> 8) & 0x7F;
     buffer[2] = tr & 0x7F;
+
+    if (RTC->CR & RTC_CR_FMT) {
+        // convert 12 -> 00 for 12-hour reads
+        if ((buffer[0] & 0x3F) == 0x12) {
+            buffer[0] &= 0x80;
+        }
+    }
 }
 
 void rtc_write_alarm(uint8_t hour, uint8_t minute) {
