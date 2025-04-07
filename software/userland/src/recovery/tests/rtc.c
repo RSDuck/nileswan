@@ -9,23 +9,7 @@
 #include "input.h"
 #include "strings.h"
 
-static int32_t fetch_rtc_time(uint8_t cmd) {
-    // if RTC active, fail RTC fetch
-    uint8_t ctrl = inportb(IO_CART_RTC_CTRL);
-    if (ctrl & CART_RTC_ACTIVE) return -1000 - ctrl;
-    outportb(IO_CART_RTC_CTRL, cmd);
-
-    int32_t result = 0;
-    while (true) {
-        ctrl = inportb(IO_CART_RTC_CTRL);
-        if (!(ctrl & 0x90)) break;
-        if (ctrl & 0x80) {
-            // byte ready
-            result = (result << 8) | inportb(IO_CART_RTC_DATA);
-        }
-    } 
-    return result & 0xFFFFFF;
-}
+int32_t fetch_rtc_time(uint8_t cmd);
 
 static bool test_rtc_stability_run(void) {
     int32_t first_time = fetch_rtc_time(0x17);
