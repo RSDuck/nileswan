@@ -44,7 +44,8 @@ module nileswan(
     
     output nMCUReset,
     inout MCUReady,
-    
+    input nMCUInt,
+
     input Button);
 
     // POW_CNT
