@@ -96,7 +96,7 @@ bool test_rtc_stability(uint32_t runs) {
     bool result = true;
     console_print(0, s_rtc_stability_test);
     if (!runs) {
-        console_print(0, s_press_b_to_abort);
+        console_print(0, s_hold_b_to_abort);
         while (!(input_pressed & KEY_B)) {
             input_update();
             if (!test_rtc_stability_run()) return false;

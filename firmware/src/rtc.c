@@ -93,7 +93,8 @@ void rtc_reset(void) {
 
     rtc_write_start();
     rtc_init_start();
-    RTC->CR = RTC_CR_FMT;
+    RTC->CR = RTC_CR_FMT | RTC_CR_BYPSHAD;
+    RTC->CALR |= RTC_CALR_LPCAL;
     RTC->ALRMAR = RTC_ALRMAR_MSK1 | RTC_ALRMAR_MSK4;
     rtc_init_end();
     rtc_write_end();
@@ -160,12 +161,17 @@ void rtc_write_datetime(const uint8_t *buffer, bool date) {
 }
 
 void rtc_read_datetime(uint8_t *buffer, bool date) {
-    LL_RTC_ClearFlag_RS(RTC);
-    while (!LL_RTC_IsActiveFlag_RS(RTC));
+    volatile uint32_t tr = RTC->TR, tr2;
+    volatile uint32_t dr = RTC->DR, dr2;
 
-    uint32_t tr = RTC->TR;
+    do {
+        tr2 = tr;
+        dr2 = dr;
+        tr = RTC->TR;
+        dr = RTC->DR;
+    } while  (tr != tr2 || dr != dr2);
+
     if (date) {
-        uint32_t dr = RTC->DR;
         uint8_t dow = (dr >> 13) & 0x7;
         buffer[0] = dr >> 16;
         buffer[1] = (dr >> 8) & 0x1F;
@@ -182,7 +188,6 @@ void rtc_write_alarm(uint8_t hour, uint8_t minute) {
     rtc_write_start();
     rtc_init_start();
 
-    // TODO: Binary mode (U0)
     RTC->ALRMAR = RTC_ALRMAR_MSK1 | RTC_ALRMAR_MSK4
         | ((hour & 0x3F) << 16) | ((hour & 0x80) << 15)
         | ((minute & 0x7F) << 8);

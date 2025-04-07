@@ -46,7 +46,7 @@ DEFINE_STRING(s_flash_fsm_test, "Flash FSM test");
 DEFINE_STRING(s_flash_fsm_test_no, "Flash FSM test #%d");
 DEFINE_STRING(s_flash_fsm_last_byte, "\nLast byte = %02X\n");
 
-DEFINE_STRING(s_press_b_to_abort, " (press B to abort)");
+DEFINE_STRING(s_hold_b_to_abort, " (hold B to abort)");
 DEFINE_STRING(s_rtc_stability_test, "RTC stability test");
 DEFINE_STRING(s_rebooting_mcu, "Rebooting MCU...");
 DEFINE_STRING(s_resetting_rtc, "Resetting RTC...");
