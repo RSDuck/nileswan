@@ -31,7 +31,7 @@ module nileswan(
     output nFlashSel,
     output SPIClk,
     output SPIDo,
-    inout SPIDi,
+    input SPIDi,
 
     output nTFSel,
     output TFClk,
@@ -59,7 +59,7 @@ module nileswan(
     reg enable_bandai2003_ex = 1'b1;
 
     reg enable_flash_emu = 1'b0;
-    reg enable_rom_8bit = 1'b0;
+    reg enable_rom_8bit_bus = 1'b0;
 
     assign PSRAM_nZZ = 1'b1;
 
@@ -403,7 +403,7 @@ module nileswan(
             end
 
             POW_CNT: begin
-                if (enable_nileswan_ex || Data[7:0] == 8'hFD) begin
+                if (enable_nileswan_ex || Data[7:0] == 8'hDD) begin
                     enable_fastclk <= Data[0];
                     enable_tf_power <= Data[1];
 

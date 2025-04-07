@@ -20,7 +20,7 @@ module SPI (
 
     output SPIClkRunning,
     output SPIDo,
-    inout SPIDi,
+    input SPIDi,
     output nFlashSel,
     output nMCUSel,
 
@@ -63,8 +63,6 @@ module SPI (
     assign nFlashSel = ~(channel_cs == channelCS_SelFlash);
     assign nMCUSel = ~(channel_cs == channelCS_SelMCU);
     assign nTFSel = TFPow ? ~(channel_cs == channelCS_SelTF) : 1'bZ;
-
-    assign SPIDi = channel_cs == channelCS_DeselTF ? 1'b1 : 1'bZ;
 
     // the first will be the last and the last will be the first
     wire[7:0] ShiftRegNext = {shiftreg[6:0], (channel_cs == channelCS_SelFlash ||
