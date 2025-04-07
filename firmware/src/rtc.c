@@ -167,22 +167,23 @@ void rtc_write_datetime(uint8_t *buffer, bool date) {
         // convert 00 -> 12 for 12-hour writes
         if ((buffer[0] & 0x1F) == 0x00) {
             buffer[0] |= 0x12;
-        } else if ((buffer[0] & 0x1F) >= 0x12) {
+        } else if ((buffer[0] & 0x1F) >= 0x12 || (buffer[0] & 0x0F) > 0x9) {
             buffer[0] &= ~0x1F;
         }
     } else {
-        if ((buffer[0] & 0x3F) >= 0x24) {
+        if ((buffer[0] & 0x3F) >= 0x24 || (buffer[0] & 0x0F) > 0x9) {
             buffer[0] &= ~0x3F;
         }
     }
-    if ((buffer[1] & 0x7F) >= 0x60) {
-        buffer[1] = 0;
+    if ((buffer[1] & 0x7F) >= 0x60 || (buffer[1] & 0x0F) > 0x9) {
+        buffer[1] = 0x00;
     }
     // FIXME: The S-3511A will allow a seconds value between 0x60 .. 0x7F
-    // for one second, then skip to the next value. The MCU RTC will,
-    // instead, happily tick all the way to 0x7F. Setting 0x59 means the
-    // value becomes correct for these edge cases after one second.
-    if ((buffer[2] & 0x7F) >= 0x60) {
+    // (or one with the last digit between 0xA .. 0xF) for one second,
+    // then skip to the next value. The MCU RTC will, instead, happily
+    // tick all the way to 0x7F. Setting 0x59 means the value becomes
+    // correct for these edge cases after one second.
+    if ((buffer[2] & 0x7F) >= 0x60 || (buffer[2] & 0x0F) > 0x9) {
         buffer[2] = 0x59;
     }
     
@@ -216,14 +217,20 @@ void rtc_read_datetime(uint8_t *buffer, bool date) {
         buffer[3] = (dow == 7 ? 0 : dow);
         buffer += 4;
     }
-    buffer[0] = ((tr >> 16) & 0x3F) | ((tr >> 15) & 0x80);
     buffer[1] = (tr >> 8) & 0x7F;
     buffer[2] = tr & 0x7F;
 
     if (RTC->CR & RTC_CR_FMT) {
+        buffer[0] = ((tr >> 16) & 0x3F) | ((tr >> 15) & 0x80);
         // convert 12 -> 00 for 12-hour reads
         if ((buffer[0] & 0x3F) == 0x12) {
             buffer[0] &= 0x80;
+        }
+    } else {
+        buffer[0] = ((tr >> 16) & 0x3F);
+        // set AM/PM bit for 24-hour reads
+        if (buffer[0] >= 0x12) {
+            buffer[0] |= 0x80;
         }
     }
 }
