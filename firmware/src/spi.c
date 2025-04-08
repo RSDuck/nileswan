@@ -296,10 +296,10 @@ void mcu_spi_init(mcu_spi_mode_t mode) {
         LL_DMA_EnableIT_TC(DMA1, MCU_DMA_CHANNEL_SPI_TX);
     }
 
-    NVIC_SetPriority(SPI1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 10, 0));
+    NVIC_SetPriority(SPI1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 100, 0));
     NVIC_EnableIRQ(SPI1_IRQn);
     if (dma_enabled) {
-        NVIC_SetPriority(DMA1_Channel2_3_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 5, 0));
+        NVIC_SetPriority(DMA1_Channel2_3_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 90, 0));
         NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
     } else {
         NVIC_DisableIRQ(DMA1_Channel2_3_IRQn);

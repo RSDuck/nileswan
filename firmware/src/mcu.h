@@ -35,6 +35,7 @@
 #include <stm32u0xx_ll_crs.h>
 #include <stm32u0xx_ll_dma.h>
 #include <stm32u0xx_ll_rtc.h>
+#include <stm32u0xx_ll_lptim.h>
 
 #define USB USB_DRD_FS
 #define LL_RCC_USB_CLKSOURCE_PLL LL_RCC_USB_CLKSOURCE_PLLQ
