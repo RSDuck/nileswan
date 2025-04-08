@@ -193,9 +193,11 @@ void mcu_init(void) {
     }
 
     // Initialize FPGA pins
+    LL_GPIO_SetPinMode(GPIOA, MCU_PIN_FPGA_IRQ, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinOutputType(GPIOA, MCU_PIN_FPGA_IRQ, LL_GPIO_OUTPUT_PUSHPULL);
     LL_GPIO_SetPinPull(GPIOA, MCU_PIN_FPGA_IRQ, LL_GPIO_PULL_NO);
     LL_GPIO_SetPinSpeed(GPIOA, MCU_PIN_FPGA_IRQ, LL_GPIO_SPEED_FREQ_LOW);
-    LL_GPIO_SetPinMode(GPIOA, MCU_PIN_FPGA_IRQ, LL_GPIO_MODE_INPUT);
+    mcu_fpga_irq_clear();
 
     // BUSY is only pulled high, never low
     LL_GPIO_SetPinMode(GPIOA, MCU_PIN_FPGA_BUSY, LL_GPIO_MODE_ANALOG);

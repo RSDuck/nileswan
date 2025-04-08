@@ -36,7 +36,6 @@ void rtc_write_status(uint8_t value);
 uint8_t rtc_read_status(void);
 void rtc_write_datetime(uint8_t *buffer, bool date);
 void rtc_read_datetime(uint8_t *buffer, bool date);
-void rtc_write_alarm(uint8_t hour, uint8_t minute);
 
 int rtc_start_command_rx(uint8_t cmd);
 int rtc_finish_command_rx(uint8_t *rx, uint8_t *tx);
