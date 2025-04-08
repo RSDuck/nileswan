@@ -1,5 +1,5 @@
 ---
-title: 'I/O port interface'
+title: 'I/O port map'
 weight: 10
 ---
 | Address|Width|    Name    | Description |

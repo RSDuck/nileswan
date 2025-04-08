@@ -1,5 +1,5 @@
 ---
-title: 'Console memory map'
+title: 'Memory bank map'
 weight: 15
 ---
 
