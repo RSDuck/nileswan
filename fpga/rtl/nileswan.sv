@@ -85,8 +85,6 @@ module nileswan(
     assign nMem_OE = nOE;
     assign nMem_WE = nWE;
 
-    assign nCartInt = 1'b1;
-
     wire mbc_seq_start;
     Dance dance (
         .AddrLo(AddrLo[7:0]),
@@ -249,6 +247,8 @@ module nileswan(
         .S0(warmboot_image[0]),
         .S1(warmboot_image[1]));
 
+    reg enable_irq_mcu = 1'b0;
+
     // Bandai 2001 chip
     localparam LINEAR_ADDR_OFF = 8'hC0;
     localparam RAM_BANK = 8'hC1;
@@ -284,6 +284,9 @@ module nileswan(
     localparam POW_CNT = 8'hE2;
     localparam EMU_CNT = 8'hE6;
 
+    localparam IRQ_ENABLE = 8'hE8;
+    localparam IRQ_STATUS = 8'hE9;
+
     `define read2003Reg(value) \
         begin \
             reg_out = ``value``; \
@@ -315,6 +318,14 @@ module nileswan(
                 enable_rom_8bit_bus,
                 enable_flash_emu,
                 eeprom_size};
+
+    wire[7:0] IrqEnable = {7'h0,
+                enable_irq_mcu};
+
+    wire[7:0] IrqStatus = {7'h0,
+                ~nMCUInt};
+
+    assign nCartInt = ~(enable_irq_mcu & ~nMCUInt);
 
     always_comb begin
         reg_ack = 1;
@@ -372,6 +383,10 @@ module nileswan(
 
         POW_CNT: `readNileReg(PowCnt)
         EMU_CNT: `readNileReg(EmuCnt)
+
+        IRQ_ENABLE: `readNileReg(IrqEnable)
+        IRQ_STATUS: `readNileReg(IrqStatus)
+
         default: reg_ack = 0;
         endcase
     end
@@ -433,6 +448,17 @@ module nileswan(
 
                     enable_flash_emu <= Data[2];
                     enable_rom_8bit_bus <= Data[3];
+                end
+            end
+
+            IRQ_ENABLE: begin
+                if (enable_nileswan_ex) begin
+                    enable_irq_mcu <= Data[0];
+                end
+            end
+
+            IRQ_STATUS: begin
+                if (enable_nileswan_ex) begin
                 end
             end
 

@@ -76,6 +76,14 @@ static inline void mcu_fpga_finish_busy(void) {
     LL_GPIO_SetPinMode(GPIOA, MCU_PIN_FPGA_BUSY, LL_GPIO_MODE_ANALOG);
 }
 
+static inline void mcu_fpga_irq_set(void) {
+    LL_GPIO_ResetOutputPin(GPIOA, MCU_PIN_FPGA_IRQ);
+}
+
+static inline void mcu_fpga_irq_clear(void) {
+    LL_GPIO_SetOutputPin(GPIOA, MCU_PIN_FPGA_IRQ);
+}
+
 /**
  * @brief Set whether or not the USB port should be enabled (on the MCU side).
  * The USB hardware will only be activated if the USB port is enabled and an USB

@@ -89,6 +89,22 @@ See section on EEPROM for details on EEPROM size.
 
 When flash emulation the FPGA will provide minimal emulation of the programming sequences of parallel NOR flash memory for PSRAM accesses.
 
+
+**`0xE8` - `IRQ_ENABLE` (8-bit, read/write)**
+
+| Bit(s) | Description |
+|------|------|
+|0|Pass MCU IRQ line|
+|1-7|Unused/0|
+
+
+**`0xE9` - `IRQ_STATUS` (8-bit, read/write)**
+
+| Bit(s) | Description |
+|------|------|
+|0|MCU IRQ line|
+|1-7|Unused/0|
+
 ## Banking
 
 **`0xE4` - `BANK_MASK` (16-bit, read/write)**
