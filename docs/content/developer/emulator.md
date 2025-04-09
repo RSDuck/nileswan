@@ -15,8 +15,8 @@ a limited subset of both the console and the cartridge's functionality.
 
 1. [Download](https://github.com/49bitcat/nileswan-medem/releases) or [compile](https://github.com/49bitcat/nileswan-medem) the device emulator.
 2. Prepare the emulator files. This can be done by either:
-    - [downloading]() a ready-made build of the package,
-    - [compiling]() the package from source by using the `make dist-emu` command; in this case, the package will be placed in the `out/emulator` directory.
+    - [downloading](https://github.com/49bitcat/nileswan/releases) a ready-made build of the package,
+    - [compiling](https://github.com/49bitcat/nileswan) the package from source by using the `make dist-emu` command; in this case, the package will be placed in the `out/emulator` directory.
 3. Place the emulator files in a directory of your choosing. You should have the following files:
     - `nileswan.ipl0` - a build of the IPL0 (first-stage loader),
     - `nileswan.spi` - a replica of the SPI flash image,
