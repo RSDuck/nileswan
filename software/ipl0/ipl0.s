@@ -88,6 +88,16 @@ copyIoPortDataLoop:
     loop copyIoPortDataLoop
 
     ; == IPL1 loader ==
+
+    ; reset hardware
+
+    mov al, 0xDD
+    out 0xE2, al
+    mov ax, 0xFFFF
+    out 0xE4, ax
+    inc ax
+    out 0xE6, al
+
     ; - if recovery key combo pressed: load recovery IPL1
     ; - if on-cartridge button held: load factory IPL1
     ; - otherwise: load regular IPL1

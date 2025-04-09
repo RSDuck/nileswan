@@ -142,9 +142,9 @@ void main(void) {
 	outportb(IO_SYSTEM_CTRL2, 0x00); // Disable SRAM/IO wait states
 	nile_flash_sleep(); // Put flash chip to sleep
 
-	// Back up IPC (without user area)
+	// Back up IPC
 	outportw(IO_BANK_2003_RAM, NILE_SEG_RAM_IPC);
-	memcpy((void __far*) SCREEN, MEM_NILE_IPC, 0xE0);
+	memcpy((void __far*) SCREEN, MEM_NILE_IPC, 0x200);
 
 #ifndef PROGRAM_factory
 	// Start loading warmboot image
@@ -181,7 +181,7 @@ void main(void) {
 
 	// Restore IPC
 	outportw(IO_BANK_2003_RAM, NILE_SEG_RAM_IPC);
-	memcpy(MEM_NILE_IPC, (void __far*) SCREEN, 0xE0);
+	memcpy(MEM_NILE_IPC, (void __far*) SCREEN, 0x200);
 
 	// Initialize screen 1
 	memset(SCREEN, 0x6, (32 * 19 - 4) * sizeof(uint16_t));
