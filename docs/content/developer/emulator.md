@@ -30,11 +30,12 @@ a limited subset of both the console and the cartridge's functionality.
 |---------|------------|-------|
 | SPI interface | Yes | |
 | Power control | Yes | |
-| IPC area | Yes | |
 | SPI removable storage | Partial | Some commands only, <= 2 GiB only |
 | SPI flash | Partial | Some commands only |
 | MCU bootloader | Stubbed | MCU flash not stored |
 | MCU native | Partial | Some commands only |
 | MCU EEPROM | No | |
-| MCU RTC | No | |
+| MCU RTC | Stubbed | |
 | MCU CDC transfer | Yes | Use `wswan.excomm` config option |
+| IPC area | Yes | |
+| Flash FSM | Yes | |
