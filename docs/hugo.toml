@@ -1,4 +1,4 @@
-baseURL = 'http://localhost'
+baseURL = 'http://49bitcat.com/docs/nileswan'
 languageCode = 'en-us'
 title = 'nileswan documentation'
 theme = 'hugo-geekdoc'

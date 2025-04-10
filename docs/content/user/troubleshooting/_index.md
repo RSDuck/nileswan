@@ -50,3 +50,12 @@ nileswan does not currently support exFAT file systems or GPT partition tables. 
 **File not found**
 
 The menu file (`/NILESWAN/MENU.WS`) was not found on the cartridge.
+
+## Other problems
+
+### Persistent data (save data, date/time, ...) corruption
+
+This issue implies the SRAM and/or MCU are not receiving power.
+
+Make sure a battery is inserted and that the battery holds charge. If that does not resolve the issue, it may point to a software bug or hardware fault.
+
