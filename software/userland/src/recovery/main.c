@@ -62,6 +62,7 @@ static const char __wf_rom* __wf_rom menu_main[] = {
 	s_setup_mcu_boot_flags,
 	s_cartridge_tests,
 	s_run_manufacturing_test,
+	s_exit,
 	NULL
 };
 
@@ -187,6 +188,9 @@ option_loop:
 			console_clear();
 			main_mfg();
 			console_press_any_key();
+			break;
+		case 6:
+			nile_reboot();
 			break;
 		}
 	}

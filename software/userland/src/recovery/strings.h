@@ -72,4 +72,6 @@ DEFINE_STRING(s_benchmark_writing_bytes, "Writing %d bytes... ");
 DEFINE_STRING(s_benchmark_data_read_mismatch, "Data read mismatch");
 DEFINE_STRING(s_benchmark_hblanks, "%d hbl (%d KB/s)");
 
+DEFINE_STRING(s_exit, "Exit");
+
 #endif /* _STRINGS_H_ */
