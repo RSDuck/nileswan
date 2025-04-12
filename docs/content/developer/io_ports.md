@@ -6,9 +6,9 @@ weight: 10
 |--------|-----|------------|-------------|
 | `0xE0` |  2  | SPI_CNT    | SPI control register |
 | `0xE2` |  1  | POW_CNT    | Power control |
-| `0xE3` |  1  | WARMBOOT_CNT | Trigger FPGA warmboot |
+| `0xE3` |  1  | EMU_CNT  | Controls EEPROM size |
 | `0xE4` |  2  | BANK_MASK  | Mask for bank index |
-| `0xE6` |  1  | EMU_CNT  | Controls EEPROM size |
+| `0xE6` |  1  | WARMBOOT_CNT | Trigger FPGA warmboot |
 
 ## SPI interface
 
@@ -60,7 +60,20 @@ The μC reset line bit is connected directly to the nRST pin of the microcontrol
 
 If SRAM is enabled SRAM (banks 0-7) may be selected when accessing the RAM area.
 
-**`0xE3` - `WARMBOOT_CNT` (8-bit, write)**
+**`0xE3` - `EMU_CNT` (8-bit, read/write)**
+
+| Bit(s) | Description |
+|------|------|
+|0-1|Emulated EEPROM size (0=128B, 1=1KB, 2=2KB, 3=no EEPROM connected (default))|
+|2|Flash emulation enable (0=disabled (default), 1=enabled)|
+|3|Emulated ROM bus width (0=16-bit (default), 1=8-bit)|
+|4-7|Unused/0|
+
+See section on EEPROM for details on EEPROM size.
+
+When flash emulation the FPGA will provide minimal emulation of the programming sequences of parallel NOR flash memory for PSRAM accesses.
+
+**`0xE6` - `WARMBOOT_CNT` (8-bit, write)**
 
 | Bit(s) | Description |
 |------|------|
@@ -74,20 +87,6 @@ It may only be written while not running code from the cartridge. After writing,
 If your FPGA core image does not [enable](https://github.com/YosysHQ/icestorm/pull/332) a faster frequency range,
 the wait may need to be as high as 53 milliseconds.
 {{< /hint >}}
-
-
-**`0xE6` - `EMU_CNT` (8-bit, read/write)**
-
-| Bit(s) | Description |
-|------|------|
-|0-1|Emulated EEPROM size (0=128B, 1=1KB, 2=2KB, 3=no EEPROM connected (default))|
-|2|Flash emulation enable (0=disabled (default), 1=enabled)|
-|3|Emulated ROM bus width (0=16-bit (default), 1=8-bit)|
-|4-7|Unused/0|
-
-See section on EEPROM for details on EEPROM size.
-
-When flash emulation the FPGA will provide minimal emulation of the programming sequences of parallel NOR flash memory for PSRAM accesses.
 
 ## Banking
 

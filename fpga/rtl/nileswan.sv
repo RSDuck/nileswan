@@ -276,13 +276,13 @@ module nileswan(
     localparam BANK_MASK_LO = 8'hE4;
     localparam BANK_MASK_HI = 8'hE5;
 
-    localparam WARMBOOT_CNT = 8'hE3;
+    localparam WARMBOOT_CNT = 8'hE6;
 
     localparam SPI_CNT_LO = 8'hE0;
     localparam SPI_CNT_HI = 8'hE1;
 
     localparam POW_CNT = 8'hE2;
-    localparam EMU_CNT = 8'hE6;
+    localparam EMU_CNT = 8'hE3;
 
     `define read2003Reg(value) \
         begin \
