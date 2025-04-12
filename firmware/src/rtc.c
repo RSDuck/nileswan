@@ -16,6 +16,7 @@
  */
 
 #include "mcu.h"
+#include <stm32u073xx.h>
 #include <stm32u0xx_ll_rcc.h>
 #include <stm32u0xx_ll_rtc.h>
 #include "rtc.h"
@@ -62,22 +63,121 @@ static void rtc_init_end(void) {
     LL_RTC_DisableInitMode(RTC);
 }
 
+static inline uint8_t rtc_hour_mcu_to_rtc(uint32_t tr) {
+    if (RTC->CR & RTC_CR_FMT) {
+        uint8_t result = ((tr >> 16) & 0x3F) | ((tr >> 15) & 0x80);
+        // convert 12 -> 00 for 12-hour reads
+        if ((result & 0x3F) == 0x12) {
+            result &= 0x80;
+        }
+        return result;
+    } else {
+        uint8_t result = ((tr >> 16) & 0x3F);
+        // set AM/PM bit for 24-hour reads
+        if (result >= 0x12) {
+            result |= 0x80;
+        }
+        return result;
+    }
+}
+
+
+void RTC_TAMP_IRQHandler(void) {
+    LL_RTC_ClearFlag_ALRA(RTC);
+    if (TAMP->BKP0R == S3511A_INTAE) {
+        uint32_t tr = RTC->TR;
+        uint32_t value = (tr & 0x7F00) | rtc_hour_mcu_to_rtc(tr);
+        if (!((TAMP->BKP1R ^ value) & 0xBF7F)) {
+            mcu_fpga_irq_set();
+        } else {
+            mcu_fpga_irq_clear();
+        }
+    } else switch (TAMP->BKP0R & ~S3511A_INTAE) {
+    case S3511A_INTFE: {
+        uint32_t tr = RTC->TR;
+        uint32_t ssr = RTC->SSR;
+        uint32_t value = ((ssr ^ 0x7FFF) & 0x7FFF) | ((tr & 0x1) << 15);
+        if (TAMP->BKP1R & value) {
+            mcu_fpga_irq_set();
+        } else {
+            mcu_fpga_irq_clear();
+        }
+    } break;
+    case S3511A_INTME: {
+        uint32_t tr = RTC->TR;
+        uint32_t ssr = RTC->SSR;
+        uint32_t value = ((tr & 0x7F) == 0x00) && ((ssr & 0x7FFF) >= (32768 - 327));
+        if (value) {
+            mcu_fpga_irq_set();
+        } else {
+            mcu_fpga_irq_clear();
+        }
+    } break;
+    case S3511A_INTME | S3511A_INTFE: {
+        uint32_t tr = RTC->TR;
+        uint32_t value = (tr & 0x7F) < 0x30;
+        if (value) {
+            mcu_fpga_irq_set();
+        } else {
+            mcu_fpga_irq_clear();
+        }
+    } break;
+    default: {
+        mcu_fpga_irq_clear();
+    } break;
+    }
+}
+
+static void rtc_apply_alarm_mode(uint32_t alarm_mode) {
+    TAMP->BKP0R = alarm_mode;
+    RTC->CR &= ~(RTC_CR_ALRAE | RTC_CR_ALRAIE);
+    if (alarm_mode) {
+        if (TAMP->BKP0R == S3511A_INTAE) {
+            // Alarm mode: one IRQ a minute
+            RTC->ALRMAR = RTC_ALRMAR_MSK4 | RTC_ALRMAR_MSK3 | RTC_ALRMAR_MSK2;
+            RTC->ALRMASSR = 0;
+        } else switch (TAMP->BKP0R & ~S3511A_INTAE) {
+        case S3511A_INTFE: {
+            // Frequency mode: one IRQ every 16384 Hz
+            // FIXME: 32768 Hz support.
+            // FIXME: Could be power-optimized more by dynamically changing RTC->ALRMAR.
+            RTC->ALRMAR = RTC_ALRMAR_MSK4 | RTC_ALRMAR_MSK3 | RTC_ALRMAR_MSK2 | RTC_ALRMAR_MSK1;
+            RTC->ALRMASSR = (1 << 24) | 1;
+        } break;
+        case S3511A_INTME: {
+            // Per-minute edge: one IRQ every ~1ms
+            // FIXME: Could be power-optimized more by dynamically changing RTC->ALRMAR.
+            RTC->ALRMAR = RTC_ALRMAR_MSK4 | RTC_ALRMAR_MSK3 | RTC_ALRMAR_MSK2 | RTC_ALRMAR_MSK1;
+            RTC->ALRMASSR = (5 << 24) | 31;
+        } break;
+        case S3511A_INTME | S3511A_INTFE: {
+            // Per-minute steady: one IRQ every second
+            // FIXME: Could be power-optimized more by dynamically changing RTC->ALRMAR.
+            RTC->ALRMAR = RTC_ALRMAR_MSK4 | RTC_ALRMAR_MSK3 | RTC_ALRMAR_MSK2 | RTC_ALRMAR_MSK1;
+            RTC->ALRMASSR = 0;
+        } break;
+        }
+        RTC->CR |= RTC_CR_ALRAE | RTC_CR_ALRAIE;
+        RTC_TAMP_IRQHandler();
+    } else {
+        mcu_fpga_irq_clear();
+    }
+}
+
 void mcu_rtc_init(void) {
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_RTCAPB);
 
     LL_RCC_LSI_Enable();
     while (!LL_RCC_LSI_IsReady());
 
-    if (LL_RCC_GetRTCClockSource() == LL_RCC_RTC_CLKSOURCE_NONE) {
-        rtc_reset();
+    if (rtc_is_configured()) {
+        rtc_write_start();
+        rtc_apply_alarm_mode(TAMP->BKP0R);
+        rtc_write_end();
     }
 
-    // Enable RTC alarm interrupt
-    LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_17);
-    LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_17);
-    LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_17);
-    NVIC_SetPriority(RTC_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
-    NVIC_EnableIRQ(RTC_IRQn);
+    NVIC_SetPriority(RTC_TAMP_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 80, 0));
+    NVIC_EnableIRQ(RTC_TAMP_IRQn);
 }
 
 bool rtc_is_configured(void) {
@@ -88,16 +188,18 @@ void rtc_reset(void) {
     LL_RCC_ForceBackupDomainReset();
     LL_RCC_ReleaseBackupDomainReset();
 
-    LL_RCC_SetRTCClockSource(LL_RCC_RTC_CLKSOURCE_LSI);
+    LL_RCC_SetRTCClockSource(LL_RCC_LSI_IsReady() ? LL_RCC_RTC_CLKSOURCE_LSI : LL_RCC_RTC_CLKSOURCE_LSE);
     LL_RCC_EnableRTC();
 
     rtc_write_start();
     rtc_init_start();
     RTC->CR = RTC_CR_FMT | RTC_CR_BYPSHAD;
     RTC->CALR |= RTC_CALR_LPCAL;
-    RTC->ALRMAR = RTC_ALRMAR_MSK1 | RTC_ALRMAR_MSK4;
     RTC->DR = 0x00E101;
     RTC->TR = 0x120000;
+    RTC->PRER = 0x007FFF;
+    TAMP->BKP1R = 0;
+    rtc_apply_alarm_mode(0);
     rtc_init_end();
     rtc_write_end();
 }
@@ -106,14 +208,10 @@ void rtc_write_status(uint8_t value) {
     uint32_t cr = RTC->CR;
 
     uint32_t old_cr = cr;
-    cr = (cr & ~(RTC_CR_FMT | RTC_CR_ALRAE | RTC_CR_ALRAIE)) | ((value & S3511A_1224) ? 0 : RTC_CR_FMT);
-    if ((value & (S3511A_INTAE | S3511A_INTFE | S3511A_INTME)) == S3511A_INTAE) {
-        // Alarm mode
-        cr |= RTC_CR_ALRAE | RTC_CR_ALRAIE;
-    } else {
-        // TODO: INTFE, INTME
-    }
+    cr = (cr & ~RTC_CR_FMT) | ((value & S3511A_1224) ? 0 : RTC_CR_FMT);
 
+    uint32_t alarm_mode = (value & (S3511A_INTAE | S3511A_INTFE | S3511A_INTME));
+    bool alarm_mode_changed = TAMP->BKP0R != alarm_mode;
     bool init_required = (old_cr & 0xFF) != (cr & 0xFF);
 
     rtc_write_start();
@@ -161,8 +259,13 @@ void rtc_write_status(uint8_t value) {
         RTC->TR = tr;
     }
 
+    if (alarm_mode_changed) {
+        rtc_apply_alarm_mode(alarm_mode);
+    }
+
     if (init_required) rtc_init_end();
     rtc_write_end();
+
 }
 
 uint8_t rtc_read_status(void) {
@@ -171,13 +274,11 @@ uint8_t rtc_read_status(void) {
         rtc_reset();
         result |= S3511A_POWER_LOST;
     }
-
-    // TODO: INTME, INTFE
     
     uint32_t cr = RTC->CR;
     return result
         | ((cr & RTC_CR_FMT) ? 0 : S3511A_1224)
-        | ((cr & RTC_CR_ALRAE) ? S3511A_INTAE : 0);
+        | (TAMP->BKP0R & (S3511A_INTAE | S3511A_INTFE | S3511A_INTME));
 }
 
 void rtc_write_datetime(uint8_t *buffer, bool date) {
@@ -226,6 +327,7 @@ void rtc_write_datetime(uint8_t *buffer, bool date) {
     tr |= (buffer[2] & 0x7F);
     RTC->TR = tr;
 
+    RTC_TAMP_IRQHandler();
     rtc_init_end();
     rtc_write_end();
 }
@@ -249,33 +351,15 @@ void rtc_read_datetime(uint8_t *buffer, bool date) {
         buffer[3] = (dow == 7 ? 0 : dow);
         buffer += 4;
     }
+    buffer[0] = rtc_hour_mcu_to_rtc(tr);
     buffer[1] = (tr >> 8) & 0x7F;
     buffer[2] = tr & 0x7F;
-
-    if (RTC->CR & RTC_CR_FMT) {
-        buffer[0] = ((tr >> 16) & 0x3F) | ((tr >> 15) & 0x80);
-        // convert 12 -> 00 for 12-hour reads
-        if ((buffer[0] & 0x3F) == 0x12) {
-            buffer[0] &= 0x80;
-        }
-    } else {
-        buffer[0] = ((tr >> 16) & 0x3F);
-        // set AM/PM bit for 24-hour reads
-        if (buffer[0] >= 0x12) {
-            buffer[0] |= 0x80;
-        }
-    }
 }
 
-void rtc_write_alarm(uint8_t hour, uint8_t minute) {
+static inline void rtc_write_alarm(uint32_t value) {
     rtc_write_start();
-    rtc_init_start();
-
-    RTC->ALRMAR = RTC_ALRMAR_MSK1 | RTC_ALRMAR_MSK4
-        | ((hour & 0x3F) << 16) | ((hour & 0x80) << 15)
-        | ((minute & 0x7F) << 8);
-
-    rtc_init_end();
+    TAMP->BKP1R = value;
+    RTC_TAMP_IRQHandler();
     rtc_write_end();
 }
 
@@ -306,11 +390,11 @@ int rtc_finish_command_rx(uint8_t *rx, uint8_t *tx) {
         rtc_read_datetime(tx, false);
         return 3;
     case 8: /* Alarm */
-        rtc_write_alarm(rx[0], rx[1]);
+        rtc_write_alarm(*((uint16_t*) rx));
         return 0;
     case 9:
         *((uint16_t*) tx) = 0xFFFF;
-        rtc_write_alarm(tx[0], tx[1]);
+        rtc_write_alarm(*((uint16_t*) tx));
         return 2;
     case 10: /* ?? */
         return 0;

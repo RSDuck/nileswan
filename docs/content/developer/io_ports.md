@@ -9,6 +9,8 @@ weight: 10
 | `0xE3` |  1  | EMU_CNT  | Controls EEPROM size |
 | `0xE4` |  2  | BANK_MASK  | Mask for bank index |
 | `0xE6` |  1  | WARMBOOT_CNT | Trigger FPGA warmboot |
+| `0xE8` |  1  | IRQ_ENABLE | Cartridge IRQ enable |
+| `0xE9` |  1  | IRQ_STATUS | Cartridge IRQ status |
 
 ## SPI interface
 
@@ -87,6 +89,20 @@ It may only be written while not running code from the cartridge. After writing,
 If your FPGA core image does not [enable](https://github.com/YosysHQ/icestorm/pull/332) a faster frequency range,
 the wait may need to be as high as 53 milliseconds.
 {{< /hint >}}
+
+**`0xE8` - `IRQ_ENABLE` (8-bit, read/write)**
+
+| Bit(s) | Description |
+|------|------|
+|0|Pass MCU IRQ line|
+|1-7|Unused/0|
+
+**`0xE9` - `IRQ_STATUS` (8-bit, read/write)**
+
+| Bit(s) | Description |
+|------|------|
+|0|MCU IRQ line|
+|1-7|Unused/0|
 
 ## Banking
 
