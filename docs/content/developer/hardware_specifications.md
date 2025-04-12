@@ -21,9 +21,9 @@ In addition, nileswan provides the following native hardware facilities for user
 
 Most of these limitations should not impact end users; however, documenting them may be of use to homebrew developers.
 
-- 32 KiB SRAM is currently mapped as if it were 64 KiB SRAM - mirroring is not emulated. This may be resolved in the future with a firmware update.
-- EEPROM write and erase timings are not guaranteed to match real hardware. This may be improved in the future with firmware updates. Note that, in general, EEPROM write and erase timings are not guaranteed to be consistent across cartridges.
+- 32 KiB SRAM is mapped as if it were 64 KiB SRAM - mirroring is emulated at the bank level, but not within a bank.
 - RTC command timings are slightly slower than on real hardware. This is a compromise between accuracy and power consumption.
+- EEPROM write and erase timings are not guaranteed to match real hardware. This may be improved in the future with firmware updates. Note that, in general, EEPROM write and erase timings are not guaranteed to be consistent across cartridges.
 - Due to hardware limitations, the emulation of the MBM29DL400TC NOR flash chip used on certain cartridges is very limited. Writes are correctly passed through, but other commands, including erases, may be stubbed or unimplemented.
 - The ability to set jumpers using GPIO pins is not yet implemented. This will be resolved in the future with a firmware update.
 - No infrared transmitter or transceiver is present on the cartridge board.

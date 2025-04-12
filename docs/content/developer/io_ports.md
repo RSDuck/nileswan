@@ -6,7 +6,7 @@ weight: 10
 |--------|-----|------------|-------------|
 | `0xE0` |  2  | SPI_CNT    | SPI control register |
 | `0xE2` |  1  | POW_CNT    | Power control |
-| `0xE3` |  1  | EMU_CNT  | Controls EEPROM size |
+| `0xE3` |  1  | EMU_CNT  | Behavior control (EEPROM, flash emulation, ...) |
 | `0xE4` |  2  | BANK_MASK  | Mask for bank index |
 | `0xE6` |  1  | WARMBOOT_CNT | Trigger FPGA warmboot |
 | `0xE8` |  1  | IRQ_ENABLE | Cartridge IRQ enable |
