@@ -8,19 +8,26 @@ weight: 10
 | `0xE2` |  1  | POW_CNT    | Power control |
 | `0xE3` |  1  | WARMBOOT_CNT | Trigger FPGA warmboot |
 | `0xE4` |  2  | BANK_MASK  | Mask for bank index |
-| `0xE6` |  1  | EMU_CNT  | Controls EEPROM size |
+| `0xE6` |  1  | EMU_CNT  | Controls emulation of peripherals |
+| `0xE7` |  1  | SPI_CNT2 | SPI second control register |
 
 ## SPI interface
 
 **`0xE0` - `SPI_CNT` (16-bit, read/write)**
 | Bit(s) | Description |
 |------|------|
-|0-8|SPI transfer length in bytes minus one|
-|9-10|Mode (0 = write, 1 = read, 2 = exchange, 3 = wait and read) |
-|11|Transfer speed (0 = 24 MHz "high frequency clock", 1 = cartridge bus clock, usually 384 KHz) |
-|12-13|Channel select/chip select (0 = no device selected and output to TF channel, 1 = select TF, 2 = select flash, 3 = select μC)|
+|0-9|SPI transfer length in bytes minus one|
+|10-11|Unused/0|
+|12-13|Mode (0 = write, 1 = read, 2 = exchange, 3 = wait and read)|
 |14|Memory mapped RX and TX buffer index (0-1)|
 |15|Start/busy, when written (0 = abort transfer, 1 = start transfer), when read (0 = idle, 1 = transferring)|
+
+**`0xE7` - `SPI_CNT2` (8-bit, read/write)**
+| Bit(s) | Description |
+|------|------|
+|0|Transfer speed (0 = 24 MHz "high frequency clock", 1 = cartridge bus clock, usually 384 KHz) |
+|1-2|Channel select/chip select (0 = no device selected and output to TF channel, 1 = select TF, 2 = select flash, 3 = select μC)|
+|3-7|Unused/0|
 
 * In read mode all output serial bits are 1. The incoming bits are stored in the RX buffer.
 * In write mode bits from the TX buffer are output. The incoming serial bits are discarded.

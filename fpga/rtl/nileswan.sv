@@ -11,7 +11,7 @@ module nileswan(
     input nSel, input nOE, input nWE,
     input nIO,
 
-    input[8:0] AddrLo, input[3:0] AddrHi,
+    input[9:0] AddrLo, input[3:0] AddrHi,
     inout[15:0] Data,
 
     output[6:0] AddrExt,
@@ -123,7 +123,8 @@ module nileswan(
     wire write_txbuf;
     wire[15:0] rxbuf_read;
     wire[15:0] spi_cnt;
-    reg write_spi_cnt_lo, write_spi_cnt_hi;
+    wire[7:0] spi_cnt2;
+    reg write_spi_cnt_lo, write_spi_cnt_hi, write_spi_cnt_2;
     SPI spi (
         .TransferClk(transfer_clk),
         .nWE(nWE), .nOE(nOE),
@@ -138,6 +139,7 @@ module nileswan(
 
         .WriteSPICntLo(write_spi_cnt_lo),
         .WriteSPICntHi(write_spi_cnt_hi),
+        .WriteSPICnt2(write_spi_cnt_2),
         .WriteTXBuffer(write_txbuf),
 
         .SPIClkRunning(spi_clk_running[0]),
@@ -280,6 +282,7 @@ module nileswan(
 
     localparam SPI_CNT_LO = 8'hE0;
     localparam SPI_CNT_HI = 8'hE1;
+    localparam SPI_CNT2 = 8'hE7;
 
     localparam POW_CNT = 8'hE2;
     localparam EMU_CNT = 8'hE6;
@@ -322,6 +325,7 @@ module nileswan(
 
         write_spi_cnt_lo = 0;
         write_spi_cnt_hi = 0;
+        write_spi_cnt_2 = 0;
 
         sel_serial_ctrl = 0;
         sel_serial_com_lo = 0;
@@ -369,6 +373,7 @@ module nileswan(
             rom_bank_mask[8]})
         SPI_CNT_LO: `readExternalReg(spi_cnt[7:0], write_spi_cnt_lo, enable_nileswan_ex)
         SPI_CNT_HI: `readExternalReg(spi_cnt[15:8], write_spi_cnt_hi, enable_nileswan_ex)
+        SPI_CNT2: `readExternalReg(spi_cnt2, write_spi_cnt_2, enable_nileswan_ex)
 
         POW_CNT: `readNileReg(PowCnt)
         EMU_CNT: `readNileReg(EmuCnt)
@@ -565,7 +570,7 @@ module nileswan(
     wire[15:0] bootrom_read;
     BootROM blockram (
         .nOE(nOE),
-        .AddrLo(AddrLo),
+        .AddrLo(AddrLo[8:0]),
         .Sel(~nSel & nIO & bootrom_addr),
         .ReadData(bootrom_read),
         
@@ -576,7 +581,7 @@ module nileswan(
         .nOE(nOE),
         .nWE(nWE),
         .Sel(~nSel & nIO & ipcbuf_addr),
-        .AddrLo(AddrLo),
+        .AddrLo(AddrLo[8:0]),
         .ReadData(ipc_read),
         .WriteData(Data[7:0]));
 

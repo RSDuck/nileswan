@@ -22,17 +22,19 @@ module spi_bench ();
     reg tf_di = 0;
     wire tf_do, tf_cs, tf_clk, spi_clk_running;
 
-    reg[8:0] buf_addr;
+    reg[9:0] buf_addr;
 
     wire[15:0] rx_bufdata;
 
     reg write_txbuffer = 0;
     reg write_spicnt_lo = 0;
     reg write_spicnt_hi = 0;
+    reg write_spicnt_2 = 0;
 
     reg tf_pow = 0;
 
     wire[15:0] spi_cnt;
+    wire[7:0] spi_cnt_2;
 
     wire transfer_clk, use_slow_clk;
 
@@ -54,10 +56,12 @@ module spi_bench ();
 
         .RXBufData(rx_bufdata),
         .SPICnt(spi_cnt),
+        .SPICnt2(spi_cnt_2),
 
         .WriteTXBuffer(write_txbuffer),
         .WriteSPICntLo(write_spicnt_lo),
         .WriteSPICntHi(write_spicnt_hi),
+        .WriteSPICnt2(write_spicnt_2),
 
         .UseSlowClk(use_slow_clk),
 
@@ -90,7 +94,7 @@ module spi_bench ();
     `make_spi_dev(testdev, TestDev, spi_cs, spi_clk, spi_di, spi_do)
     `make_spi_dev(testtf, TestTF, tf_cs, tf_clk, tf_di, tf_do)
 
-    task readRXBuf(input[8:0] addr, output[15:0] data);
+    task readRXBuf(input[9:0] addr, output[15:0] data);
         buf_addr = addr;
         #(swan_clock_period/2);
         nOE = 0;
@@ -100,7 +104,7 @@ module spi_bench ();
         #(swan_clock_period/2);
     endtask
 
-    task writeTXBuf(input[8:0] addr, input[7:0] data);
+    task writeTXBuf(input[9:0] addr, input[7:0] data);
         buf_addr = addr;
         write_txbuffer = 1;
         #(swan_clock_period/2);
@@ -111,6 +115,14 @@ module spi_bench ();
         #(swan_clock_period/2);
         write_txbuffer = 0;
     endtask
+
+    localparam SPI_CNT_START = 8'h1 << (15-8);
+    localparam SPI_CNT_BUFFER = 8'h1 << (14-8);
+    localparam SPI_CNT_EXCHANGE = 8'h2 << (12-8);
+    localparam SPI_CNT_WAIT_AND_READ = 8'h3 << (12-8);
+
+    localparam SPI_CNT2_SLOW_CLK = 8'h01;
+    localparam SPI_CNT2_DEV_FLASH = 8'h2 << 1;
 
     reg[15:0] read_spi_data;
     initial begin
@@ -136,12 +148,15 @@ module spi_bench ();
         assert (spi_cs == 1) 
         else   $error("/CS should be high");
 
+        write_spicnt_2 = 1;
+        writeReg(SPI_CNT2_DEV_FLASH | SPI_CNT2_SLOW_CLK);
+        write_spicnt_2 = 0;
+
         write_spicnt_hi = 1;
-        // start transfer, slowclk, mode=exchange, dev/cs=flash, use other buffer
-        writeReg(8'h80 | (8'h2 << 1) | (8'h1 << 3) | (8'h2 << 4) | (8'h1 << 6));
+        writeReg(SPI_CNT_START | SPI_CNT_EXCHANGE | SPI_CNT_BUFFER);
         write_spicnt_hi = 0;
 
-        assert (spi_cnt[11] == 1) 
+        assert (spi_cnt_2[0] == 1) 
         else   $error("slow clock bit should be 1");
 
         assert (spi_cs == 0) 
@@ -155,6 +170,10 @@ module spi_bench ();
         write_spicnt_hi = 1;
         writeReg(8'h0);
         write_spicnt_hi = 0;
+
+        write_spicnt_2 = 1;
+        writeReg(8'h0);
+        write_spicnt_2 = 0;
 
         assert (spi_cs == 1) 
         else   $error("/CS is not high again");
@@ -186,16 +205,19 @@ module spi_bench ();
         // resting value to prevent warning
         testdev_tx_queue.push_back(1);
 
+        write_spicnt_2 = 1;
+        writeReg(SPI_CNT2_DEV_FLASH);
+        write_spicnt_2 = 0;
+
         write_spicnt_lo = 1;
         writeReg(4);
         write_spicnt_lo = 0;
 
         write_spicnt_hi = 1;
-        // start transfer, mode=wait and read, dev/cs=flash, use other buffer
-        writeReg(8'h80 | (8'h3 << 1) | (8'h2 << 4) | (8'h1 << 6));
+        writeReg(SPI_CNT_START | SPI_CNT_WAIT_AND_READ | SPI_CNT_BUFFER);
         write_spicnt_hi = 0;
 
-        assert (spi_cnt[11] == 0)
+        assert (spi_cnt_2[0] == 0)
         else   $error("slow clock bit should be 1");
 
         assert (spi_cs == 0) 
@@ -209,6 +231,10 @@ module spi_bench ();
         write_spicnt_hi = 1;
         writeReg(8'h0);
         write_spicnt_hi = 0;
+
+        write_spicnt_2 = 1;
+        writeReg(8'h0);
+        write_spicnt_2 = 0;
 
         assert (spi_cs == 1) 
         else   $error("/CS is not high again");
@@ -243,13 +269,16 @@ module spi_bench ();
         pushTestDevTx(8'hFF);
         testdev_tx_queue.push_back(1);
 
+        write_spicnt_2 = 1;
+        writeReg(SPI_CNT2_DEV_FLASH);
+        write_spicnt_2 = 0;
+
         write_spicnt_lo = 1;
         writeReg(0);
         write_spicnt_lo = 0;
 
         write_spicnt_hi = 1;
-        // start transfer, mode=wait and read, dev/cs = flash, use other buffer
-        writeReg(8'h80 | (8'h3 << 1) | (8'h2 << 4) | (8'h1 << 3) | (8'h1 << 6));
+        writeReg(SPI_CNT_START | SPI_CNT_BUFFER | SPI_CNT_WAIT_AND_READ);
         write_spicnt_hi = 0;
 
         #(fastclk_half_period*20);
@@ -270,6 +299,10 @@ module spi_bench ();
         writeReg(8'h0);
         write_spicnt_hi = 0;
 
+        write_spicnt_2 = 1;
+        writeReg(0);
+        write_spicnt_2 = 0;
+
         // wait and read with a single byte
         pushTestDevTx(8'hFF);
         pushTestDevTx(8'hFF);
@@ -281,16 +314,19 @@ module spi_bench ();
         // resting value to prevent warning
         testdev_tx_queue.push_back(1);
 
+        write_spicnt_2 = 1;
+        writeReg(SPI_CNT2_DEV_FLASH | SPI_CNT2_SLOW_CLK);
+        write_spicnt_2 = 0;
+
         write_spicnt_lo = 1;
         writeReg(0);
         write_spicnt_lo = 0;
 
         write_spicnt_hi = 1;
-        // start transfer, mode=wait and read, dev/cs = flash, use other buffer
-        writeReg(8'h80 | (8'h3 << 1) | (8'h2 << 4) | (8'h1 << 3) | (8'h1 << 6));
+        writeReg(SPI_CNT_START | SPI_CNT_WAIT_AND_READ | SPI_CNT_BUFFER);
         write_spicnt_hi = 0;
 
-        assert (spi_cnt[11] == 1) 
+        assert (spi_cnt_2[0] == 1) 
         else   $error("slow clock bit should be 1");
 
         assert (spi_cs == 0) 
@@ -304,6 +340,10 @@ module spi_bench ();
         write_spicnt_hi = 1;
         writeReg(8'h0);
         write_spicnt_hi = 0;
+
+        write_spicnt_2 = 1;
+        writeReg(8'h0);
+        write_spicnt_2 = 0;
 
         assert (spi_cs == 1) 
         else   $error("/CS is not high again");

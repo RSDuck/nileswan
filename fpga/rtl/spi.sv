@@ -5,18 +5,20 @@ module SPI (
     input TransferClk,
     input nWE, input nOE,
 
-    input[8:0] BufAddr,
+    input[9:0] BufAddr,
 
     input[7:0] WriteData,
 
     output[15:0] RXBufData,
     output[15:0] SPICnt,
+    output[7:0] SPICnt2,
 
     output UseSlowClk,
 
     input WriteTXBuffer,
     input WriteSPICntLo,
     input WriteSPICntHi,
+    input WriteSPICnt2,
 
     output SPIClkRunning,
     output SPIDo,
@@ -39,10 +41,10 @@ module SPI (
     reg[1:0] feedback_async = 2'h0;
     wire Busy = feedback_async[1] ^ start_async;
 
-    reg[8:0] byte_position;
+    reg[9:0] byte_position;
     reg[2:0] bit_position = 0;
-    wire[8:0] NextBytePosition = byte_position + 1;
-    reg[8:0] transfer_len;
+    wire[9:0] NextBytePosition = byte_position + 1;
+    reg[9:0] transfer_len;
 
     reg[7:0] shiftreg;
 
@@ -91,7 +93,7 @@ module SPI (
     BlockRAM16RN_8W rx_buffer0 (
         .ReadClk(nOE),
         .ReadEnable(1'b1),
-        .ReadAddr({~bus_mapped_buffer, BufAddr[8:1]}),
+        .ReadAddr({~bus_mapped_buffer, BufAddr[9:1]}),
         .ReadData(rx_read),
 
         .WriteClk(TransferClk),
@@ -152,7 +154,7 @@ module SPI (
         if (Start || (bit_position == 7 && FillerOver))
             byte_position <= NextBytePosition;
         else if (~running) // reset position so that the TX buffer will read
-            byte_position <= 9'h1FF;
+            byte_position <= 10'h3FF;
     end
 
     always @(posedge TransferClk) begin
@@ -214,7 +216,8 @@ module SPI (
         .CLOCK_ENABLE(1'b1)
     );
 
-    assign SPICnt = {Busy, bus_mapped_buffer, channel_cs, use_slow_clk, mode, transfer_len};
+    assign SPICnt = {Busy, bus_mapped_buffer, mode, 2'b0, transfer_len};
+    assign SPICnt2 = {6'h00, channel_cs, use_slow_clk};
 
     // technically this means that just waiting until the transfer is done
     // without polling is not possible, because the busy state will block writes to SPI_CNT
@@ -229,16 +232,14 @@ module SPI (
     always @(posedge nWE) begin
         if (WriteSPICntHi) begin
             if (~Busy) begin
-                transfer_len[8] <= WriteData[0];
+                transfer_len[9:8] <= WriteData[1:0];
 
-                mode <= WriteData[2:1];
+                mode <= WriteData[5:4];
                 // since the switchover takes three cycles
                 // when starting a transfer and switching the clock at the same time
                 // the cycle where Start=1 will be completed will be the "weird"
                 // switch over cycle with a lengthened period
                 // though it doesn't affect the outgoing SPI transfer
-                use_slow_clk <= WriteData[3];
-                channel_cs <= WriteData[5:4];
 
                 bus_mapped_buffer <= WriteData[6];
 
@@ -251,6 +252,13 @@ module SPI (
                 // abort transfer
                 abort_req_async <= 1'b1;
             end
+        end
+    end
+
+    always @(posedge nWE) begin
+        if (WriteSPICnt2 & ~Busy) begin
+            use_slow_clk <= WriteData[0];
+            channel_cs <= WriteData[2:1];
         end
     end
 endmodule

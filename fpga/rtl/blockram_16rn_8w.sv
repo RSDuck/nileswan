@@ -1,20 +1,20 @@
 module BlockRAM16RN_8W (
     input ReadClk,
     input ReadEnable,
-    input[8:0] ReadAddr,
+    input[9:0] ReadAddr,
     output[15:0] ReadData,
 
     input WriteClk,
     input WriteEnable,
-    input[9:0] WriteAddr,
+    input[10:0] WriteAddr,
     input[7:0] WriteData);
 
     (* ram_style = "block" *)
-    reg[7:0] memory[0:1023];
+    reg[7:0] memory[0:2047];
 
     integer i;
     initial begin
-        for (i = 0; i < 1024; i++) begin
+        for (i = 0; i < 2048; i++) begin
             memory[i] <= 8'h0;
         end
     end
