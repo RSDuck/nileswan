@@ -3,17 +3,21 @@ title: 'Memory bank map'
 weight: 15
 ---
 
-## ROM (bank 0, bank 1, linear bank)
+### ROM (ROM0, ROM1, ROML)
 
 | Bank(s) | Description |
 |---------|-------------|
 |  0-127  | First PSRAM (8 MB) |
-| 128-255 | Second PSRAM (8 MB) |
-| 256-499 | Reserved (open bus) |
+| 128-255 | Second PSRAM (8 MB, optional) |
+| 256-499 | Unused (open bus) |
 |   500   | Bootrom mirror (pin strap/PCv2 boot location) |
-| 501-509 | Reserved (open bus) |
+| 501-509 | Unused (open bus) |
 |   510   | SPI RX buffer (read only, 512 bytes mirrored) |
 |   511   | Bootrom (WS/WSC boot location) |
+
+The PSRAM banks are writable by using the self flash mode (port 0xCE), which maps ROM at the point in the address space at which RAM usually sits (`0x10000`-`0x1FFFF`).
+
+Note that while it is technically possible to read the SPI RX buffer and bootrom in the RAM bank, the values read will be incorrect - the RAM bank only supports byte accesses, while these banks only support 16-bit wide word accesses.
 
 ## RAM
 
@@ -52,12 +56,14 @@ This area is used for inter-process communication by software that targets the n
     bttt tttt
     |||| ||||
     |+++-++++- TF card type
-    |          - 0: no card
-    |          - 1: MMCv3
-    |          - 2: MMCv4 (> 2 GB)
-    |          - 3: TF
-    |          - 4: TF (> 2 GB)
+    |          - 0x00: no card
+    |          - 0x01: MMC (older)
+    |          - 0x02: MMC (newer)
+    |          - 0x04: TF (older)
+    |          - 0x08: TF (newer)
     +--------- Card uses block instead of byte addressing
+
+When disabling removable storage card power, this byte should also be set to `0`; otherwise, filesystem drivers may fail to work correctly.
 
 ## SPI RX/TX buffer
 
