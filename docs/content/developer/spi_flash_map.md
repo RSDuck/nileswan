@@ -1,6 +1,6 @@
 ---
 title: 'SPI flash layout'
-weight: 25
+weight: 40
 ---
 
 ## Write-protected area

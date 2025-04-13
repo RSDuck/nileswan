@@ -1,6 +1,6 @@
 ---
 title: 'MCU firmware protocol'
-weight: 30
+weight: 50
 ---
 
 This page documents protocols used to communicate with the on-board STM32 MCU via SPI.
