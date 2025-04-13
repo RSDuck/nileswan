@@ -277,6 +277,7 @@ module nileswan(
     localparam BANK_MASK_HI = 8'hE5;
 
     localparam WARMBOOT_CNT = 8'hE6;
+    localparam BOARD_REVISION = 8'hE6;
 
     localparam SPI_CNT_LO = 8'hE0;
     localparam SPI_CNT_HI = 8'hE1;
@@ -383,6 +384,8 @@ module nileswan(
 
         POW_CNT: `readNileReg(PowCnt)
         EMU_CNT: `readNileReg(EmuCnt)
+
+        BOARD_REVISION: `readNileReg({8'h0})
 
         IRQ_ENABLE: `readNileReg(IrqEnable)
         IRQ_STATUS: `readNileReg(IrqStatus)

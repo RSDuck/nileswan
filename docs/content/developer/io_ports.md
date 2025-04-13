@@ -2,15 +2,16 @@
 title: 'I/O port map'
 weight: 10
 ---
-| Address|Width|    Name    | Description |
-|--------|-----|------------|-------------|
-| `0xE0` |  2  | SPI_CNT    | SPI control register |
-| `0xE2` |  1  | POW_CNT    | Power control |
-| `0xE3` |  1  | EMU_CNT  | Behavior control (EEPROM, flash emulation, ...) |
-| `0xE4` |  2  | BANK_MASK  | Mask for bank index |
-| `0xE6` |  1  | WARMBOOT_CNT | Trigger FPGA warmboot |
-| `0xE8` |  1  | IRQ_ENABLE | Cartridge IRQ enable |
-| `0xE9` |  1  | IRQ_STATUS | Cartridge IRQ status |
+|    Address     |Width|    Name    | Description |
+|----------------|-----|------------|-------------|
+| `0xE0`         |  2  | SPI_CNT    | SPI control register |
+| `0xE2`         |  1  | POW_CNT    | Power control |
+| `0xE3`         |  1  | EMU_CNT  | Behavior control (EEPROM, flash emulation, ...) |
+| `0xE4`         |  2  | BANK_MASK  | Mask for bank index |
+| `0xE6` (read)  |  1  | BOARD_REVISION | Board revision |
+| `0xE6` (write) |  1  | WARMBOOT_CNT | Trigger FPGA warmboot |
+| `0xE8`         |  1  | IRQ_ENABLE | Cartridge IRQ enable |
+| `0xE9`         |  1  | IRQ_STATUS | Cartridge IRQ status |
 
 ## SPI interface
 
@@ -37,7 +38,7 @@ Transfer aborting is not immediate for internal reasons and to allow the transfe
 
 For EEPROM or RTC SPI communication to work, the cartridge serial clock has to be selected.
 
-## Power/system control
+## Cartridge control
 
 **`0xE2` - `POW_CNT` (8-bit, read/write)**
 
@@ -75,6 +76,19 @@ See section on EEPROM for details on EEPROM size.
 
 When flash emulation the FPGA will provide minimal emulation of the programming sequences of parallel NOR flash memory for PSRAM accesses.
 
+**`0xE6` - `BOARD_REVISION` (8-bit, read)**
+
+| Bit(s) | Description |
+|------|------|
+|0-7|Board revision|
+
+Used for distinguishing boards during firmware updates.
+
+|Value | Description |
+|------|-------------|
+| 0x00 | rev. 6 |
+| 0x01 | rev. 7 |
+
 **`0xE6` - `WARMBOOT_CNT` (8-bit, write)**
 
 | Bit(s) | Description |
@@ -89,6 +103,8 @@ It may only be written while not running code from the cartridge. After writing,
 If your FPGA core image does not [enable](https://github.com/YosysHQ/icestorm/pull/332) a faster frequency range,
 the wait may need to be as high as 53 milliseconds.
 {{< /hint >}}
+
+## Interrupt handling
 
 **`0xE8` - `IRQ_ENABLE` (8-bit, read/write)**
 
