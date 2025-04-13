@@ -181,8 +181,9 @@ bool op_tf_card_benchmark_write(void) {
     console_print_newline();
     console_print_newline();
 
-    tf_card_test_buffer(TEST_BUFFER_WRITE, TF_TEST_MAX_SIZE);
     for (uint16_t len = 512; len <= TF_TEST_MAX_SIZE; len <<= 1) {
+        tf_card_test_buffer(TEST_BUFFER_WRITE, len);
+
         if (!tf_card_handle_error(f_lseek(&file, 0))) return false;
         console_printf(0, s_benchmark_writing_bytes, len);
 
@@ -192,7 +193,16 @@ bool op_tf_card_benchmark_write(void) {
 
         uint16_t hblanks = 65535 - inportw(IO_HBLANK_COUNTER);
         outportw(IO_TIMER_CTRL, 0);
-        
+
+        if (!tf_card_handle_error(f_lseek(&file, 0))) return false;
+        if (!tf_card_handle_error(f_read(&file, TF_TEST_BUFFER, len, &br))) return false;
+        if (!tf_card_test_buffer(TEST_BUFFER_COMPARE, len)) {
+            console_print_status(false);
+            console_print_newline();
+            console_printf(0, s_benchmark_data_read_mismatch);
+            return false;
+        }
+
         console_print_status(true);
         uint16_t bytes_msec = len / ((hblanks + 11) / 12);
         // bytes/msec are approximately equal to kbytes/sec
