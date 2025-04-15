@@ -185,8 +185,7 @@ bool rtc_is_configured(void) {
 }
 
 void rtc_reset(void) {
-    LL_RCC_ForceBackupDomainReset();
-    LL_RCC_ReleaseBackupDomainReset();
+    mcu_reset_backup_domain();
 
     LL_RCC_SetRTCClockSource(LL_RCC_LSI_IsReady() ? LL_RCC_RTC_CLKSOURCE_LSI : LL_RCC_RTC_CLKSOURCE_LSE);
     LL_RCC_EnableRTC();

@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "class/cdc/cdc_device.h"
+#include "config.h"
 #include "mcu.h"
 #include "cdc.h"
 #include "nvram.h"
@@ -98,13 +99,21 @@ int spi_native_finish_command_rx(uint8_t *rx, uint8_t *tx) {
     case MCU_SPI_CMD_EEPROM_GET_MODE:
         tx[0] = eeprom_get_type();
         return 1;
-    case MCU_SPI_CMD_SET_SAVE_ID:
-        memcpy(&nvram.save_id, rx, 4);
+    case MCU_SPI_CMD_SET_SAVE_ID: {
+        uint32_t save_id;
+        memcpy(&save_id, rx, 4);
+        if (arg & 0x1) nvram.save_id = save_id;
+        else           nvram.save_id = SAVE_ID_NONE;
+        if (arg & 0x2) TAMP->BKP8R = save_id;
+        else           TAMP->BKP8R = SAVE_ID_NONE;
         tx[0] = 1;
-        return 1;
-    case MCU_SPI_CMD_GET_SAVE_ID:
-        memcpy(tx, &nvram.save_id, 4);
-        return 4;
+    } return 1;
+    case MCU_SPI_CMD_GET_SAVE_ID: {
+        uint32_t save_id = SAVE_ID_NONE;
+        if ((arg & 0x2) && TAMP->BKP8R   != SAVE_ID_NONE) save_id = TAMP->BKP8R;
+        if ((arg & 0x1) && nvram.save_id != SAVE_ID_NONE) save_id = nvram.save_id;
+        memcpy(tx, &save_id, 4);
+    } return 4;
     case MCU_SPI_CMD_USB_CDC_READ:
         if (!mcu_usb_is_powered()) {
             return 0;

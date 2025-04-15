@@ -23,6 +23,7 @@
 
 #include "mcu.h"
 #include "config.h"
+#include "nvram.h"
 #include "spi.h"
 #include "tusb.h"
 
@@ -322,13 +323,20 @@ void mcu_usb_power_task(void) {
 }
 
 void mcu_shutdown(void) {
-    // We're actually going into Standby, as we want to preserve SRAM2 contents.
     LL_LPM_EnableDeepSleep();
 
-    LL_PWR_EnableSRAMRetention();
     LL_PWR_DisableBkUpAccess();
-    LL_PWR_SetPowerMode(LL_PWR_MODE_STANDBY);
-    while (LL_PWR_IsEnabledBkUpAccess() || !LL_PWR_IsEnabledSRAMRetention());
+    if (nvram_retention_required()) {
+        LL_PWR_EnableSRAMRetention();
+        LL_PWR_SetPowerMode(LL_PWR_MODE_STANDBY);
+        while (!LL_PWR_IsEnabledSRAMRetention());
+    } else {
+        LL_PWR_DisableSRAMRetention();
+        LL_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
+        while (LL_PWR_IsEnabledSRAMRetention());
+    }
+
+    while (LL_PWR_IsEnabledBkUpAccess());
    
     if (usb_init_status != USB_INIT_STATUS_OFF) {
         usb_init_status = USB_INIT_STATUS_REQUEST_OFF;
@@ -338,4 +346,13 @@ void mcu_shutdown(void) {
     __disable_irq();
 
     while(1) __WFI();
+}
+
+void mcu_reset_backup_domain(void) {
+    uint32_t save_id = TAMP->BKP8R;
+
+    LL_RCC_ForceBackupDomainReset();
+    LL_RCC_ReleaseBackupDomainReset();
+
+    TAMP->BKP8R = save_id;
 }

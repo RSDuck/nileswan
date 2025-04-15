@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "config.h"
 #include "eeprom.h"
 #include "nvram.h"
 
@@ -30,7 +31,12 @@ void nvram_init(void) {
     if (nvram.magic != NVRAM_MAGIC) {
         memset(&nvram, 0, sizeof(nvram));
         nvram.magic = NVRAM_MAGIC;
+        nvram.save_id = SAVE_ID_NONE;
     }
 
     eeprom_set_type(nvram.eeprom_type);
+}
+
+bool nvram_retention_required(void) {
+    return (nvram.eeprom_type != EEPROM_NONE && nvram.save_id != SAVE_ID_NONE);
 }

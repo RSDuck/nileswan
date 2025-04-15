@@ -86,6 +86,11 @@ static inline void mcu_fpga_irq_clear(void) {
 }
 
 /**
+ * @brief Reset backup domain while preserving certain register values.
+ */
+void mcu_reset_backup_domain(void);
+
+/**
  * @brief Set whether or not the USB port should be enabled (on the MCU side).
  * The USB hardware will only be activated if the USB port is enabled and an USB
  * cable is physically connected to a host.

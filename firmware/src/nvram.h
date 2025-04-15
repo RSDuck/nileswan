@@ -31,5 +31,9 @@ typedef struct {
 
 extern nvram_t nvram;
 void nvram_init(void);
+/**
+ * @brief Returns true if NVRAM retention is required.
+ */
+bool nvram_retention_required(void);
 
 #endif /* _NVRAM_H_ */

@@ -87,13 +87,21 @@ The response is 1 byte - the EEPROM emulation mode.
 
 ### 0x16 - MCU: Set save ID
 
-The parameter is ignored; followed by four bytes of the save ID.
+The parameter specifies the save ID location:
+
+- `0x01`: SRAM2 (if the save ID depends on data stored in SRAM2, such as EEPROM),
+- `0x02`: RTC backup domain (if it doesn't),
+- `0x03`: both.
+
+The command is followed by four bytes of the save ID.
+
+The save ID `0xFFFFFFFF` is reserved and means "no save is stored".
 
 The response is 1 on success, 0 on failure.
 
 ### 0x17 - MCU: Get save ID
 
-The parameter is ignored.
+The parameter specifies the save ID location.
 
 The response is four bytes of the save ID.
 
