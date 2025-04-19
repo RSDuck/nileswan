@@ -28,7 +28,7 @@
 
 #define SCREEN ((uint16_t*) (0x3800 + (12 * 32 * 2)))
 
-#define PSRAM_MAX_BANK 127
+#define PSRAM_MAX_BANK 255
 #define SRAM_MAX_BANK 7
 
 #define PROGRESS_BAR_Y ((13 * 8) - 4)
