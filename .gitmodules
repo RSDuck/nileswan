@@ -1,9 +1,9 @@
 [submodule "software/libnile"]
 	path = software/libnile
-	url = https://github.com/asiekierka/libnile
+	url = https://github.com/49bitcat/libnile
 [submodule "firmware/cmake"]
 	path = firmware/cmake
 	url = https://github.com/ObKo/stm32-cmake
 [submodule "firmware/tinyusb"]
 	path = firmware/tinyusb
-	url = https://github.com/asiekierka/tinyusb
+	url = https://github.com/49bitcat/tinyusb
