@@ -40,7 +40,7 @@ typedef struct __attribute__((packed)) {
 } um_version_t;
 
 typedef struct __attribute__((packed)) {
-    um_version_t version;
+	um_version_t version;
 } um_header_t;
 
 typedef struct __attribute__((packed)) {
@@ -49,6 +49,7 @@ typedef struct __attribute__((packed)) {
 	uint16_t unpacked_length;
 	uint32_t flash_address;
 	uint16_t expected_crc;
+	uint16_t board_revision;
 } um_flash_cmd_t;
 
 #endif /* __MANIFEST_H__ */

@@ -84,6 +84,9 @@ static void run_um_cmd_flash(um_flash_cmd_t *cmd) {
 	uint8_t flash_buffer[256];
 	uint8_t verify_buffer[256];
 
+	if (cmd->board_revision < 0x100 && inportb(IO_NILE_BOARD_REVISION) != cmd->board_revision)
+		return;
+
 	extract_um_cmd_flash(cmd);
 
 	uint32_t start_address = cmd->flash_address;
@@ -140,6 +143,9 @@ static void run_um_cmd_flash(um_flash_cmd_t *cmd) {
 static void run_um_cmd_mcu_flash(um_flash_cmd_t *cmd) {
 	uint8_t flash_buffer[128];
 	uint8_t verify_buffer[128];
+
+	if (cmd->board_revision < 0x100 && inportb(IO_NILE_BOARD_REVISION) != cmd->board_revision)
+		return;
 
 	extract_um_cmd_flash(cmd);
 

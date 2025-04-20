@@ -1,4 +1,4 @@
 PACKED_FLASH software/ipl1/boot.bin AT 262144 PAD 16384 APPEND_AA55 1
 FLASH software/userland/recovery.wsc AT -524288 PAD 256
-PACKED_FLASH fpga/nileswan.headerless.bin AT 524288 PAD 32768 APPEND_AA55 1
+PACKED_FLASH fpga/nileswan.headerless.bin AT 524288 PAD 32768 APPEND_AA55 1 BOARD_REVISION 0
 MCU_FLASH firmware/build/firmware.bin AT 0

@@ -88,6 +88,11 @@ with open(args.manifest, 'r') as rules:
         rule_map = {}
         for i in range(0, len(rule), 2):
             rule_map[rule[i]] = rule[i+1]
+
+        board_revision = 0xFFFF
+        if 'BOARD_REVISION' in rule_map:
+            board_revision = int(rule_map['BOARD_REVISION'])
+
         if rule_name == 'FLASH':
             data = None
             with open(rule_map['FLASH'], 'rb') as file:
@@ -105,8 +110,8 @@ with open(args.manifest, 'r') as rules:
                 start_segment = start_segment - ((len(data) + 15) >> 4)
                 data_at_position[start_segment] = data
 
-                rule_data += bytearray(struct.pack("<BHHIH",
-                    0x02, start_segment, len(data), flash_position, crc16.checksum(data)))
+                rule_data += bytearray(struct.pack("<BHHIHH",
+                    0x02, start_segment, len(data), flash_position, crc16.checksum(data), board_revision))
         elif rule_name == 'PACKED_FLASH':
             subprocess.run(["rm", "temp.bin"])
             subprocess.run(["wf-zx0-salvador", "-v", rule[1], "temp.bin"])
@@ -131,8 +136,8 @@ with open(args.manifest, 'r') as rules:
             start_segment = start_segment - ((len(data) + 15) >> 4)
             data_at_position[start_segment] = data
 
-            rule_data += bytearray(struct.pack("<BHHIH",
-                0x03, start_segment, len(unpacked_data), flash_position, crc16.checksum(unpacked_data)))
+            rule_data += bytearray(struct.pack("<BHHIHH",
+                0x03, start_segment, len(unpacked_data), flash_position, crc16.checksum(unpacked_data), board_revision))
         elif rule_name == 'MCU_FLASH':
             data = None
             with open(rule_map['MCU_FLASH'], 'rb') as file:
@@ -147,8 +152,8 @@ with open(args.manifest, 'r') as rules:
                 start_segment = start_segment - ((len(data) + 15) >> 4)
                 data_at_position[start_segment] = data
 
-                rule_data += bytearray(struct.pack("<BHHIH",
-                    0x04, start_segment, len(data), flash_position, crc16.checksum(data)))
+                rule_data += bytearray(struct.pack("<BHHIHH",
+                    0x04, start_segment, len(data), flash_position, crc16.checksum(data), board_revision))
         else:
             raise Exception(f"Unknown rule: {rule[0]}")
     rule_data.append(0)

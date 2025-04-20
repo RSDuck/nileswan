@@ -18,12 +18,14 @@
 import argparse, crc, os, struct, subprocess, sys
 
 parser = argparse.ArgumentParser(prog='manifest_to_bin', description='Create SPI flash file from manifest')
+parser.add_argument('-b', '--board-revision', type=int, help='Board revision')
 parser.add_argument('manifest', help='File describing the update contents')
 parser.add_argument('output_bin', help='Output BIN file (.bin)')
 args = parser.parse_args()
 
 write_at = {}
 max_size = 0
+board_revision = args.board_revision or 0
 
 updater_base_data = None
 with open(args.manifest, 'r') as rules:
@@ -36,6 +38,9 @@ with open(args.manifest, 'r') as rules:
         rule_map = {}
         for i in range(0, len(rule), 2):
             rule_map[rule[i]] = rule[i+1]
+        if 'BOARD_REVISION' in rule_map:
+            if int(rule_map['BOARD_REVISION']) != board_revision:
+                continue
         if rule_name == 'FLASH' or rule_name == 'PACKED_FLASH':
             data = None
             with open(rule_map[rule_name], 'rb') as file:
