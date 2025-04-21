@@ -30,7 +30,9 @@ typedef enum {
     // EEPROM emulation<->SPI passthrough
     MCU_SPI_MODE_EEPROM = 1,
     // RTC emulation<->SPI passthrough
-    MCU_SPI_MODE_RTC = 2
+    MCU_SPI_MODE_RTC = 2,
+    // USB CDC passthrough mode
+    MCU_SPI_MODE_CDC_OUTPUT = 3
 } mcu_spi_mode_t;
 
 void mcu_spi_init(mcu_spi_mode_t mode);

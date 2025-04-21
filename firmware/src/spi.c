@@ -23,6 +23,7 @@
 #include "mcu.h"
 #include "tusb.h"
 
+#include "class/cdc/cdc_device.h"
 #include "spi.h"
 #include "cdc.h"
 #include "config.h"
@@ -193,6 +194,13 @@ void SPI1_IRQHandler(void) {
             }
 #endif
             mcu_fpga_finish_busy();
+        } else if (spi_mode == MCU_SPI_MODE_CDC_OUTPUT) {
+            uint8_t ch = LL_SPI_ReceiveData8(MCU_PERIPH_SPI);
+            if (tud_cdc_connected()) {
+                if (ch == '\n') tud_cdc_write_char('\r');
+                tud_cdc_write_char(ch);
+                tud_cdc_write_flush();
+            }
         }
     }
 }
@@ -202,10 +210,14 @@ uint32_t mcu_spi_get_freq(void) {
 }
 
 void mcu_spi_set_freq(uint32_t freq) {
+    uint32_t pin_speed = LL_GPIO_SPEED_FREQ_LOW;
+    if (pin_speed >= MCU_SPI_FREQ_24MHZ) pin_speed = LL_GPIO_SPEED_FREQ_HIGH;
+    else if (pin_speed >= MCU_SPI_FREQ_6MHZ) pin_speed = LL_GPIO_SPEED_FREQ_MEDIUM;
+
     spi_freq = freq;
-    LL_GPIO_SetPinSpeed(MCU_PORT_SPI, MCU_PIN_SPI_SCK, freq);
-    LL_GPIO_SetPinSpeed(MCU_PORT_SPI, MCU_PIN_SPI_POCI, freq);
-    LL_GPIO_SetPinSpeed(MCU_PORT_SPI, MCU_PIN_SPI_PICO, freq);
+    LL_GPIO_SetPinSpeed(MCU_PORT_SPI, MCU_PIN_SPI_SCK, pin_speed);
+    LL_GPIO_SetPinSpeed(MCU_PORT_SPI, MCU_PIN_SPI_POCI, pin_speed);
+    LL_GPIO_SetPinSpeed(MCU_PORT_SPI, MCU_PIN_SPI_PICO, pin_speed);
 
     mcu_update_clock_speed();
 }
@@ -273,7 +285,7 @@ void mcu_spi_init(mcu_spi_mode_t mode) {
     }
 
     spi_mode = mode;
-    if (spi_mode == MCU_SPI_MODE_RTC) {
+    if (spi_mode == MCU_SPI_MODE_RTC || spi_mode == MCU_SPI_MODE_CDC_OUTPUT) {
         LL_SPI_SetRxFIFOThreshold(MCU_PERIPH_SPI, LL_SPI_RX_FIFO_TH_QUARTER);
         LL_SPI_SetDataWidth(MCU_PERIPH_SPI, LL_SPI_DATAWIDTH_8BIT);
     } else if (spi_mode == MCU_SPI_MODE_EEPROM) {

@@ -27,19 +27,23 @@ Test command. The parameter is the number of bytes to echo, followed by the byte
 
 The parameter is the ID of the mode of communication to use going forward:
 
-- `00` - command mode
-- `01` - EEPROM emulation mode
-- `02` - RTC S-3511A emulation mode
-- `FF` - standby mode (requires reset to respond to SPI again)
+- `0x00` - command mode
+- `0x01` - EEPROM emulation mode
+- `0x02` - RTC S-3511A emulation mode
+- `0x03` - CDC output mode (transferred SPI bytes are output via USB CDC)
+- `0xFF` - standby mode (requires reset to respond to SPI again)
 
 ### 0x02 - SPI: Set maximum frequency
 
-The parameter is the maximum frequency to set:
+The parameter is the frequency that SPI should be adjusted to listen to:
 
-- `00` - 384 KHz
-- `01` - 6 MHz
+- `0x00` - 384 KHz
+- `0x01` - 6 MHz
+- `0x02` - 24 MHz
 
 The response is 1 on success, 0 on failure.
+
+The on-flash code most likely is not fast enough to deal with the higher-speed modes; this requires further research.
 
 ### 0x03 - MCU: Get unique ID
 
@@ -49,13 +53,13 @@ The response is the unique ID of the chip.
 
 Set the size of the emulated EEPROM:
 
-- `00` - no EEPROM
-- `01` - M93LC06
-- `02` - M93LC46 compatible
-- `03` - M93LC56 compatible
-- `04` - M93LC66 compatible
-- `05` - M93LC76 compatible
-- `06` - M93LC86 compatible
+- `0x00` - no EEPROM
+- `0x01` - M93LC06
+- `0x02` - M93LC46 compatible
+- `0x03` - M93LC56 compatible
+- `0x04` - M93LC66 compatible
+- `0x05` - M93LC76 compatible
+- `0x06` - M93LC86 compatible
 
 The response is 1 on success, 0 on failure.
 
