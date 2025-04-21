@@ -280,11 +280,31 @@ uint8_t rtc_read_status(void) {
         | (TAMP->BKP0R & (S3511A_INTAE | S3511A_INTFE | S3511A_INTME));
 }
 
+__attribute__((always_inline))
+static inline uint8_t rtc_range_correct(uint8_t v, uint8_t min, uint8_t max, uint8_t mask) {
+    if (
+        ((v & mask) > max) ||
+        (min && ((v & mask) < min)) ||
+        (mask >= 0xF && ((v & 0x0F) > 0x9))
+    ) {
+        return (v & ~mask) | min;
+    }
+    return v;
+}
+
 void rtc_write_datetime(uint8_t *buffer, bool date) {
     rtc_write_start();
     rtc_init_start();
 
     if (date) {
+        buffer[0] = rtc_range_correct(buffer[0], 0x00, 0x99, 0xFF);
+        buffer[1] = rtc_range_correct(buffer[1], 0x01, 0x12, 0x1F);
+        buffer[2] = rtc_range_correct(buffer[2], 0x01, 0x31, 0x3F);
+        buffer[3] = rtc_range_correct(buffer[3], 0x00, 0x06, 0x07);
+
+        // FIXME: Handle writing valid, but invalid for year/month pair,
+        // day of month values ($29..$31)
+
         uint32_t dr = 0;
         uint8_t dow = (buffer[3] & 7);
         dr |= buffer[0] << 16;
@@ -299,23 +319,19 @@ void rtc_write_datetime(uint8_t *buffer, bool date) {
         // convert 00 -> 12 for 12-hour writes
         if ((buffer[0] & 0x1F) == 0x00) {
             buffer[0] |= 0x12;
-        } else if ((buffer[0] & 0x1F) >= 0x12 || (buffer[0] & 0x0F) > 0x9) {
-            buffer[0] &= ~0x1F;
+        } else {
+            buffer[0] = rtc_range_correct(buffer[0], 0x00, 0x11, 0x1F);
         }
     } else {
-        if ((buffer[0] & 0x3F) >= 0x24 || (buffer[0] & 0x0F) > 0x9) {
-            buffer[0] &= ~0x3F;
-        }
+        buffer[0] = rtc_range_correct(buffer[0], 0x00, 0x23, 0x3F);
     }
-    if ((buffer[1] & 0x7F) >= 0x60 || (buffer[1] & 0x0F) > 0x9) {
-        buffer[1] = 0x00;
-    }
+    buffer[1] = rtc_range_correct(buffer[1], 0x00, 0x59, 0x7F);
     // FIXME: The S-3511A will allow a seconds value between 0x60 .. 0x7F
     // (or one with the last digit between 0xA .. 0xF) for one second,
     // then skip to the next value. The MCU RTC will, instead, happily
     // tick all the way to 0x7F. Setting 0x59 means the value becomes
     // correct for these edge cases after one second.
-    if ((buffer[2] & 0x7F) >= 0x60 || (buffer[2] & 0x0F) > 0x9) {
+    if (((buffer[2] & 0x7F) != 0x7F) && ((buffer[2] & 0x7F) >= 0x60 || (buffer[2] & 0x0F) > 0x9)) {
         buffer[2] = 0x59;
     }
     
