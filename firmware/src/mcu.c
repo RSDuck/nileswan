@@ -101,22 +101,20 @@ void mcu_update_clock_speed(void) {
         }
     }
 
-#ifdef CONFIG_ENABLE_CDC_DEBUG_PORT
     // If USB debug is enabled...
-    if (mcu_usb_is_active()) {
-        if (0
+    if (mcu_spi_get_freq() >= MCU_SPI_FREQ_6MHZ
 #ifdef CONFIG_DEBUG_SPI_EEPROM_CMD
-             || mcu_spi_get_mode() == MCU_SPI_MODE_EEPROM
+         || mcu_spi_get_mode() == MCU_SPI_MODE_EEPROM
 #endif
 #ifdef CONFIG_DEBUG_SPI_RTC_CMD
-             || mcu_spi_get_mode() == MCU_SPI_MODE_RTC
+         || mcu_spi_get_mode() == MCU_SPI_MODE_RTC
 #endif
-        ) {
+    ) {
+        if (mcu_usb_is_active()) {
             msi_range = LL_RCC_MSIRANGE_9;
             freq = 24 * 1000 * 1000;
         }
     }
-#endif
 
     if (msi_range >= LL_RCC_MSIRANGE_5) {
         LL_PWR_DisableLowPowerRunMode();
@@ -235,6 +233,8 @@ void mcu_init(void) {
 
     NVIC_SetPriority(EXTI4_15_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
     NVIC_EnableIRQ(EXTI4_15_IRQn);
+
+    NVIC_SetPriority(USB_DRD_FS_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 10, 0));
 
     LL_mDelay(1);
     __mcu_bat_on_power_change();
